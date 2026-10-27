@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { ScheduleAssignmentRecordsPanel } from './schedule-assignment-records-panel'
+import { ArrowLeft } from 'lucide-react'
 import {
   assignScheduleBatchSupervisor,
   assignScheduleBatchWorker,
@@ -59,6 +60,7 @@ export function ScheduleAssignmentQueue({
   onSearchChange: (next: ScheduleSearch) => void
 }) {
   const currentUser = useCurrentUser()
+  const [recordsBatch, setRecordsBatch] = useState<ScheduleBatch | null>(null)
   const currentYear = getCurrentManilaYear()
   const selectedYear = search.year ?? currentYear
   const [buildingFilter, setBuildingFilter] = useState('')
@@ -194,6 +196,7 @@ export function ScheduleAssignmentQueue({
     setSelection({ scopeKey: assignmentScopeKey, batchIds: [] })
 
   const updateFilters = (patch: Partial<ScheduleSearch>) => {
+    setRecordsBatch(null)
     clearSelection()
     setBuildingFilter('')
     setAssignmentDialogOpen(false)
@@ -208,6 +211,7 @@ export function ScheduleAssignmentQueue({
   }
 
   const updateBuildingFilter = (building: string) => {
+    setRecordsBatch(null)
     setBuildingFilter(building)
     clearSelection()
     setAssignmentDialogOpen(false)
@@ -559,20 +563,13 @@ export function ScheduleAssignmentQueue({
                         View schedules in batch
                       </Button>
                     ) : (
-                      <Button asChild variant="secondary">
-                        <Link
-                          to="/app/schedules"
-                          search={{
-                            view: 'history',
-                            year: selectedYear,
-                            department: batch.department,
-                            assetCategory: batch.assetCategory,
-                            pmCycle: batch.pmCycle,
-                            page: 1,
-                          }}
-                        >
-                          View schedules in batch
-                        </Link>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="cursor-pointer"
+                        onClick={() => setRecordsBatch(batch)}
+                      >
+                        View schedules in batch
                       </Button>
                     )}
                   </div>
@@ -624,6 +621,13 @@ export function ScheduleAssignmentQueue({
         </div>
       )}
 
+      {recordsBatch && (
+        <ScheduleAssignmentRecordsPanel
+          key={recordsBatch.id}
+          batch={recordsBatch}
+          onClose={() => setRecordsBatch(null)}
+        />
+      )}
       {assignmentDialogOpen &&
         assignmentDialogBatches &&
         assignmentDialogBatches.length > 0 && (
@@ -772,7 +776,7 @@ function ScheduleBatchAssignmentDialog({
     <dialog
       ref={dialogRef}
       aria-labelledby="schedule-batch-assignment-dialog-title"
-      className="m-auto max-h-[min(90vh,52rem)] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-xl border border-[var(--border-soft)] bg-white p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/45"
+      className="fixed inset-y-0 right-0 left-auto m-0 ml-auto h-dvh max-h-none w-full max-w-3xl overflow-y-auto border-0 bg-white p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/40"
       onCancel={(event) => {
         event.preventDefault()
         if (!isSaving) onClose()
@@ -781,7 +785,7 @@ function ScheduleBatchAssignmentDialog({
         if (event.target === event.currentTarget && !isSaving) onClose()
       }}
     >
-      <header className="flex items-start justify-between gap-4 border-b border-[var(--border-soft)] p-5">
+      <header className="sticky top-0 z-10 flex flex-col-reverse items-start gap-4 border-b border-[var(--border-soft)] bg-white p-5">
         <div>
           <h2
             id="schedule-batch-assignment-dialog-title"
@@ -802,7 +806,8 @@ function ScheduleBatchAssignmentDialog({
           disabled={isSaving}
           onClick={onClose}
         >
-          Close
+          <ArrowLeft className="mr-2 size-5" aria-hidden="true" /> Back to
+          batches
         </Button>
       </header>
       <form onSubmit={handleSubmit} className="space-y-4 p-5">

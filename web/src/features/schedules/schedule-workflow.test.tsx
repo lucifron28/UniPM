@@ -625,7 +625,9 @@ describe('schedule workflows', () => {
     await actor.click(
       (await screen.findAllByRole('button', { name: 'Reassign' }))[0]!,
     )
-    const dialog = await screen.findByRole('dialog')
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Schedule batch assignment',
+    })
     expect(
       await within(dialog).findByText('Current Supervisor', { selector: 'dd' }),
     ).toBeVisible()
@@ -932,7 +934,8 @@ describe('schedule workflows', () => {
     const detailLinks = await screen.findAllByRole('link', {
       name: 'View details',
     })
-    expect(detailLinks).toHaveLength(2)
+    expect(detailLinks).toHaveLength(1)
+    await actor.click(screen.getByRole('button', { name: 'Back to batches' }))
     const initialRequestCount = urls.length
     expect(initialRequestCount).toBeGreaterThan(0)
 
@@ -963,6 +966,11 @@ describe('schedule workflows', () => {
     expect(applied?.searchParams.get('assetCategory')).toBe('fire-alarm')
     expect(applied?.searchParams.get('department')).toBe('GSD')
 
+    await actor.click(
+      (
+        await screen.findAllByRole('button', { name: 'Open batch history' })
+      )[0]!,
+    )
     const href = screen
       .getAllByRole('link', { name: 'View details' })[0]!
       .getAttribute('href')

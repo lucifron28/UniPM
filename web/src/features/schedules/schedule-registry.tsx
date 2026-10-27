@@ -1,3 +1,4 @@
+import { ScheduleBatchPanel } from './schedule-batch-panel'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
@@ -1492,7 +1493,7 @@ export function ScheduleRegistry({
                 </thead>
                 {scheduleHistoryBatches.map((batch) => {
                   const isExpanded = expandedHistoryBatchKey === batch.key
-                  const panelId = `schedule-batch-history-desktop-${encodeURIComponent(batch.key)}`
+                  const panelId = 'schedule-batch-panel'
 
                   return (
                     <tbody
@@ -1532,18 +1533,6 @@ export function ScheduleRegistry({
                           </div>
                         </td>
                       </tr>
-                      {isExpanded && (
-                        <tr>
-                          <td
-                            colSpan={table.getVisibleLeafColumns().length}
-                            className="bg-white p-4"
-                          >
-                            <div id={panelId}>
-                              {renderExpandedBatchHistory()}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
                   )
                 })}
@@ -1553,7 +1542,7 @@ export function ScheduleRegistry({
               <div className="grid gap-3">
                 {scheduleHistoryBatches.map((batch) => {
                   const isExpanded = expandedHistoryBatchKey === batch.key
-                  const panelId = `schedule-batch-history-mobile-${encodeURIComponent(batch.key)}`
+                  const panelId = 'schedule-batch-panel'
 
                   return (
                     <Card
@@ -1585,14 +1574,6 @@ export function ScheduleRegistry({
                             : 'Open batch history'}
                         </Button>
                       </div>
-                      {isExpanded && (
-                        <div
-                          id={panelId}
-                          className="border-t border-[var(--border-soft)] pt-3"
-                        >
-                          {renderExpandedBatchHistory()}
-                        </div>
-                      )}
                     </Card>
                   )
                 })}
@@ -1717,6 +1698,15 @@ export function ScheduleRegistry({
           <ScheduleCoverageReview />
           <ScheduleEnrollmentDeferralReview />
         </section>
+      )}
+      {expandedHistoryBatch && (
+        <ScheduleBatchPanel
+          title="Batch history"
+          description={`${expandedHistoryBatch.department ?? 'Department not recorded'} · ${expandedHistoryBatch.assetCategory ? formatAssetCategory(expandedHistoryBatch.assetCategory) : 'Category not recorded'} · ${formatPmCycle(expandedHistoryBatch.pmCycle)}`}
+          onClose={() => setExpandedHistoryBatchKey(null)}
+        >
+          {renderExpandedBatchHistory()}
+        </ScheduleBatchPanel>
       )}
       {reassignmentSchedule && (
         <ScheduleBatchReassignmentDialog
