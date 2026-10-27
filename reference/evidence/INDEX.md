@@ -20,6 +20,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-172 | test-run | Schedule batch side panels | executed | locally-executed | `fde2bbc` | [record](test-runs/TEST-172-schedule-batch-panels.md) | 25 schedule workflow tests passed after one existing-expectation correction; type check passed. Browser visual verification unavailable. |
 | TEST-171 | test-run | Dashboard records and detailed report | executed | locally-executed | `fd70ea4` | [record](test-runs/TEST-171-dashboard-records-print.md) | Backend build, 10 dashboard tests and type check passed. Built-in desktop table/filter/pagination checks executed; final PDF/print layout unverified. |
 | TEST-170 | test-run | Guarded local rebuilt demo reset | executed | locally-executed | `1073065` | [record](test-runs/TEST-170-rebuilt-demo-reset.md) | Manifest initialization and rollback-only reset check passed. Unrelated-data refusal was source-inspected; no committed reset. |
 | TEST-169 | test-run | Dashboard chart wording and timing availability | executed | locally-executed | `4a7e723` | [record](test-runs/TEST-169-dashboard-chart-clarity.md) | Dashboard regression 10 passed; type check and fictional browser overview, unavailable/partial timing and exact-value checks passed. E2E suite and live API/database not executed. |
