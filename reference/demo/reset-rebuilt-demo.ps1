@@ -12,7 +12,7 @@ $tables = [ordered]@{
     InspectionRecords = 'Id'; ScheduleAssignmentReassignmentAudits = 'Id'
     PreventiveMaintenanceAcknowledgements = 'Id'; InspectionWmsReferrals = 'InspectionId'
     InspectionWmsReferralAudits = 'Id'; InspectionPhotoEvidence = 'InspectionId'
-    InspectionLocationAttempts = 'Id'; ScheduleEnrollmentDeferrals = 'Id'
+    InspectionLocationAttempts = 'Id'; ScheduleEnrollmentDeferrals = 'AssetId, PmCycle'
 }
 $connection = [System.Data.SqlClient.SqlConnection]::new('Server=localhost;Database=UniPMDb;Integrated Security=True;TrustServerCertificate=True')
 $connection.Open()
@@ -27,7 +27,7 @@ function Invoke-Scalar([string]$sql) {
 function Read-Snapshot {
     $snapshot = [ordered]@{}
     foreach ($table in $tables.Keys) {
-        $json = [string](Invoke-Scalar "SELECT (SELECT * FROM dbo.[$table] WITH (TABLOCKX,HOLDLOCK) ORDER BY [$($tables[$table])] FOR JSON PATH, INCLUDE_NULL_VALUES)")
+        $json = [string](Invoke-Scalar "SELECT (SELECT * FROM dbo.[$table] WITH (TABLOCKX,HOLDLOCK) ORDER BY $($tables[$table]) FOR JSON PATH, INCLUDE_NULL_VALUES)")
         $sha = [System.Security.Cryptography.SHA256]::Create()
         try { $snapshot[$table] = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($json))).Replace('-', '') }
         finally { $sha.Dispose() }
