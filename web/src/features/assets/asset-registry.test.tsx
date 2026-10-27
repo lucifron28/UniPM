@@ -704,15 +704,11 @@ describe('AssetRegistry feature component', () => {
     expect(
       await screen.findByText('Assets could not be loaded. Please try again.'),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Retry' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(
       screen.queryByText('No assets are registered yet.'),
     ).not.toBeInTheDocument()
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Retry' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
     expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
     expect(screen.getByText('2 matching assets')).toBeVisible()
   })
