@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ import {
 } from '@/features/schedules/schedule-presentation'
 import { ReportChart, type ReportChartRow } from './report-charts'
 import './pm-dashboard-print.css'
+import type { PmPeriodDashboardRecordsSearch } from './pm-period-dashboard-records'
 
 export type PmPeriodDashboardSearch = {
   assetCategory?: string | undefined
@@ -39,6 +40,7 @@ type DashboardMetricProps = {
   label: string
   value: ReactNode
   note?: string
+  recordsSearch?: PmPeriodDashboardRecordsSearch | undefined
 }
 
 const selectClassName =
@@ -72,6 +74,8 @@ type AssignmentPeriodSummary = {
   completedLate: number | string
   openWithinPeriod: number | string
   overdueUnfinished: number | string
+  unassignedUnfinishedCount?: number | string
+  unassignedUnavailableCount?: number | string
 }
 
 type DashboardBatchWithProgress =
@@ -100,14 +104,29 @@ function reportPeriodState(value: string) {
   }
 }
 
-function DashboardMetric({ label, value, note }: DashboardMetricProps) {
+function DashboardMetric({
+  label,
+  value,
+  note,
+  recordsSearch,
+}: DashboardMetricProps) {
   return (
     <Card className="p-4 shadow-none">
       <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
         {label}
       </p>
       <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-        {value}
+        {recordsSearch ? (
+          <Link
+            to="/app/dashboard-records"
+            search={recordsSearch}
+            className="rounded-sm underline decoration-[var(--border-soft)] underline-offset-4 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+          >
+            {value}
+          </Link>
+        ) : (
+          value
+        )}
       </p>
       {note && (
         <p className="mt-1 text-xs text-[var(--text-secondary)]">{note}</p>
@@ -208,47 +227,139 @@ function groupForSelection(
 
 function DashboardMetrics({
   dashboard,
+  search,
 }: {
-  dashboard: PmPeriodDashboardResponse
+  dashboard: DashboardWithAssignmentPeriod
+  search: PmPeriodDashboardSearch
 }) {
+  const scope = {
+    assetCategory: search.assetCategory,
+    year: search.year,
+    pmCycle: search.pmCycle,
+    department: search.department,
+  }
+  const hasRecordScope = Boolean(search.assetCategory && search.pmCycle)
+  const recordScope = hasRecordScope ? scope : undefined
+  const rows = dashboard.assets as Array<
+    PmPeriodDashboardAssetRowResponse & {
+      assignedInspectorUserId?: string | null
+    }
+  >
+  const unassignedCount =
+    dashboard.assignmentPeriod?.unassignedUnfinishedCount ??
+    (rows.length > 0 &&
+    rows.every((row) => row.assignedInspectorUserId !== undefined)
+      ? rows.filter(
+          (row) => !row.isInspected && row.assignedInspectorUserId === null,
+        ).length
+      : null)
+  const overdueCount = dashboard.assignmentPeriod?.overdueUnfinished
+  const outstandingCount =
+    dashboard.periodState === 'Closed'
+      ? dashboard.notCompleted
+      : dashboard.remaining
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <DashboardMetric
-        label="Inspected / scheduled"
-        value={`${formatNumber(dashboard.inspected)} / ${formatNumber(dashboard.scheduled)}`}
-        note="Inspections completed out of scheduled work"
-      />
-      <DashboardMetric
-        label="Progress"
-        value={formatPercent(dashboard.progressPercent)}
-        note="Share of scheduled inspections completed"
-      />
-      <DashboardMetric
-        label="On-time compliance"
-        value={
-          dashboard.complianceMeasurable
-            ? formatPercent(dashboard.onTimeCompliancePercent)
-            : 'Not measurable yet'
-        }
-        {...(!dashboard.complianceMeasurable
-          ? { note: 'Available after the PM deadline' }
-          : {})}
-      />
-      <DashboardMetric
-        label="Non-operational"
-        value={formatNumber(dashboard.nonOperational)}
-        {...(!dashboard.inspectionResultsAvailable
-          ? { note: 'No results yet' }
-          : {})}
-      />
-    </div>
+    <section aria-label="PM period summary" className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <DashboardMetric
+          label="Scheduled"
+          value={formatNumber(dashboard.scheduled)}
+          note="Schedules in this period and department"
+          recordsSearch={recordScope}
+        />
+        <DashboardMetric
+          label="Completed"
+          value={formatNumber(dashboard.inspected)}
+          note="Schedules with a completed inspection"
+          recordsSearch={
+            recordScope
+              ? { ...recordScope, inspectionStatus: 'completed' }
+              : undefined
+          }
+        />
+        <DashboardMetric
+          label="Outstanding"
+          value={formatNumber(outstandingCount)}
+          note="Not completed in the selected period"
+          recordsSearch={
+            recordScope
+              ? { ...recordScope, inspectionStatus: 'outstanding' }
+              : undefined
+          }
+        />
+        <DashboardMetric
+          label="Overdue assignment"
+          value={
+            overdueCount === undefined
+              ? 'Not available'
+              : formatNumber(overdueCount)
+          }
+          note="Unfinished after the inspector 30-day target"
+          recordsSearch={
+            overdueCount === undefined || !recordScope
+              ? undefined
+              : {
+                  ...recordScope,
+                  inspectionStatus: 'outstanding',
+                  assignment: 'overdue',
+                }
+          }
+        />
+        <DashboardMetric
+          label="Unassigned"
+          value={
+            unassignedCount === null
+              ? 'Not available'
+              : formatNumber(unassignedCount)
+          }
+          note="Unfinished schedules without an assigned inspector"
+          recordsSearch={
+            unassignedCount === null || !recordScope
+              ? undefined
+              : {
+                  ...recordScope,
+                  inspectionStatus: 'outstanding',
+                  assignment: 'unassigned',
+                }
+          }
+        />
+        <DashboardMetric
+          label="Non-operational"
+          value={
+            dashboard.inspectionResultsAvailable
+              ? formatNumber(dashboard.nonOperational)
+              : 'Not available'
+          }
+          note={
+            dashboard.inspectionResultsAvailable
+              ? 'Recorded inspection results'
+              : 'No inspection results are available'
+          }
+          recordsSearch={
+            dashboard.inspectionResultsAvailable && recordScope
+              ? { ...recordScope, condition: 'NonOperational' }
+              : undefined
+          }
+        />
+      </div>
+      <p className="text-xs text-[var(--text-secondary)]">
+        Supporting rates: inspection progress{' '}
+        {formatPercent(dashboard.progressPercent)} · completed within the
+        scheduled month {formatPercent(dashboard.onTimeCompliancePercent)}
+      </p>
+    </section>
   )
 }
 
 function DashboardCharts({
   dashboard,
+  search,
+  onOpenRecords,
 }: {
   dashboard: DashboardWithAssignmentPeriod
+  search?: PmPeriodDashboardSearch | undefined
+  onOpenRecords?: ((search: PmPeriodDashboardRecordsSearch) => void) | undefined
 }) {
   const [comparison, setComparison] = useState('')
   const closed = dashboard.periodState === 'Closed'
@@ -287,13 +398,13 @@ function DashboardCharts({
       values: [
         {
           seriesId: 'completed-on-time',
-          seriesLabel: 'On time',
+          seriesLabel: 'Within scheduled month',
           value: toChartNumber(batch.completedOnTime),
           unit: 'schedules',
         },
         {
           seriesId: 'completed-late',
-          seriesLabel: 'Late',
+          seriesLabel: 'After scheduled month',
           value: toChartNumber(batch.completedLate),
           unit: 'schedules',
         },
@@ -326,7 +437,7 @@ function DashboardCharts({
       values: [
         {
           seriesId: 'on-time-compliance',
-          seriesLabel: 'On-time compliance',
+          seriesLabel: 'Completed within scheduled month',
           value: compliance,
           unit: '%',
           ...(compliance === null
@@ -372,6 +483,64 @@ function DashboardCharts({
   const hasDepartmentProgress = dashboard.batches.some(
     (batch) => batch.progressPercent !== undefined,
   )
+  const handleDrilldown = onOpenRecords
+    ? (row: ReportChartRow, value: ReportChartRow['values'][number]) => {
+        const batch = dashboard.batches.find(
+          (candidate) =>
+            (candidate.department ?? 'Department not recorded') === row.label,
+        )
+        const department = batch
+          ? (batch.department ?? undefined)
+          : (search?.department ?? undefined)
+        const searchForRecords: PmPeriodDashboardRecordsSearch = {
+          assetCategory: search?.assetCategory ?? dashboard.assetCategory,
+          year:
+            search?.year ??
+            (Number(dashboard.pmCycle.slice(0, 4)) || undefined),
+          pmCycle: search?.pmCycle ?? dashboard.pmCycle,
+          ...(department ? { department } : {}),
+        }
+        switch (value.seriesId) {
+          case 'completed-on-time':
+            searchForRecords.timeliness = 'OnTime'
+            break
+          case 'completed-late':
+            searchForRecords.timeliness = 'Late'
+            break
+          case 'not-completed':
+          case 'remaining':
+            searchForRecords.inspectionStatus = 'outstanding'
+            break
+          case 'assignment-completed-within':
+            searchForRecords.assignmentTiming = 'CompletedWithinPeriod'
+            break
+          case 'assignment-completed-late':
+            searchForRecords.assignmentTiming = 'CompletedLate'
+            break
+          case 'assignment-open-within':
+            searchForRecords.assignmentTiming = 'WithinPeriod'
+            break
+          case 'known-assignment-period':
+            break
+          case 'unknown-assignment-period':
+            searchForRecords.assignmentTiming = 'Unavailable'
+            break
+          case 'assignment-overdue-unfinished':
+            searchForRecords.inspectionStatus = 'outstanding'
+            searchForRecords.assignment = 'overdue'
+            break
+          case 'non-operational':
+            searchForRecords.condition = 'NonOperational'
+            break
+          case 'operational':
+            searchForRecords.condition = 'Operational'
+            break
+          default:
+            break
+        }
+        onOpenRecords(searchForRecords)
+      }
+    : undefined
   const conditionValuesAvailable = dashboard.inspectionResultsAvailable
   const conditionRows: ReportChartRow[] = [
     {
@@ -411,6 +580,13 @@ function DashboardCharts({
   const unknownAssignmentCount = toChartNumber(
     assignmentPeriod?.unknownAssignmentCount ?? null,
   )
+  const unassignedUnavailableCount = toChartNumber(
+    assignmentPeriod?.unassignedUnavailableCount ?? null,
+  )
+  const missingTimingCount =
+    unknownAssignmentCount !== null && unassignedUnavailableCount !== null
+      ? Math.max(0, unknownAssignmentCount - unassignedUnavailableCount)
+      : unknownAssignmentCount
   const assignmentCoverageRows: ReportChartRow[] = assignmentPeriod
     ? [
         {
@@ -453,13 +629,13 @@ function DashboardCharts({
             },
             {
               seriesId: 'assignment-open-within',
-              seriesLabel: 'Unfinished, within 30 days',
+              seriesLabel: 'Outstanding within 30 days',
               value: toChartNumber(assignmentPeriod.openWithinPeriod),
               unit: 'schedules',
             },
             {
               seriesId: 'assignment-overdue-unfinished',
-              seriesLabel: 'Unfinished, over 30 days',
+              seriesLabel: 'Overdue after 30 days',
               value: toChartNumber(assignmentPeriod.overdueUnfinished),
               unit: 'schedules',
             },
@@ -470,10 +646,18 @@ function DashboardCharts({
 
   const comparisons = [
     {
+      id: 'month',
+      label: 'Completion within the scheduled month',
+      subtitle: `Inspection counts by department. Scheduled month ends ${formatPmCycleDueDate(dashboard.pmCycle)}. Inspector assignment deadlines are separate.`,
+      rows: outcomeRows,
+      variant: 'stacked' as const,
+      note: 'These outcomes compare completion to the scheduled month, not the 30-day inspector assignment period.',
+    },
+    {
       id: 'compliance',
-      label: 'Inspections completed by the PM deadline',
+      label: 'Completion within the scheduled month (%)',
       subtitle:
-        'Percentage of scheduled inspections completed on time, by department.',
+        'Percentage of schedules completed by the end of the scheduled month, by department. This is not the inspector assignment deadline.',
       rows: complianceRows,
       variant: 'bar' as const,
       note: 'Completed by the original PM deadline / scheduled. Available after the deadline.',
@@ -498,15 +682,6 @@ function DashboardCharts({
     },
     ...(assignmentPeriod
       ? [
-          {
-            id: 'turnaround',
-            label: 'Inspector assignment turnaround',
-            subtitle:
-              'Completion within 30 calendar days of the first saved Inspector assignment.',
-            rows: assignmentOutcomeRows,
-            variant: 'grouped' as const,
-            note: '30 calendar days from first saved Inspector assignment. Reassignment does not restart the period. Cancelled and unavailable periods are excluded.',
-          },
           {
             id: 'coverage',
             label: 'Assignment-period data availability',
@@ -571,21 +746,49 @@ function DashboardCharts({
               }
               variant={hasDepartmentProgress ? 'bar' : 'grouped'}
               rows={hasDepartmentProgress ? progressRows : departmentRows}
+              {...(handleDrilldown ? { onDrilldown: handleDrilldown } : {})}
               compact
             />
-            <ReportChart
-              title="Completion against the PM deadline"
-              subtitle={`Inspection counts by department. PM deadline: ${formatPmCycleDueDate(dashboard.pmCycle)}.`}
-              groupLabel="Department"
-              description={
-                closed
-                  ? 'On-time, late and unfinished schedules, measured against the original PM deadline.'
-                  : 'Completed work and schedules remaining before the original PM deadline.'
-              }
-              variant="stacked"
-              rows={outcomeRows}
-              compact
-            />
+            <Card className="p-5 shadow-none">
+              <h3 className="font-semibold">Inspector assignment turnaround</h3>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                Each inspector has 30 calendar days from the first saved
+                assignment. Reassignment does not restart the period.
+              </p>
+              {knownAssignmentCount === null || knownAssignmentCount === 0 ? (
+                <p role="status" className="mt-4 text-sm">
+                  No assignment-period results are available for this scope.
+                  Missing timing does not mean inspectors completed zero work.
+                </p>
+              ) : (
+                <ReportChart
+                  title="Assignment-period outcomes"
+                  subtitle="Counts of schedules with usable assignment timing."
+                  groupLabel="Scope"
+                  variant="grouped"
+                  rows={assignmentOutcomeRows}
+                  {...(handleDrilldown ? { onDrilldown: handleDrilldown } : {})}
+                  compact
+                />
+              )}
+              {missingTimingCount !== null && missingTimingCount > 0 && (
+                <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                  {formatNumber(missingTimingCount)} schedules have unavailable
+                  timing and are excluded from the 30-day outcomes
+                  {unassignedUnavailableCount === null
+                    ? '; this may include unassigned work'
+                    : ''}
+                  .
+                </p>
+              )}
+              {assignmentPeriod?.unassignedUnfinishedCount !== undefined &&
+                Number(assignmentPeriod.unassignedUnfinishedCount) > 0 && (
+                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                    Currently unassigned schedules may include previously
+                    assigned work, so they can also appear in the timing counts.
+                  </p>
+                )}
+            </Card>
           </div>
           <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border-soft)] pt-4 print:hidden">
             <Label htmlFor="dashboard-comparison">More comparisons</Label>
@@ -604,58 +807,21 @@ function DashboardCharts({
             </select>
           </div>
           {selected && (
-            <div className="space-y-2">
-              {selected.id === 'turnaround' &&
-              (knownAssignmentCount === null || knownAssignmentCount === 0) ? (
-                <Card className="p-5 shadow-none" role="status">
-                  <h3 className="font-semibold">
-                    Inspector assignment turnaround
-                  </h3>
-                  <p className="mt-2 font-medium">
-                    No assignment-period results are available for this scope.
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                    {unknownAssignmentCount !== null &&
-                    unknownAssignmentCount > 0
-                      ? `${formatNumber(unknownAssignmentCount)} ${unknownAssignmentCount === 1 ? 'schedule cannot' : 'schedules cannot'} be assessed because the original assignment time or recorded completion time is unavailable.`
-                      : 'No schedules with usable assignment and completion timing are available.'}{' '}
-                    This does not mean inspectors completed zero work.
-                    Inspection completion and PM deadline results remain
-                    available above.
-                  </p>
-                </Card>
-              ) : (
-                <>
-                  {selected.id === 'turnaround' && (
-                    <p
-                      className="text-sm text-[var(--text-secondary)]"
-                      role="status"
-                    >
-                      Based on {formatNumber(knownAssignmentCount ?? 0)}{' '}
-                      {knownAssignmentCount === 1 ? 'schedule' : 'schedules'}{' '}
-                      with usable timing.
-                      {unknownAssignmentCount !== null &&
-                        unknownAssignmentCount > 0 &&
-                        ` ${formatNumber(unknownAssignmentCount)} ${unknownAssignmentCount === 1 ? 'schedule is' : 'schedules are'} excluded because timing is unavailable.`}
-                    </p>
-                  )}
-                  <ReportChart
-                    key={selected.id}
-                    title={selected.label}
-                    subtitle={selected.subtitle}
-                    description={selected.note}
-                    variant={selected.variant}
-                    rows={selected.rows}
-                    groupLabel={
-                      ['compliance', 'workload'].includes(selected.id)
-                        ? 'Department'
-                        : 'Scope'
-                    }
-                    compact
-                  />
-                </>
-              )}
-            </div>
+            <ReportChart
+              key={selected.id}
+              title={selected.label}
+              subtitle={selected.subtitle}
+              description={selected.note}
+              variant={selected.variant}
+              rows={selected.rows}
+              {...(handleDrilldown ? { onDrilldown: handleDrilldown } : {})}
+              groupLabel={
+                ['month', 'compliance', 'workload'].includes(selected.id)
+                  ? 'Department'
+                  : 'Scope'
+              }
+              compact
+            />
           )}
         </>
       )}
@@ -845,14 +1011,20 @@ function CorrectiveFollowUpSection({
 export function PmPeriodDashboardPresentation({
   dashboard,
   search,
+  onOpenRecords,
 }: {
   dashboard: PmPeriodDashboardResponse
-  search?: PmPeriodDashboardSearch
+  search?: PmPeriodDashboardSearch | undefined
+  onOpenRecords?: ((search: PmPeriodDashboardRecordsSearch) => void) | undefined
 }) {
   return (
     <>
-      <DashboardMetrics dashboard={dashboard} />
-      <DashboardCharts dashboard={dashboard} />
+      <DashboardMetrics dashboard={dashboard} search={search ?? {}} />
+      <DashboardCharts
+        dashboard={dashboard}
+        search={search}
+        onOpenRecords={onOpenRecords}
+      />
       <CorrectiveFollowUpSection
         dashboard={dashboard}
         {...(search ? { search } : {})}
@@ -871,6 +1043,7 @@ export function PmPeriodDashboard({
     options?: { replace?: boolean },
   ) => void
 }) {
+  const navigate = useNavigate()
   const cyclesQuery = usePmPeriodDashboardCycles()
   const cycles = useMemo(() => cyclesQuery.data ?? [], [cyclesQuery.data])
   const currentUser = useCurrentUser()
@@ -1108,12 +1281,20 @@ export function PmPeriodDashboard({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 print:hidden">
+                    <Button asChild variant="secondary">
+                      <Link
+                        to="/app/dashboard-records"
+                        search={dashboardReturnSearch}
+                      >
+                        View records
+                      </Link>
+                    </Button>
                     <Button
                       type="button"
                       disabled={!dashboardQuery.data}
                       onClick={() => window.print()}
                     >
-                      Export dashboard
+                      Print summary
                     </Button>
                     <Button
                       type="button"
@@ -1184,6 +1365,12 @@ export function PmPeriodDashboard({
                 <PmPeriodDashboardPresentation
                   dashboard={dashboardQuery.data}
                   search={dashboardReturnSearch}
+                  onOpenRecords={(recordsSearch) =>
+                    void navigate({
+                      to: '/app/dashboard-records',
+                      search: recordsSearch,
+                    })
+                  }
                 />
               </>
             ) : null}

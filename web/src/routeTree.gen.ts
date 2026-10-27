@@ -16,6 +16,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppAdminRouteImport } from './routes/app/admin'
 import { Route as AppAnalyticsRouteImport } from './routes/app/analytics'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppDashboardRecordsRouteImport } from './routes/app/dashboard-records'
 import { Route as AppAssetsIndexRouteImport } from './routes/app/assets/index'
 import { Route as AppAssetsAssetIdRouteImport } from './routes/app/assets/$assetId'
 import { Route as AppAssetsNewRouteImport } from './routes/app/assets/new'
@@ -62,6 +63,11 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppDashboardRecordsRoute = AppDashboardRecordsRouteImport.update({
+  id: '/dashboard-records',
+  path: '/dashboard-records',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppAssetsIndexRoute = AppAssetsIndexRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/app/admin': typeof AppAdminRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/dashboard-records': typeof AppDashboardRecordsRoute
   '/app/': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/app/admin': typeof AppAdminRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/dashboard-records': typeof AppDashboardRecordsRoute
   '/app': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/app/admin': typeof AppAdminRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/dashboard-records': typeof AppDashboardRecordsRoute
   '/app/': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/analytics'
     | '/app/dashboard'
+    | '/app/dashboard-records'
     | '/app/'
     | '/app/assets/$assetId'
     | '/app/assets/new'
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/analytics'
     | '/app/dashboard'
+    | '/app/dashboard-records'
     | '/app'
     | '/app/assets/$assetId'
     | '/app/assets/new'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/app/admin'
     | '/app/analytics'
     | '/app/dashboard'
+    | '/app/dashboard-records'
     | '/app/'
     | '/app/assets/$assetId'
     | '/app/assets/new'
@@ -311,6 +323,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/app/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/dashboard-records': {
+      id: '/app/dashboard-records'
+      path: '/dashboard-records'
+      fullPath: '/app/dashboard-records'
+      preLoaderRoute: typeof AppDashboardRecordsRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/assets/': {
@@ -422,6 +441,7 @@ interface AppRouteRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDashboardRecordsRoute: typeof AppDashboardRecordsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAssetsAssetIdRoute: typeof AppAssetsAssetIdRoute
   AppAssetsNewRoute: typeof AppAssetsNewRoute
@@ -439,6 +459,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDashboardRecordsRoute: AppDashboardRecordsRoute,
   AppIndexRoute: AppIndexRoute,
   AppAssetsAssetIdRoute: AppAssetsAssetIdRoute,
   AppAssetsNewRoute: AppAssetsNewRoute,

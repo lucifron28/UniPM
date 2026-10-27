@@ -512,21 +512,27 @@ test.describe('PM period dashboard', () => {
 
     const report = page.locator('.pm-dashboard-report')
     await expect(report).toBeVisible()
-    await expect(
-      metricCard(page, 'Inspected / scheduled').locator('p').nth(1),
-    ).toHaveText('2 / 3')
-    await expect(metricCard(page, 'Progress').locator('p').nth(1)).toHaveText(
-      '67%',
+    await expect(metricCard(page, 'Completed').locator('p').nth(1)).toHaveText(
+      '2',
+    )
+    await expect(metricCard(page, 'Scheduled').locator('p').nth(1)).toHaveText(
+      '3',
     )
     await expect(
-      metricCard(page, 'On-time compliance').locator('p').nth(1),
-    ).toHaveText('Not measurable yet')
+      page.getByText(/Supporting rates: inspection progress 67%/),
+    ).toBeVisible()
+    await expect(metricCard(page, 'Unassigned').locator('p').nth(1)).toHaveText(
+      'Not available',
+    )
+    await page
+      .getByRole('combobox', { name: 'More comparisons' })
+      .selectOption('month')
     const outcomes = page.getByRole('region', {
-      name: 'Completion against the PM deadline',
+      name: 'Completion within the scheduled month',
     })
     await expect(outcomes.getByRole('listitem')).toHaveText([
-      'On time',
-      'Late',
+      'Within scheduled month',
+      'After scheduled month',
       'Still due',
     ])
     await expect(
@@ -550,14 +556,14 @@ test.describe('PM period dashboard', () => {
     ).toBeLessThanOrEqual(1)
     await page.setViewportSize({ width: 1280, height: 900 })
 
-    await page.getByRole('button', { name: 'Export dashboard' }).click()
+    await page.getByRole('button', { name: 'Print summary' }).click()
     await expect(page.locator('html')).toHaveAttribute(
       'data-print-invoked',
       'true',
     )
     await page.emulateMedia({ media: 'print' })
     await expect(
-      page.getByRole('button', { name: 'Export dashboard' }),
+      page.getByRole('button', { name: 'Print summary' }),
     ).toBeHidden()
     await page.emulateMedia({ media: 'screen' })
 
@@ -566,12 +572,15 @@ test.describe('PM period dashboard', () => {
       .selectOption('OPS')
     await expectRequest(requests, { ...mayScope, department: 'OPS' })
     await expect(page).toHaveURL(/department=OPS/)
-    await expect(
-      metricCard(page, 'Inspected / scheduled').locator('p').nth(1),
-    ).toHaveText('1 / 2')
-    await expect(metricCard(page, 'Progress').locator('p').nth(1)).toHaveText(
-      '50%',
+    await expect(metricCard(page, 'Completed').locator('p').nth(1)).toHaveText(
+      '1',
     )
+    await expect(metricCard(page, 'Scheduled').locator('p').nth(1)).toHaveText(
+      '2',
+    )
+    await expect(
+      page.getByText(/Supporting rates: inspection progress 50%/),
+    ).toBeVisible()
   })
 
   test('loads a valid scope URL and keeps corrective inspection navigation filtered', async ({
@@ -640,17 +649,25 @@ test.describe('PM period dashboard', () => {
     await expect(
       page.getByText('Upcoming', { exact: true }).first(),
     ).toBeVisible()
-    await expect(
-      metricCard(page, 'Inspected / scheduled').locator('p').nth(1),
-    ).toHaveText('0 / 1')
-    await expect(metricCard(page, 'Progress').locator('p').nth(1)).toHaveText(
-      '0%',
+    await expect(metricCard(page, 'Completed').locator('p').nth(1)).toHaveText(
+      '0',
     )
+    await expect(metricCard(page, 'Scheduled').locator('p').nth(1)).toHaveText(
+      '1',
+    )
+    await expect(
+      page.getByText(/Supporting rates: inspection progress 0%/),
+    ).toBeVisible()
+    await page
+      .getByRole('combobox', { name: 'More comparisons' })
+      .selectOption('month')
     const outcomes = () =>
-      page.getByRole('region', { name: 'Completion against the PM deadline' })
+      page.getByRole('region', {
+        name: 'Completion within the scheduled month',
+      })
     await expect(outcomes().getByRole('listitem')).toHaveText([
-      'On time',
-      'Late',
+      'Within scheduled month',
+      'After scheduled month',
       'Still due',
     ])
 
@@ -666,15 +683,18 @@ test.describe('PM period dashboard', () => {
     await expect(
       page.getByText('In progress', { exact: true }).first(),
     ).toBeVisible()
-    await expect(
-      metricCard(page, 'Inspected / scheduled').locator('p').nth(1),
-    ).toHaveText('2 / 3')
-    await expect(metricCard(page, 'Progress').locator('p').nth(1)).toHaveText(
-      '67%',
+    await expect(metricCard(page, 'Completed').locator('p').nth(1)).toHaveText(
+      '2',
     )
+    await expect(metricCard(page, 'Scheduled').locator('p').nth(1)).toHaveText(
+      '3',
+    )
+    await expect(
+      page.getByText(/Supporting rates: inspection progress 67%/),
+    ).toBeVisible()
     await expect(outcomes().getByRole('listitem')).toHaveText([
-      'On time',
-      'Late',
+      'Within scheduled month',
+      'After scheduled month',
       'Still due',
     ])
 
@@ -690,18 +710,21 @@ test.describe('PM period dashboard', () => {
     await expect(
       page.getByText('Past deadline', { exact: true }).first(),
     ).toBeVisible()
-    await expect(
-      metricCard(page, 'Inspected / scheduled').locator('p').nth(1),
-    ).toHaveText('2 / 4')
-    await expect(metricCard(page, 'Progress').locator('p').nth(1)).toHaveText(
-      '50%',
+    await expect(metricCard(page, 'Completed').locator('p').nth(1)).toHaveText(
+      '2',
+    )
+    await expect(metricCard(page, 'Scheduled').locator('p').nth(1)).toHaveText(
+      '4',
     )
     await expect(
-      metricCard(page, 'On-time compliance').locator('p').nth(1),
-    ).toHaveText('50%')
+      page.getByText(/Supporting rates: inspection progress 50%/),
+    ).toBeVisible()
+    await expect(metricCard(page, 'Unassigned').locator('p').nth(1)).toHaveText(
+      'Not available',
+    )
     await expect(outcomes().getByRole('listitem')).toHaveText([
-      'On time',
-      'Late',
+      'Within scheduled month',
+      'After scheduled month',
       'Unfinished',
     ])
 

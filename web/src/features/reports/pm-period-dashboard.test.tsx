@@ -261,15 +261,21 @@ describe('PM period dashboard period terminology', () => {
   it('shows upcoming metrics and inspection completion without a duplicate breakdown', () => {
     renderState('Future')
 
-    expectMetricValue('Inspected / scheduled', '3 / 5')
-    expectMetricValue('Progress', '60%')
-    expectMetricValue('On-time compliance', 'Not measurable yet')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Completed', '3')
+    expectMetricValue('Outstanding', '2')
+    expectMetricValue('Overdue assignment', 'Not available')
+    expectMetricValue('Unassigned', 'Not available')
     expectMetricValue('Non-operational', '1')
     expect(
       screen.queryByRole('heading', { name: 'Inspection breakdown' }),
     ).not.toBeInTheDocument()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'More comparisons' }),
+      { target: { value: 'month' } },
+    )
     const chart = screen.getByRole('region', {
-      name: 'Completion against the PM deadline',
+      name: 'Completion within the scheduled month',
     })
     expect(within(chart).getByRole('list')).toHaveTextContent('Still due')
     expect(
@@ -280,11 +286,17 @@ describe('PM period dashboard period terminology', () => {
   it('shows pending inspections for Active periods', () => {
     renderState('Active')
 
-    expectMetricValue('Inspected / scheduled', '3 / 5')
-    expectMetricValue('Progress', '60%')
-    expectMetricValue('On-time compliance', 'Not measurable yet')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Completed', '3')
+    expectMetricValue('Outstanding', '2')
+    expectMetricValue('Overdue assignment', 'Not available')
+    expectMetricValue('Unassigned', 'Not available')
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'More comparisons' }),
+      { target: { value: 'month' } },
+    )
     const chart = screen.getByRole('region', {
-      name: 'Completion against the PM deadline',
+      name: 'Completion within the scheduled month',
     })
     expect(within(chart).getByRole('list')).toHaveTextContent('Still due')
     expect(
@@ -295,18 +307,24 @@ describe('PM period dashboard period terminology', () => {
   it('uses final completion terminology for Closed periods', () => {
     renderState('Closed')
 
-    expectMetricValue('Inspected / scheduled', '3 / 5')
-    expectMetricValue('Progress', '60%')
-    expectMetricValue('On-time compliance', '50%')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Completed', '3')
+    expectMetricValue('Outstanding', '1')
+    expectMetricValue('Overdue assignment', 'Not available')
+    expectMetricValue('Unassigned', 'Not available')
     expectMetricValue('Non-operational', '1')
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'More comparisons' }),
+      { target: { value: 'month' } },
+    )
     const chart = screen.getByRole('region', {
-      name: 'Completion against the PM deadline',
+      name: 'Completion within the scheduled month',
     })
     expect(
       within(chart)
         .getAllByRole('listitem')
         .map((item) => item.textContent),
-    ).toEqual(['On time', 'Late', 'Unfinished'])
+    ).toEqual(['Within scheduled month', 'After scheduled month', 'Unfinished'])
     fireEvent.click(within(chart).getByText('View data', { exact: true }))
     const row = within(chart).getByRole('row', { name: /CCMS/ })
     expect(
@@ -519,7 +537,9 @@ describe('PM period dashboard period selection', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      await screen.findByText('3 / 5', { exact: true }),
+      await screen.findByRole('heading', {
+        name: 'Preventive maintenance overview',
+      }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Change period' }))
