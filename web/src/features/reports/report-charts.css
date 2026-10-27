@@ -1,4 +1,17 @@
 @media print {
+  details.report-chart__data::details-content {
+    content-visibility: visible !important;
+  }
+
+  details.report-chart__data > summary {
+    display: none !important;
+  }
+
+  details.report-chart__data > .report-chart__table {
+    display: block !important;
+    overflow: visible !important;
+  }
+
   .report-chart__line-svg {
     min-width: 0 !important;
   }

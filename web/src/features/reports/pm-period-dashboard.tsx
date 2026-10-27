@@ -248,6 +248,7 @@ function DashboardCharts({
 }: {
   dashboard: DashboardWithAssignmentPeriod
 }) {
+  const [comparison, setComparison] = useState('')
   const closed = dashboard.periodState === 'Closed'
   const periodDescription = `${formatAssetCategory(dashboard.assetCategory)} · ${formatPmCycle(dashboard.pmCycle)} · ${dashboard.department ?? 'All departments'}`
   const cohortDescription = `Selected scope: ${periodDescription}. Groups use current asset department metadata. Condition, timeliness and text filters in the detailed rows do not change these server totals.`
@@ -459,18 +460,69 @@ function DashboardCharts({
       ]
     : []
 
+  const comparisons = [
+    {
+      id: 'compliance',
+      label: 'On-time compliance',
+      rows: complianceRows,
+      variant: 'bar' as const,
+      note: 'Completed by the original PM deadline / scheduled. Available after the deadline.',
+    },
+    {
+      id: 'condition',
+      label: 'Condition findings',
+      rows: conditionRows,
+      variant: 'stacked' as const,
+      note: 'Recorded inspection findings only. Uninspected schedules have no condition result.',
+    },
+    {
+      id: 'workload',
+      label: 'Scheduled and inspected workload',
+      rows: departmentRows,
+      variant: 'grouped' as const,
+      note: 'Inspected work is part of the scheduled total; these counts overlap.',
+    },
+    ...(assignmentPeriod
+      ? [
+          {
+            id: 'turnaround',
+            label: 'Inspector turnaround',
+            rows: assignmentOutcomeRows,
+            variant: 'grouped' as const,
+            note: '30 calendar days from first saved Inspector assignment. Reassignment does not restart the period. Cancelled and unavailable periods are excluded.',
+          },
+          {
+            id: 'coverage',
+            label: 'Assignment-period data availability',
+            rows: assignmentCoverageRows,
+            variant: 'grouped' as const,
+            note: 'Unavailable outcomes lack a required assignment or server completion timestamp. Counts, not percentages.',
+          },
+        ]
+      : []),
+  ]
+  const selected = comparisons.find((item) => item.id === comparison)
+
   return (
-    <section aria-labelledby="pm-dashboard-charts" className="space-y-3">
-      <div>
-        <h2
-          id="pm-dashboard-charts"
-          className="text-lg font-semibold text-[var(--text-primary)]"
-        >
-          Period charts
-        </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          {cohortDescription}
-        </p>
+    <section aria-labelledby="pm-dashboard-charts" className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2
+            id="pm-dashboard-charts"
+            className="text-lg font-semibold text-[var(--text-primary)]"
+          >
+            Period overview
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {periodDescription}
+          </p>
+        </div>
+        <details className="max-w-xl text-sm text-[var(--text-secondary)] print:hidden">
+          <summary className="min-h-10 cursor-pointer py-2 font-medium text-[var(--primary)] focus-visible:outline-2">
+            About these figures
+          </summary>
+          <p className="pb-2">{cohortDescription}</p>
+        </details>
       </div>
       {dashboard.batches.length === 0 ? (
         <p
@@ -480,76 +532,62 @@ function DashboardCharts({
           No department groups are available for this period.
         </p>
       ) : (
-        <div className="report-chart-grid grid gap-3 xl:grid-cols-2">
-          <ReportChart
-            title={
-              dashboard.department
-                ? `Scheduled and inspected schedules for ${dashboard.department}`
-                : 'Scheduled and inspected schedules by department'
-            }
-            description="Counts come from the selected PM category and cycle. Inspected schedules remain part of the scheduled total."
-            variant="grouped"
-            rows={departmentRows}
-          />
-          <ReportChart
-            title={
-              dashboard.department
-                ? `PM schedule outcomes for ${dashboard.department}`
-                : 'PM schedule outcomes by department'
-            }
-            description={
-              closed
-                ? 'Closed periods separate on-time, late and not-completed schedules.'
-                : 'Open periods separate completed schedules from work remaining before the deadline.'
-            }
-            variant="stacked"
-            rows={outcomeRows}
-          />
-          <ReportChart
-            title={
-              dashboard.department
-                ? `On-time compliance for ${dashboard.department}`
-                : 'On-time compliance by department'
-            }
-            description="The percentage uses the server-reported on-time count and scheduled denominator. Compliance is unavailable before the PM deadline."
-            variant="bar"
-            rows={complianceRows}
-          />
-          {hasDepartmentProgress && (
+        <>
+          <div className="report-chart-grid grid gap-4 xl:grid-cols-2">
             <ReportChart
               title={
-                dashboard.department
-                  ? `Inspection progress for ${dashboard.department}`
-                  : 'Inspection progress by department'
+                hasDepartmentProgress
+                  ? 'Department progress'
+                  : 'Scheduled and inspected workload'
               }
-              description="Server-reported progress uses inspected schedules over scheduled schedules. The exact count and denominator are shown below."
-              variant="bar"
-              rows={progressRows}
+              description={
+                hasDepartmentProgress
+                  ? 'Inspected / scheduled. Percentage scale: 0 to 100%.'
+                  : 'Inspected work is part of the scheduled total.'
+              }
+              variant={hasDepartmentProgress ? 'bar' : 'grouped'}
+              rows={hasDepartmentProgress ? progressRows : departmentRows}
+              compact
             />
-          )}
-          <ReportChart
-            title="Inspection result condition mix"
-            description="Counts include schedules with recorded inspection results. Uninspected schedules have no condition result."
-            variant="stacked"
-            rows={conditionRows}
-          />
-          {assignmentPeriod && (
             <ReportChart
-              title="Inspector assignment-period coverage"
-              description="Server counts for the selected scope. Unavailable periods include records without the required assignment or server completion timestamp. Values are counts, not percentages."
-              variant="grouped"
-              rows={assignmentCoverageRows}
+              title="PM outcomes"
+              description={
+                closed
+                  ? 'On-time, late and unfinished schedules, measured against the original PM deadline.'
+                  : 'Completed work and schedules remaining before the original PM deadline.'
+              }
+              variant="stacked"
+              rows={outcomeRows}
+              compact
             />
-          )}
-          {assignmentPeriod && (
+          </div>
+          <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border-soft)] pt-4 print:hidden">
+            <Label htmlFor="dashboard-comparison">More comparisons</Label>
+            <select
+              id="dashboard-comparison"
+              className={`${selectClassName} sm:w-auto sm:min-w-64`}
+              value={selected?.id ?? ''}
+              onChange={(event) => setComparison(event.target.value)}
+            >
+              <option value="">Choose a comparison</option>
+              {comparisons.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selected && (
             <ReportChart
-              title="Inspector 30-calendar-day outcomes"
-              description="Server-counted outcomes start at the first saved Inspector assignment. Reassignment does not restart the period. Cancelled and unavailable periods are excluded."
-              variant="grouped"
-              rows={assignmentOutcomeRows}
+              key={selected.id}
+              title={selected.label}
+              description={selected.note}
+              variant={selected.variant}
+              rows={selected.rows}
+              compact
             />
           )}
-        </div>
+        </>
       )}
     </section>
   )
