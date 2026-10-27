@@ -680,6 +680,9 @@ test.describe('PM period dashboard', () => {
       assetCategory: 'fire-extinguisher',
       pmCycle: '2026-05',
     })
+    await page
+      .getByRole('combobox', { name: 'More comparisons' })
+      .selectOption('month')
     await expect(
       page.getByText('In progress', { exact: true }).first(),
     ).toBeVisible()
@@ -707,6 +710,9 @@ test.describe('PM period dashboard', () => {
       assetCategory: 'fire-extinguisher',
       pmCycle: '2026-08',
     })
+    await page
+      .getByRole('combobox', { name: 'More comparisons' })
+      .selectOption('month')
     await expect(
       page.getByText('Past deadline', { exact: true }).first(),
     ).toBeVisible()
