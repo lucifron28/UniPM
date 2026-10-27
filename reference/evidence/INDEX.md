@@ -11,6 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-173: Local synthetic scenario population](test-runs/TEST-173-demo-scenario-population.md): SQL integrity and scenario coverage for the rebuilt local fixture, including the initial referral-chronology failure and corrected rerun.
+
 ## Records
 
 > Offline evidence originally labeled TEST-084 through TEST-086 is assigned TEST-119 through TEST-121 here to avoid collisions with earlier historical records. The test results, timestamps, and tested source commits are unchanged; the original IDs are retained in this crosswalk.
