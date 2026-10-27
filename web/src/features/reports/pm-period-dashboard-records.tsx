@@ -83,12 +83,12 @@ function formatDateTime(value: string | null | undefined) {
   }).format(date)
 }
 
-function formatGeneratedAt(value: Date) {
+function formatGeneratedAt(value: number) {
   return new Intl.DateTimeFormat('en-PH', {
     dateStyle: 'long',
     timeStyle: 'short',
     timeZone: 'Asia/Manila',
-  }).format(value)
+  }).format(new Date(value))
 }
 
 function conditionLabel(value: string) {
@@ -406,6 +406,12 @@ function SummaryMetrics({
             Full selected category, cycle, and department. Record filters do not
             change these totals.
           </p>
+          {dashboard.periodState !== 'Closed' && (
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              Original-month compliance is unavailable until the scheduled PM
+              month closes.
+            </p>
+          )}
         </div>
         <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <Metric label="Scheduled" value={formatNumber(dashboard.scheduled)} />
@@ -550,7 +556,7 @@ export function PmPeriodDashboardRecords({
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   )
-  const generatedAt = useMemo(() => new Date(), [dashboardQuery.dataUpdatedAt])
+  const generatedAt = dashboardQuery.dataUpdatedAt
 
   const updateSearch = (next: PmPeriodDashboardRecordsSearch) =>
     onSearchChange({ ...next, page: undefined }, { replace: true })
@@ -923,6 +929,12 @@ export function PmPeriodDashboardRecords({
             · {counts.nonOperational.toLocaleString()} non-operational
           </p>
           <p className="pm-records-print__note">
+            {dashboard.periodState !== 'Closed' && (
+              <>
+                Original-month compliance is unavailable until the scheduled PM
+                month closes.{' '}
+              </>
+            )}
             Scheduled-month timing uses the PM cycle deadline. Inspector
             assignment timing uses the separate 30-day assignment period.
           </p>
