@@ -15,7 +15,7 @@ const pngSignatureBase64 =
 
 type LoginResponse = {
   accessToken: string
-  user: { id: string; email: string; roles: string[] }
+  user: { id: string; email: string; displayName: string; roles: string[] }
 }
 
 type Schedule = {
@@ -218,8 +218,14 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
     page.getByRole('combobox', { name: 'Inspector', exact: true }),
   ).toHaveCount(0)
   const supervisorPicker = page.getByLabel('Supervisor (oversight)')
-  await supervisorPicker.fill(supervisor!.displayName.slice(0, -1))
-  await page.getByRole('option', { name: supervisor!.displayName }).click()
+  const supervisorOption = page.locator(
+    `#batch-supervisor-picker-suggestions option[value="${supervisor!.displayName}"]`,
+  )
+  await expect(supervisorOption).toBeAttached()
+  await supervisorPicker.fill(supervisor!.displayName)
+  await expect(
+    page.getByRole('button', { name: 'Assign Supervisor to entire batch' }),
+  ).toBeEnabled()
 
   const gsdAssignmentPromise = page.waitForResponse(
     (response) =>
@@ -304,8 +310,14 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
     name: 'Inspector',
     exact: true,
   })
-  await workerPicker.fill(worker!.displayName.slice(0, -1))
-  await page.getByRole('option', { name: worker!.displayName }).click()
+  const workerOption = page.locator(
+    `#batch-inspector-picker-suggestions option[value="${worker!.displayName}"]`,
+  )
+  await expect(workerOption).toBeAttached()
+  await workerPicker.fill(worker!.displayName)
+  await expect(
+    page.getByRole('button', { name: 'Assign Inspector to entire batch' }),
+  ).toBeEnabled()
 
   const supervisorAssignmentPromise = page.waitForResponse(
     (response) =>
@@ -428,14 +440,37 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   expect(firstCompletedSchedule?.status).toBe('Completed')
   expect(firstCompletedSchedule?.completedAt).not.toBeNull()
 
-  const reassignmentAfterWork = await request.put(
+  const remainingAssignmentResponse = await request.put(
     `${apiBaseUrl}/api/v1/schedules/${scheduleIds[0]}/assignment`,
     {
       headers: supervisorHeaders,
       data: { workerUserId: inspector.user.id },
     },
   )
-  expect(reassignmentAfterWork.status()).toBe(409)
+  expect(remainingAssignmentResponse.status()).toBe(200)
+  const remainingAssignment =
+    (await remainingAssignmentResponse.json()) as BatchAssignment
+  expect(remainingAssignment.scheduleIds).toEqual([scheduleIds[1]])
+  expect(remainingAssignment.workerUserId).toBe(inspector.user.id)
+
+  const completedScheduleAfterReassignmentResponse = await request.get(
+    `${apiBaseUrl}/api/v1/schedules/${scheduleIds[0]}`,
+    { headers: inspectorHeaders },
+  )
+  expect(completedScheduleAfterReassignmentResponse.status()).toBe(200)
+  const completedScheduleAfterReassignment =
+    (await completedScheduleAfterReassignmentResponse.json()) as Schedule
+  expect({
+    status: completedScheduleAfterReassignment.status,
+    completedAt: completedScheduleAfterReassignment.completedAt,
+    updatedAt: completedScheduleAfterReassignment.updatedAt,
+    assignedToUserId: completedScheduleAfterReassignment.assignedToUserId,
+  }).toEqual({
+    status: firstCompletedSchedule!.status,
+    completedAt: firstCompletedSchedule!.completedAt,
+    updatedAt: firstCompletedSchedule!.updatedAt,
+    assignedToUserId: firstCompletedSchedule!.assignedToUserId,
+  })
   const incompleteSubmit = await request.post(
     `${apiBaseUrl}/api/v1/preventive-maintenance-forms/${draft.id}/submit`,
     { headers: inspectorHeaders },
@@ -585,7 +620,13 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
     inspected: number
     nonOperational: number
     batches: { formStatus: string | null; isAcknowledged: boolean }[]
-    assets: { scheduleId: string; scheduleStatus: string }[]
+    assets: {
+      scheduleId: string
+      scheduleStatus: string
+      inspectionId: string | null
+      correctiveFollowUpStatus: string | null
+      externalPmNumber: string | null
+    }[]
   }
   expect(dashboard.scheduled).toBe(2)
   expect(dashboard.inspected).toBe(2)
@@ -674,7 +715,19 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
     { headers: gsdHeaders },
   )
   expect(dashboardAfterReferralResponse.status()).toBe(200)
-  expect(await dashboardAfterReferralResponse.json()).toEqual(dashboard)
+  const dashboardAfterReferral = await dashboardAfterReferralResponse.json()
+  expect(dashboardAfterReferral).toEqual({
+    ...dashboard,
+    assets: dashboard.assets.map((row) =>
+      row.inspectionId === nonOperationalInspection.id
+        ? {
+            ...row,
+            correctiveFollowUpStatus: 'ReferredToWms',
+            externalPmNumber,
+          }
+        : row,
+    ),
+  })
 
   const finalSchedules = await Promise.all(
     scheduleIds.map(async (scheduleId) => {
