@@ -11,6 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-176: Full CI and UI fixtures](test-runs/TEST-176-full-ci-and-ui-fixture-alignment.md): backend CI passed, the first full web unit run found five obsolete UI expectations, and existing fixtures were aligned with the approved redesigns.
+
 - [TEST-174: NLA guide and baseline restoration](test-runs/TEST-174-nla-guide-and-demo-restoration.md): ten exact deterministic plans and executions, five grammar cases, ten real DeepSeek plan checks and an actual clean-baseline restore.
 - [TEST-175: Desktop printing and workflow review](test-runs/TEST-175-desktop-print-and-workflow-review.md): verified 78-row PDF output and the unsuccessful live workflow fixture attempts, with the final exact-combobox correction awaiting a permitted rerun.
 
