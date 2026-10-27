@@ -191,6 +191,15 @@ internal sealed class PmPeriodDashboardService(
                 authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "CompletedLate"),
                 authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "WithinPeriod"),
                 authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "Overdue"))
+            {
+                UnassignedUnfinishedCount = authoritativeRows.Count(row => !row.IsInspected
+                    && row.Snapshot.AssignedToUserId is null
+                    && row.Snapshot.ScheduleStatus != ScheduleStatusCatalog.Completed),
+                UnassignedUnavailableCount = authoritativeRows.Count(row => !row.IsInspected
+                    && row.Snapshot.AssignedToUserId is null
+                    && row.Snapshot.ScheduleStatus != ScheduleStatusCatalog.Completed
+                    && row.Response.AssignmentPeriodStatus == "Unavailable")
+            }
         };
     }
 
@@ -224,7 +233,9 @@ internal sealed class PmPeriodDashboardService(
             schedule.Asset.Location)
         {
             FirstSupervisorAssignedAt = schedule.FirstSupervisorAssignedAt,
-            FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt
+            FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt,
+            AssignedToUserId = schedule.AssignedToUserId,
+            CompletedAt = schedule.CompletedAt
         };
     }
 
@@ -271,7 +282,7 @@ internal sealed class PmPeriodDashboardService(
                     inspection.ExternalPmNumber is not null)
                 : null;
         var assignmentPeriod = ScheduleAssignmentPeriod.Calculate(
-            snapshot.FirstInspectorAssignedAt, inspection?.CompletedAt, snapshot.ScheduleStatus, now);
+            snapshot.FirstInspectorAssignedAt, snapshot.CompletedAt, snapshot.ScheduleStatus, now);
         var response = new PmPeriodDashboardAssetRowResponse(
             snapshot.ScheduleId,
             snapshot.AssetId,
@@ -304,6 +315,7 @@ internal sealed class PmPeriodDashboardService(
             FirstSupervisorAssignedAt = snapshot.FirstSupervisorAssignedAt,
             FirstInspectorAssignedAt = snapshot.FirstInspectorAssignedAt,
             InspectorAssignmentDueAt = assignmentPeriod.InspectorAssignmentDueAt,
+            AssignedInspectorUserId = snapshot.AssignedToUserId,
             AssignmentPeriodStatus = assignmentPeriod.AssignmentPeriodStatus
         };
 
@@ -494,6 +506,8 @@ internal sealed class PmPeriodDashboardService(
     {
         internal DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
         internal DateTimeOffset? FirstInspectorAssignedAt { get; init; }
+        internal Guid? AssignedToUserId { get; init; }
+        internal DateTimeOffset? CompletedAt { get; init; }
     }
 
     private sealed record InspectionSnapshot(
