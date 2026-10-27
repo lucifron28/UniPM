@@ -564,7 +564,7 @@ export function ReportChart({
                             {value && onDrilldown && value.value !== null && (
                               <button
                                 type="button"
-                                className="ml-2 min-h-10 rounded px-1 font-semibold text-[var(--primary)] underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none print:hidden"
+                                className="ml-2 min-h-10 cursor-pointer rounded-md px-3 font-semibold text-[var(--primary)] underline underline-offset-2 transition-colors hover:bg-[var(--primary)] hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none print:hidden"
                                 aria-label={`Open ${item.label} source records for ${row.label}`}
                                 onClick={() => onDrilldown(row, value)}
                               >

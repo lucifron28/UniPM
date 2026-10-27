@@ -492,7 +492,7 @@ function RecordsBackButton({
     <Button
       type="button"
       variant="secondary"
-      className="min-h-12 gap-2 border-[var(--primary)] px-5 text-base text-[var(--primary)] print:hidden"
+      className="min-h-12 cursor-pointer gap-2 border-[var(--primary)] px-5 text-base text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white print:hidden"
       onClick={() => {
         if (canGoBack) router.history.back()
         else
