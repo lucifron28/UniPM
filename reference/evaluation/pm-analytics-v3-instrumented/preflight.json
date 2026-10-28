@@ -1,0 +1,25 @@
+{
+  "test181Hashes": {
+    "audit-results.py": "5271f1555c18fa1c4c05b0592253518d7bcc0537923095ffd8e92edb61606384",
+    "case-results.csv": "60faab6accb80f24561ca74cc1de71b2622ef29c33ddef1477f7a8c53ec929f4",
+    "cases.jsonl": "f679568c9a94069b900f76a97eb0834d7deaf5239cb7c05b26fddd0e5697ee3d",
+    "defense-summary.md": "70ed118b0d781509c6ba0c79916d7ac199f63f779d177671e20f5b8812b4ec1e",
+    "manifest.json": "6d9794e325041daed7a08c22530102fc31b547e7df58a854c78b9f301be71f65",
+    "pre-run-review.md": "de7770d8dedaf768b5c8f6da5217bb7424886f0103e13bb64e07dda6deeca4c0",
+    "protocol.md": "2a5126e88a4d316210556ffee184a5c95e2261e5f9b5e3d402f9bf4824ec1886",
+    "results.json": "9902791d2bed4f8614d1ba61b7f19cbdf34a51028b9401e2027cacc8b4e67375",
+    "run-evaluation.py": "345396a7d5ec3b9290ae80568a2d7336dff406093716354303731c5f43de434e"
+  },
+  "observerSha256": "e87d27eef2133893fb50453ba76a5ae0678c5c0b7cdf73902fb3ba4c9b214f03",
+  "instrumentationReversal": "Every overlay edit reverses exactly to the original source text; no business source edits.",
+  "build": "Passed with zero warnings and errors",
+  "checks": [
+    "30 original frozen cases load unchanged",
+    "Cost/cache arithmetic checked with synthetic numerical input, no provider calls",
+    "Missing reported usage remains unavailable",
+    "Ambiguous peak/holiday pricing returns a range",
+    "No-call telemetry remains distinct from provider-reported zero usage",
+    "Observer matches compiled source snapshot"
+  ],
+  "providerCallsBeforeRun": 0
+}
