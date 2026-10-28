@@ -1228,11 +1228,15 @@ public static class SchedulesEndpoints
                 batchRows.Add(row);
             }
 
+            var attentionDate = DateOnly.FromDateTime(PreventiveMaintenanceCycle.ToInstitutionalTime(assignmentAsOfUtc).DateTime);
             var batches = groupedRows
                 .Where(pair => supervisorId is null
                     || pair.Value.Any(row => row.Schedule.AssignedSupervisorUserId == supervisorId))
-                .Select(pair => CreateAssignmentQueueBatch(pair.Key, pair.Value, assigneeDisplayNames))
-                .OrderBy(batch => batch.PmCycle, StringComparer.Ordinal)
+                .Select(pair => WithAssignmentAttention(
+                    CreateAssignmentQueueBatch(pair.Key, pair.Value, assigneeDisplayNames),
+                    supervisorId, attentionDate))
+                .OrderByDescending(batch => batch.Attention?.Priority ?? -1)
+                .ThenBy(batch => batch.PmCycle, StringComparer.Ordinal)
                 .ThenBy(batch => batch.Department, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(batch => batch.AssetCategory, StringComparer.Ordinal)
                 .ToArray();
@@ -1320,7 +1324,18 @@ public static class SchedulesEndpoints
             }
 
             var filteredBatches = resultBatches.ToArray();
-            var summary = CreateScheduleTrackingSummary(filteredBatches);
+            var pendingAttention = batches.Where(batch => batch.Attention is not null).ToArray();
+            var summary = CreateScheduleTrackingSummary(filteredBatches) with
+            {
+                PendingAssignmentBatchCount = pendingAttention.Length,
+                UrgentAssignmentBatchCount = pendingAttention.Count(batch => batch.Attention!.Priority == 2),
+                AttentionDate = attentionDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                AttentionRole = isGsd ? "Supervisor" : "Inspector",
+                AttentionYear = year,
+                AttentionAssetCategory = normalizedCategory,
+                AttentionDepartment = normalizedDepartment,
+                AttentionPmCycle = normalizedCycle
+            };
             var totalBatchCount = filteredBatches.Length;
             var sortedBatches = isTracking
                 ? filteredBatches
@@ -1932,6 +1947,32 @@ public static class SchedulesEndpoints
             buildings,
             representative);
     }
+
+    private static ScheduleAssignmentAttention? CalculateAssignmentAttention(
+        ScheduleAssignmentQueueBatchResponse batch, Guid? supervisorId, DateOnly today)
+    {
+        var eligible = !batch.AssignmentLocked && batch.UnfinishedScheduleCount > 0
+            && (supervisorId is null
+                ? batch.SupervisorState == "Unassigned" && batch.InspectorState == "Unassigned"
+                : batch.SupervisorState == "Assigned" && batch.SupervisorOwnershipIsConsistent
+                    && batch.SupervisorUserId == supervisorId && batch.InspectorState == "Unassigned");
+        if (!eligible || !PreventiveMaintenanceCycle.TryParse(batch.PmCycle, out var year, out var month))
+        {
+            return null;
+        }
+
+        var monthStart = new DateOnly(year, month, 1);
+        var monthEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+        var days = monthEnd.DayNumber - today.DayNumber;
+        var state = today < monthStart ? "Pending" : days < 0 ? "MonthEnded"
+            : days <= 7 ? "Urgent" : days <= 14 ? "Soon" : "Needed";
+        var priority = state is "MonthEnded" or "Urgent" ? 2 : state == "Soon" ? 1 : 0;
+        return new ScheduleAssignmentAttention(state, priority, days);
+    }
+
+    private static ScheduleAssignmentQueueBatchResponse WithAssignmentAttention(
+        ScheduleAssignmentQueueBatchResponse batch, Guid? supervisorId, DateOnly today) =>
+        batch with { Attention = CalculateAssignmentAttention(batch, supervisorId, today) };
 
     private static string PmCycleSearchLabel(string pmCycle)
     {
@@ -2685,7 +2726,19 @@ public sealed record ScheduleAssignmentQueueSummary(
     int NotStartedBatchCount,
     int InProgressBatchCount,
     int OngoingScheduleCount,
-    int OverdueScheduleCount);
+    int OverdueScheduleCount)
+{
+    public int PendingAssignmentBatchCount { get; init; }
+    public int UrgentAssignmentBatchCount { get; init; }
+    public string AttentionDate { get; init; } = "";
+    public string AttentionRole { get; init; } = "";
+    public int AttentionYear { get; init; }
+    public string? AttentionAssetCategory { get; init; }
+    public string? AttentionDepartment { get; init; }
+    public string? AttentionPmCycle { get; init; }
+}
+
+public sealed record ScheduleAssignmentAttention(string State, int Priority, int DaysUntilMonthEnd);
 
 public sealed record ScheduleAssignmentQueueBatchResponse(
     string BatchKey,
@@ -2709,7 +2762,10 @@ public sealed record ScheduleAssignmentQueueBatchResponse(
     bool AssignmentLocked,
     bool SupervisorOwnershipIsConsistent,
     IReadOnlyList<string> Buildings,
-    ScheduleResponse RepresentativeSchedule);
+    ScheduleResponse RepresentativeSchedule)
+{
+    public ScheduleAssignmentAttention? Attention { get; init; }
+}
 
 internal sealed record ScheduleRegistryStatusCounts(string Status, int Count);
 

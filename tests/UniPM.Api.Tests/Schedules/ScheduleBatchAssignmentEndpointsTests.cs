@@ -20,6 +20,109 @@ namespace UniPM.Api.Tests;
 
 public sealed class ScheduleBatchAssignmentEndpointsTests
 {
+    [Theory]
+    [InlineData("2028-02-14T00:00:00+08:00", "Needed", 15)]
+    [InlineData("2028-02-15T00:00:00+08:00", "Soon", 14)]
+    [InlineData("2028-02-21T00:00:00+08:00", "Soon", 8)]
+    [InlineData("2028-02-22T00:00:00+08:00", "Urgent", 7)]
+    [InlineData("2028-02-28T00:00:00+08:00", "Urgent", 1)]
+    [InlineData("2028-02-29T00:00:00+08:00", "Urgent", 0)]
+    [InlineData("2028-03-01T00:00:00+08:00", "MonthEnded", -1)]
+    [InlineData("2028-01-31T23:59:59+08:00", "Pending", 29)]
+    [InlineData("2028-02-21T15:59:59Z", "Soon", 8)]
+    [InlineData("2028-02-21T16:00:00Z", "Urgent", 7)]
+    public async Task Assignment_attention_uses_manila_calendar_boundaries(string now, string expectedState, int expectedDays)
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd, now: new DateTimeOffset(2028, 10, 1, 0, 0, 0, TimeSpan.FromHours(8)));
+        using var client = application.CreateClient();
+        await CreateScheduleAsync(client, "CCMS", "Main", new DateTimeOffset(2028, 2, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        await CreateScheduleAsync(client, "CCMS", "Annex", new DateTimeOffset(2028, 2, 2, 8, 0, 0, TimeSpan.FromHours(8)));
+        application.SetNow(DateTimeOffset.Parse(now));
+        using var response = await client.GetAsync("/api/v1/schedules/assignment-batches?year=2028&pmCycle=2028-02");
+        response.EnsureSuccessStatusCode();
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = json.RootElement;
+        Assert.Equal(1, root.GetProperty("summary").GetProperty("pendingAssignmentBatchCount").GetInt32());
+        Assert.Equal(expectedState is "Urgent" or "MonthEnded" ? 1 : 0, root.GetProperty("summary").GetProperty("urgentAssignmentBatchCount").GetInt32());
+        var batch = Assert.Single(root.GetProperty("batches").EnumerateArray());
+        Assert.Equal(2, batch.GetProperty("scheduleCount").GetInt32());
+        Assert.Equal(expectedState, batch.GetProperty("attention").GetProperty("state").GetString());
+        Assert.Equal(expectedDays, batch.GetProperty("attention").GetProperty("daysUntilMonthEnd").GetInt32());
+    }
+
+    [Fact]
+    public async Task Assignment_attention_counts_actionable_batches_for_each_role_and_changes_after_assignment()
+    {
+        var databaseName = $"attention-scope-{Guid.NewGuid():N}";
+        await using var gsd = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var supervisor = new TestApplicationFactory(AuthRoleCatalog.Supervisor, databaseName);
+        using var gsdClient = gsd.CreateClient();
+        using var supervisorClient = supervisor.CreateClient();
+        var supervisorId = await supervisor.SeedAuthenticatedUserAsync(AuthRoleCatalog.Supervisor);
+        var otherId = await gsd.SeedUserAsync("other", AuthRoleCatalog.Supervisor);
+        var inspectorId = await gsd.SeedUserAsync("attention-inspector", AuthRoleCatalog.Inspector);
+        var date = new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8));
+        var pending = await CreateScheduleAsync(gsdClient, "Pending", "Main", date);
+        await CreateScheduleAsync(gsdClient, "Pending", "Annex", date);
+        var owned = await CreateScheduleAsync(gsdClient, "Owned", "Main", date);
+        var other = await CreateScheduleAsync(gsdClient, "Other", "Main", date);
+        var locked = await CreateScheduleAsync(gsdClient, "Locked", "Main", date);
+        await gsd.SetAssignmentsAsync([owned.Id], null, supervisorId);
+        await gsd.SetAssignmentsAsync([other.Id], null, otherId);
+        await gsd.SetScheduleStatusAsync(locked.Id, ScheduleStatusCatalog.Cancelled);
+
+        async Task<JsonDocument> ReadAsync(HttpClient client) => JsonDocument.Parse(
+            await client.GetStringAsync("/api/v1/schedules/assignment-batches?year=2026&pmCycle=2026-08"));
+        using (var result = await ReadAsync(gsdClient))
+        {
+            Assert.Equal(1, result.RootElement.GetProperty("summary").GetProperty("pendingAssignmentBatchCount").GetInt32());
+            Assert.Equal("Pending", Assert.Single(result.RootElement.GetProperty("batches").EnumerateArray(),
+                b => b.GetProperty("attention").ValueKind == JsonValueKind.Object).GetProperty("department").GetString());
+        }
+        using (var result = await ReadAsync(supervisorClient))
+        {
+            Assert.Equal(1, result.RootElement.GetProperty("summary").GetProperty("pendingAssignmentBatchCount").GetInt32());
+            Assert.Equal("Owned", Assert.Single(result.RootElement.GetProperty("batches").EnumerateArray()).GetProperty("department").GetString());
+        }
+        (await gsdClient.PutAsJsonAsync($"/api/v1/schedules/{pending.Id}/supervisor-assignment", new { supervisorUserId = supervisorId })).EnsureSuccessStatusCode();
+        using (var result = await ReadAsync(gsdClient))
+            Assert.Equal(0, result.RootElement.GetProperty("summary").GetProperty("pendingAssignmentBatchCount").GetInt32());
+        using (var result = await ReadAsync(supervisorClient))
+            Assert.Equal(2, result.RootElement.GetProperty("summary").GetProperty("pendingAssignmentBatchCount").GetInt32());
+        (await supervisorClient.PutAsJsonAsync($"/api/v1/schedules/{owned.Id}/assignment", new { workerUserId = inspectorId })).EnsureSuccessStatusCode();
+        using (var result = await ReadAsync(supervisorClient))
+            Assert.Equal(1, result.RootElement.GetProperty("summary").GetProperty("pendingAssignmentBatchCount").GetInt32());
+        Assert.Equal(HttpStatusCode.Forbidden, (await supervisorClient.PutAsJsonAsync($"/api/v1/schedules/{other.Id}/assignment", new { workerUserId = inspectorId })).StatusCode);
+    }
+
+    [Fact]
+    public async Task June_inspector_assignment_keeps_full_period_after_month_end_and_reassignment()
+    {
+        var databaseName = $"attention-period-{Guid.NewGuid():N}";
+        await using var gsd = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var supervisor = new TestApplicationFactory(AuthRoleCatalog.Supervisor, databaseName);
+        using var gsdClient = gsd.CreateClient();
+        using var supervisorClient = supervisor.CreateClient();
+        var supervisorId = await supervisor.SeedAuthenticatedUserAsync(AuthRoleCatalog.Supervisor);
+        var inspectorId = await gsd.SeedUserAsync("period-inspector", AuthRoleCatalog.Inspector);
+        var replacementId = await gsd.SeedUserAsync("period-replacement", AuthRoleCatalog.Inspector);
+        var schedule = await CreateScheduleAsync(gsdClient, "CCMS", "Main", new DateTimeOffset(2026, 6, 1, 8, 0, 0, TimeSpan.FromHours(8)), "fire-alarm");
+        var assignedAt = new DateTimeOffset(2026, 6, 29, 10, 0, 0, TimeSpan.FromHours(8));
+        gsd.SetNow(assignedAt);
+        supervisor.SetNow(assignedAt);
+        (await gsdClient.PutAsJsonAsync($"/api/v1/schedules/{schedule.Id}/supervisor-assignment", new { supervisorUserId = supervisorId })).EnsureSuccessStatusCode();
+        (await supervisorClient.PutAsJsonAsync($"/api/v1/schedules/{schedule.Id}/assignment", new { workerUserId = inspectorId })).EnsureSuccessStatusCode();
+        supervisor.SetNow(assignedAt.AddDays(2));
+        (await supervisorClient.PutAsJsonAsync($"/api/v1/schedules/{schedule.Id}/inspector-reassignment", new { assigneeUserId = replacementId, reason = "Coverage change" })).EnsureSuccessStatusCode();
+        using var result = JsonDocument.Parse(await supervisorClient.GetStringAsync("/api/v1/schedules/assignment-batches?year=2026&pmCycle=2026-06"));
+        var batch = Assert.Single(result.RootElement.GetProperty("batches").EnumerateArray());
+        Assert.Equal(JsonValueKind.Null, batch.GetProperty("attention").ValueKind);
+        var record = batch.GetProperty("representativeSchedule");
+        Assert.Equal(assignedAt.ToUniversalTime(), record.GetProperty("firstInspectorAssignedAt").GetDateTimeOffset());
+        Assert.Equal(assignedAt.AddDays(30).ToUniversalTime(), record.GetProperty("inspectorAssignmentDueAt").GetDateTimeOffset());
+        Assert.Equal("WithinPeriod", record.GetProperty("assignmentPeriodStatus").GetString());
+    }
+
     [Fact]
     public async Task Assignment_queue_returns_complete_grouped_batches_only_for_the_authenticated_supervisor_scope()
     {
@@ -669,13 +772,14 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         HttpClient client,
         string department,
         string building,
-        DateTimeOffset date)
+        DateTimeOffset date,
+        string assetCategory = "fire-extinguisher")
     {
         var code = $"ASSIGN-{Guid.NewGuid():N}"[..20].ToUpperInvariant();
         var assetResponse = await client.PostAsJsonAsync("/api/v1/assets/", new
         {
             assetCode = code,
-            assetCategory = "fire-extinguisher",
+            assetCategory,
             building,
             department,
             location = "Ground Floor"
@@ -702,14 +806,17 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         private readonly string databaseName;
         private readonly string role;
         private readonly ScheduleMutationOnMaterialization? scheduleMutation;
+        private readonly FixedTimeProvider clock;
 
         public TestApplicationFactory(
             string role,
             string? sharedDatabaseName = null,
-            ScheduleMutationOnMaterialization? scheduleMutation = null)
+            ScheduleMutationOnMaterialization? scheduleMutation = null,
+            DateTimeOffset? now = null)
         {
             this.role = role;
             this.scheduleMutation = scheduleMutation;
+            clock = new FixedTimeProvider(now ?? new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8)));
             databaseName = sharedDatabaseName ?? $"unipm-assignment-{Guid.NewGuid():N}";
         }
 
@@ -733,10 +840,11 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                     }
                 });
                 services.RemoveAll<TimeProvider>();
-                services.AddSingleton<TimeProvider>(new FixedTimeProvider(
-                    new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8))));
+                services.AddSingleton<TimeProvider>(clock);
             });
         }
+
+        public void SetNow(DateTimeOffset value) => clock.SetNow(value);
 
         public Task<Guid> SeedUserAsync(string suffix, string role)
         {
@@ -981,8 +1089,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {
-        private readonly DateTimeOffset _now = now.ToUniversalTime();
+        private DateTimeOffset _now = now.ToUniversalTime();
 
+        public void SetNow(DateTimeOffset value) => _now = value.ToUniversalTime();
         public override DateTimeOffset GetUtcNow() => _now;
     }
 }
