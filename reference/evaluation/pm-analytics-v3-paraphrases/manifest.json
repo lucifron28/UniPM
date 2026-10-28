@@ -1,0 +1,15 @@
+{
+  "corpusId": "V3P-001",
+  "status": "AuthorPreparedPendingReview",
+  "questionCount": 24,
+  "controlCount": 6,
+  "intentFamilies": 8,
+  "language": "English",
+  "sourceCommit": "bee88737c4b0b7adb7ae90f4c44391333e99740b",
+  "schemaVersion": 3,
+  "catalogVersion": 2,
+  "sha256": "1506cd5d605fe484774a3467d81b23049cde7860a5ad2f81caef03eab526268a",
+  "scoredRuns": 0,
+  "providerCalls": 0,
+  "heldOutClaim": false
+}
