@@ -11,6 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-182: Instrumented NLA repeat](test-runs/TEST-182-instrumented-nla-development-evaluation.md): 60 requests, 28 real provider calls, complete usage/cache measurements, estimated USD 0.003819264; zero provider failures, one backend InvalidPlan rejection. Raw/final proposals and backend effects preserved.
+
 - [TEST-181: Unified 30-question NLA evaluation](test-runs/TEST-181-unified-nla-development-evaluation.md): 60 paired requests; full semantic case agreement parser 19/30, DeepSeek 22/30. Frozen assistant-authored complete expectations; development evidence, not held-out accuracy.
 
 - [TEST-180: Original corpus paired repeat](test-runs/TEST-180-original-corpus-paired-repeat.md): 36 requests; parser strict 16/18, catalog-equivalent 17/18; DeepSeek strict 14/18, catalog-equivalent 15/18. Same endpoint and fixture; original evidence unchanged.

@@ -1,0 +1,389 @@
+{
+  "evidenceRecord": "TEST-182",
+  "sourceCommit": "a37571d0aa15333012c86152dddbaccff9e6d3ac",
+  "startedUtc": "2026-10-28T17:27:07.003130+00:00",
+  "endedUtc": "2026-10-28T17:27:44.138435+00:00",
+  "fixtureUnchanged": true,
+  "test181Unchanged": true,
+  "summary": {
+    "DeterministicParser": {
+      "count": 30,
+      "strictCaseCorrect": 16,
+      "semanticCaseCorrect": 19,
+      "httpFailures": 0,
+      "telemetryAvailable": 30,
+      "observerErrors": 0,
+      "providerDispatches": 0,
+      "providerLogicalCalls": 0,
+      "providerRetries": 0,
+      "providerHttpFailures": 0,
+      "providerFailureEvents": 0,
+      "timeoutEvents": 0,
+      "reportedTokenTotals": {
+        "input": 0,
+        "output": 0,
+        "total": 0,
+        "cacheHit": 0,
+        "cacheMiss": 0
+      },
+      "reportedTokenCoverage": {
+        "input": 0,
+        "output": 0,
+        "total": 0,
+        "cacheHit": 0,
+        "cacheMiss": 0
+      },
+      "estimatedCostUsd": "0",
+      "knownCostSubtotalUsd": "0",
+      "rawProposalAvailable": 24,
+      "rawProviderTextAvailable": 0,
+      "backendChangedProposal": 1,
+      "providerModels": [],
+      "latencies": {
+        "providerTransportMs": null,
+        "providerLogicalStageMs": null,
+        "serverElapsedMs": {
+          "count": 30,
+          "mean": 6.57944,
+          "median": 3.121,
+          "p95": 7.9378,
+          "minimum": 1.4078,
+          "maximum": 105.9781
+        },
+        "backendProcessingResidualMs": {
+          "count": 30,
+          "mean": 6.57944,
+          "median": 3.121,
+          "p95": 7.9378,
+          "minimum": 1.4078,
+          "maximum": 105.9781
+        },
+        "backendExcludingProviderLogicalMs": {
+          "count": 30,
+          "mean": 6.57944,
+          "median": 3.121,
+          "p95": 7.9378,
+          "minimum": 1.4078,
+          "maximum": 105.9781
+        },
+        "totalEndpointMs": {
+          "count": 30,
+          "mean": 24.632933333333334,
+          "median": 23.493000000000002,
+          "p95": 31.124,
+          "minimum": 4.539,
+          "maximum": 138.548
+        },
+        "clientServerResidualMs": {
+          "count": 30,
+          "mean": 18.053493333333332,
+          "median": 19.762999999999998,
+          "p95": 27.230999999999998,
+          "minimum": 2.1845999999999997,
+          "maximum": 32.569900000000004
+        }
+      },
+      "subsets": {
+        "original": {
+          "count": 18,
+          "strict": 14,
+          "semantic": 16
+        },
+        "additional": {
+          "count": 12,
+          "strict": 2,
+          "semantic": 3
+        },
+        "Valid": {
+          "count": 16,
+          "strict": 7,
+          "semantic": 8
+        },
+        "NeedsClarification": {
+          "count": 9,
+          "strict": 6,
+          "semantic": 8
+        },
+        "Unsupported": {
+          "count": 5,
+          "strict": 3,
+          "semantic": 3
+        }
+      }
+    },
+    "DeepSeek": {
+      "count": 30,
+      "strictCaseCorrect": 19,
+      "semanticCaseCorrect": 21,
+      "httpFailures": 1,
+      "telemetryAvailable": 30,
+      "observerErrors": 0,
+      "providerDispatches": 28,
+      "providerLogicalCalls": 28,
+      "providerRetries": 0,
+      "providerHttpFailures": 0,
+      "providerFailureEvents": 0,
+      "timeoutEvents": 0,
+      "reportedTokenTotals": {
+        "input": 120712,
+        "output": 4286,
+        "total": 124998,
+        "cacheHit": 114688,
+        "cacheMiss": 6024
+      },
+      "reportedTokenCoverage": {
+        "input": 28,
+        "output": 28,
+        "total": 28,
+        "cacheHit": 28,
+        "cacheMiss": 28
+      },
+      "estimatedCostUsd": "0.003819264",
+      "knownCostSubtotalUsd": "0.003819264",
+      "rawProposalAvailable": 28,
+      "rawProviderTextAvailable": 28,
+      "backendChangedProposal": 11,
+      "providerModels": [
+        "deepseek-flash"
+      ],
+      "latencies": {
+        "providerTransportMs": {
+          "count": 28,
+          "mean": 1238.6363392857143,
+          "median": 1247.1596,
+          "p95": 1551.7315,
+          "minimum": 959.6711,
+          "maximum": 1584.0798
+        },
+        "providerLogicalStageMs": {
+          "count": 28,
+          "mean": 1239.6540214285715,
+          "median": 1247.5064499999999,
+          "p95": 1552.0216,
+          "minimum": 959.9355,
+          "maximum": 1584.3116
+        },
+        "serverElapsedMs": {
+          "count": 30,
+          "mean": 1163.0026233333333,
+          "median": 1244.23535,
+          "p95": 1555.5045,
+          "minimum": 1.4184,
+          "maximum": 1586.4995
+        },
+        "backendProcessingResidualMs": {
+          "count": 30,
+          "mean": 6.942039999999984,
+          "median": 3.257949999999937,
+          "p95": 21.844800000000077,
+          "minimum": 1.4184,
+          "maximum": 47.48900000000003
+        },
+        "backendExcludingProviderLogicalMs": {
+          "count": 30,
+          "mean": 5.99220333333331,
+          "median": 2.92574999999988,
+          "p95": 21.630699999999933,
+          "minimum": 1.4184,
+          "maximum": 26.85220000000004
+        },
+        "totalEndpointMs": {
+          "count": 30,
+          "mean": 1174.6460666666667,
+          "median": 1260.3125,
+          "p95": 1558.663,
+          "minimum": 12.452,
+          "maximum": 1602.237
+        },
+        "clientServerResidualMs": {
+          "count": 30,
+          "mean": 11.643443333333359,
+          "median": 12.83055000000007,
+          "p95": 25.353200000000015,
+          "minimum": 2.139599999999973,
+          "maximum": 26.614699999999857
+        }
+      },
+      "subsets": {
+        "original": {
+          "count": 18,
+          "strict": 12,
+          "semantic": 14
+        },
+        "additional": {
+          "count": 12,
+          "strict": 7,
+          "semantic": 7
+        },
+        "Valid": {
+          "count": 16,
+          "strict": 10,
+          "semantic": 11
+        },
+        "NeedsClarification": {
+          "count": 9,
+          "strict": 4,
+          "semantic": 5
+        },
+        "Unsupported": {
+          "count": 5,
+          "strict": 5,
+          "semantic": 5
+        }
+      }
+    }
+  },
+  "deterministicConformanceWithTest181": [
+    {
+      "caseId": "V3D-001",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-002",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-003",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-004",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-005",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-006",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-007",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-008",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-009",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-010",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-011",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-012",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-013",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-014",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-015",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-016",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-017",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3D-018",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-019",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-020",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-021",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-022",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-023",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-024",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-025",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-026",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-027",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-028",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-029",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    },
+    {
+      "caseId": "V3U-030",
+      "sameHttp": true,
+      "sameFinalResponse": true
+    }
+  ],
+  "offlineAudit": "Passed independent offline scoring, token/cache/cost arithmetic, timing arithmetic, 60-pair uniqueness, provider-call accounting, unchanged source and TEST-181 hashes, and deterministic response conformance. No further endpoint calls."
+}

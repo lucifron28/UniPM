@@ -1,0 +1,119 @@
+--- server/Program.cs
++++ observer-overlay/Program.cs
+@@ -214,6 +214,7 @@
+ builder.Services.AddScoped<ConfiguredNaturalLanguageAnalyticsInterpreter>();
+ 
+ var app = builder.Build();
++app.Use((context, next) => UniPM.Api.Features.Reports.Test182Trace.Observe(context, next));
+ 
+ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
+ {
+--- server/Features/Reports/PmAnalyticsV3QuestionInterpreter.cs
++++ observer-overlay/Features/Reports/PmAnalyticsV3QuestionInterpreter.cs
+@@ -197,7 +197,11 @@
+         {
+             var manilaNow = interpretationTimeUtc.ToOffset(TimeSpan.FromHours(8));
+             var modelInput = $"Current date in Asia/Manila: {manilaNow:yyyy-MM-dd}.\nQuestion: {sanitized}";
+-            var response = await _modelClient.GenerateAsync(modelInput, cancellationToken);
++            var observedProviderStart = System.Diagnostics.Stopwatch.GetTimestamp();
++            NaturalLanguageAnalyticsModelResponse response;
++            try { response = await _modelClient.GenerateAsync(modelInput, cancellationToken); }
++            finally { Test182Trace.Event("providerLogicalStage", new { elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(observedProviderStart).TotalMilliseconds }); }
++            Test182Trace.Event("rawProviderProposal", new { text = response.Content });
+             cancellationToken.ThrowIfCancellationRequested();
+             candidate = PmAnalyticsV3ModelOutputParser.Parse(response.Content);
+         }
+@@ -206,6 +210,7 @@
+             candidate = PmAnalyticsV3RuleParser.Parse(parserQuestion, interpretationTimeUtc);
+         }
+ 
++        Test182Trace.Event("parsedInterpreterProposal", candidate);
+         if (candidate is null || candidate.Status is null || candidate.ClarificationFields is null)
+         {
+             throw InvalidModelOutput();
+@@ -219,6 +224,7 @@
+             }
+ 
+             var constrained = ApplyInterpretedQuestionConstraints(sanitized, ref candidate, interpreter, interpretationTimeUtc);
++            Test182Trace.Event("questionConstraints", new { candidate, decision = constrained });
+             if (constrained is not null)
+             {
+                 return constrained;
+@@ -295,6 +301,7 @@
+ 
+         if (!PmAnalyticsV3PlanValidator.TryNormalize(candidate.Plan, out _, out var planErrors))
+         {
++            Test182Trace.Event("schemaValidationRejected", new { errors = planErrors });
+             if (candidate.Code is "UnsupportedTimeBasis" or "UnsupportedPmCycle")
+             {
+                 return Unsupported(candidate.Code, candidate.Detail, interpreter);
+@@ -303,7 +310,9 @@
+             throw InvalidModelOutput("InvalidPlan", planErrors.Keys);
+         }
+ 
++        Test182Trace.Event("schemaValidationPassed", new { plan = candidate.Plan });
+         var resolution = await _queryService.NormalizeAndResolveAsync(candidate.Plan, cancellationToken);
++        Test182Trace.Event("catalogResolution", new { plan = resolution.Plan?.Plan, fields = resolution.ClarificationFields, errors = resolution.Errors });
+         if (resolution.Plan is null)
+         {
+             if (resolution.ClarificationFields.Count == 0)
+--- server/Features/Reports/NaturalLanguageAnalyticsApiModelClientBase.cs
++++ observer-overlay/Features/Reports/NaturalLanguageAnalyticsApiModelClientBase.cs
+@@ -107,6 +107,7 @@
+ 
+             try
+             {
++                Test182Trace.Event("providerDispatch", new { attemptNumber, model = ModelId, utc = DateTimeOffset.UtcNow });
+                 using var response = await _httpClient.SendAsync(
+                     request,
+                     HttpCompletionOption.ResponseHeadersRead,
+@@ -151,6 +152,7 @@
+                 var body = await ReadBoundedAsync(response.Content, MaximumResponseBytes, timeout.Token);
+                 stopwatch.Stop();
+ 
++                Test182Trace.ProviderBody(body);
+                 NaturalLanguageAnalyticsModelResponse parsed;
+                 try
+                 {
+--- server/Features/Reports/NaturalLanguageAnalyticsModelClient.cs
++++ observer-overlay/Features/Reports/NaturalLanguageAnalyticsModelClient.cs
+@@ -52,6 +52,7 @@
+             }
+ 
+             _logicalCalls++;
++            Test182Trace.Event("providerLogicalCall", new { });
+         }
+     }
+ 
+@@ -78,6 +79,7 @@
+             }
+ 
+             _attempts++;
++            Test182Trace.Event("providerAttempt", new { isRetry });
+         }
+     }
+ 
+@@ -97,6 +99,7 @@
+     {
+         lock (_sync)
+         {
++            Test182Trace.Event("providerHttpSuccess", new { usage, hasText, latencyMilliseconds, reportedModelVersion, systemFingerprint, httpStatusCode });
+             _httpSuccessResponses++;
+             if (hasText)
+             {
+@@ -124,6 +127,7 @@
+     {
+         lock (_sync)
+         {
++            Test182Trace.Event("providerFailure", new { safeCode, latencyMilliseconds, stopRun, terminalCode, httpStatusCode });
+             _providerFailures++;
+             if (stopRun)
+             {
+@@ -146,6 +150,7 @@
+     {
+         lock (_sync)
+         {
++            Test182Trace.Event("providerTerminalFailure", new { safeCode });
+             _terminalFailureCode ??= safeCode;
+         }
+     }
