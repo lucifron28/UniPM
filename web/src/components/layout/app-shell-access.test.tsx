@@ -488,7 +488,10 @@ describe('app shell role access and layout', () => {
         inspectorUserId: null,
         inspectorDisplayName: null,
         assignmentLocked: false,
-        supervisorOwnershipIsConsistent: true,
+        supervisorOwnershipIsConsistent: supervisorUserId !== null,
+        attention: supervisorUserId
+          ? null
+          : { state: 'Needed', priority: 0, daysUntilMonthEnd: 15 },
         buildings: [`${department} Building`],
         representativeSchedule: {
           id: scheduleId,
@@ -542,10 +545,29 @@ describe('app shell role access and layout', () => {
           if (url.searchParams.get('year') === String(previousYear)) {
             signalPreviousYearRequest()
             await previousYearResponseGate
-            return HttpResponse.json({ totalScheduleCount: 0, batches: [] })
+            return HttpResponse.json({
+              totalScheduleCount: 0,
+              summary: {
+                notStartedBatchCount: 0,
+                inProgressBatchCount: 0,
+                ongoingScheduleCount: 0,
+                overdueScheduleCount: 0,
+                pendingAssignmentBatchCount: 0,
+                urgentAssignmentBatchCount: 0,
+              },
+              batches: [],
+            })
           }
           return HttpResponse.json({
             totalScheduleCount: 5,
+            summary: {
+              notStartedBatchCount: 2,
+              inProgressBatchCount: 0,
+              ongoingScheduleCount: 0,
+              overdueScheduleCount: 0,
+              pendingAssignmentBatchCount: 1,
+              urgentAssignmentBatchCount: 0,
+            },
             batches: currentBatches,
           })
         }
