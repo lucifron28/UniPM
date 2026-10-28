@@ -10,9 +10,14 @@ internal static class Program
 {
     public static int Main(string[] args)
     {
+        if (args is ["validate-paraphrases"])
+        {
+            return ParaphraseCorpusValidation.Run(V3EvaluationHarness.FindRepositoryRoot());
+        }
+
         if (args.Length != 1 || args[0] is not ("validate" or "diagnose" or "score"))
         {
-            Console.Error.WriteLine("Usage: dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- <validate|diagnose|score>");
+            Console.Error.WriteLine("Usage: dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- <validate|diagnose|score|validate-paraphrases>");
             return 2;
         }
 
