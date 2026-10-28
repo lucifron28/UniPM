@@ -11,6 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-179: Supplementary NLA paraphrases](test-runs/TEST-179-supplementary-nla-paraphrases.md): completed paired run; DeepSeek path matched 19/24 supported semantic plans, parser 4/24; controls 6/6 versus 4/6. Development evidence with recorded limitations.
+
 - [TEST-178: Assignment attention](test-runs/TEST-178-assignment-attention.md): server-derived assignment eligibility and urgency, scoped dashboard navigation, and corrected fixtures; backend and web CI passed on `dd5c017`.
 
 - [TEST-177: Live workflow and browser fixtures](test-runs/TEST-177-live-workflow-and-browser-fixtures.md): the synthetic multi-role workflow passed through acknowledgement and audited WMS referral; browser fixtures were corrected for the current dashboard and batch panels.

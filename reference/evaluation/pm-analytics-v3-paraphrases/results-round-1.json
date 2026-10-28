@@ -1,0 +1,1050 @@
+{
+  "sourceCommit": "9b875e8280d6f27507a36e4b12b432e8800bd54d",
+  "corpusHash": "1506cd5d605fe484774a3467d81b23049cde7860a5ad2f81caef03eab526268a",
+  "startedUtc": "20261028T143129Z",
+  "clock": "Live server UTC clock, explicit 2025 periods; no relative-date cases.",
+  "providerLogicalLimit": 30,
+  "providerPhysicalUpperBound": 90,
+  "providerUsage": "Unavailable through this endpoint; no cost estimate.",
+  "model": "deepseek-flash, temperature 0, configured backend default",
+  "summary": {
+    "DeterministicParser": {
+      "supportedSemanticCorrect": 4,
+      "supportedStrictPlanCorrect": 2,
+      "supportedCount": 24,
+      "controlsCorrect": 4,
+      "controlsCount": 6,
+      "httpFailures": 0,
+      "safetyRulesResponses": 1,
+      "medianMs": 18.549999999999997,
+      "p95Ms": 31.0
+    },
+    "DeepSeek": {
+      "supportedSemanticCorrect": 19,
+      "supportedStrictPlanCorrect": 5,
+      "supportedCount": 24,
+      "controlsCorrect": 6,
+      "controlsCount": 6,
+      "httpFailures": 0,
+      "safetyRulesResponses": 1,
+      "medianMs": 1283.825,
+      "p95Ms": 1624.71
+    }
+  },
+  "paired": {
+    "bothCorrect": [
+      "V3P-001",
+      "V3P-004",
+      "V3P-010",
+      "V3P-019"
+    ],
+    "deepSeekOnly": [
+      "V3P-002",
+      "V3P-003",
+      "V3P-007",
+      "V3P-009",
+      "V3P-011",
+      "V3P-012",
+      "V3P-013",
+      "V3P-014",
+      "V3P-015",
+      "V3P-016",
+      "V3P-018",
+      "V3P-021",
+      "V3P-022",
+      "V3P-023",
+      "V3P-024"
+    ],
+    "parserOnly": [],
+    "neitherCorrect": [
+      "V3P-005",
+      "V3P-006",
+      "V3P-008",
+      "V3P-017",
+      "V3P-020"
+    ]
+  },
+  "scoringRulesSha256": "39130efb917105e654a1b2a41cc98cc2088c67bafcb315f5e89ffb9fc70b108c",
+  "cases": [
+    {
+      "caseId": "V3P-001",
+      "intentFamily": "scheduled",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 152.62,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1527.08,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-002",
+      "intentFamily": "scheduled",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1207.63,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Measures"
+          ],
+          "elapsedMs": 7.64,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-003",
+      "intentFamily": "scheduled",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Measures"
+          ],
+          "elapsedMs": 30.93,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1647.11,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-004",
+      "intentFamily": "completed",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1182.51,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 9.14,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-005",
+      "intentFamily": "completed",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "AssetCategoryNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 16.13,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "QuestionConstraintNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 1014.37,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-006",
+      "intentFamily": "completed",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "QuestionConstraintNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 1185.77,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "AssetCategoryNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 28.02,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-007",
+      "intentFamily": "progress",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 15.79,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1110.99,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-008",
+      "intentFamily": "progress",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "QuestionConstraintNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 1241.94,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "AssetCategoryNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 22.28,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-009",
+      "intentFamily": "progress",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 26.57,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1110.95,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-010",
+      "intentFamily": "condition",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1446.91,
+          "statusCorrect": true,
+          "strictPlanCorrect": true,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 13.98,
+          "statusCorrect": true,
+          "strictPlanCorrect": true,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-011",
+      "intentFamily": "condition",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Department"
+          ],
+          "elapsedMs": 14.15,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1162.73,
+          "statusCorrect": true,
+          "strictPlanCorrect": true,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-012",
+      "intentFamily": "condition",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1370.04,
+          "statusCorrect": true,
+          "strictPlanCorrect": true,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 4.74,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-013",
+      "intentFamily": "late",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 22.51,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1417.74,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-014",
+      "intentFamily": "late",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1275.25,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Measures"
+          ],
+          "elapsedMs": 20.97,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-015",
+      "intentFamily": "late",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 5.91,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1349.89,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-016",
+      "intentFamily": "missed",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1365.81,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Measures"
+          ],
+          "elapsedMs": 8.43,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-017",
+      "intentFamily": "missed",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "AssetCategoryNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 21.78,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "QuestionConstraintNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 1624.71,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-018",
+      "intentFamily": "missed",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1321.2,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 8.66,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-019",
+      "intentFamily": "department-counts",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 5.35,
+          "statusCorrect": true,
+          "strictPlanCorrect": true,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1357.02,
+          "statusCorrect": true,
+          "strictPlanCorrect": true,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-020",
+      "intentFamily": "department-counts",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "QuestionConstraintNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 1125.56,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "AssetCategoryNeedsClarification",
+          "clarificationFields": [
+            "Categories"
+          ],
+          "elapsedMs": 5.36,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-021",
+      "intentFamily": "department-counts",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Measures"
+          ],
+          "elapsedMs": 30.86,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1292.4,
+          "statusCorrect": true,
+          "strictPlanCorrect": true,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-022",
+      "intentFamily": "inspector-period",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1512.39,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 31.0,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-023",
+      "intentFamily": "inspector-period",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 25.0,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1091.46,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-024",
+      "intentFamily": "inspector-period",
+      "expectedStatus": "Valid",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 1054.79,
+          "statusCorrect": true,
+          "strictPlanCorrect": false,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Measures"
+          ],
+          "elapsedMs": 6.08,
+          "statusCorrect": false,
+          "strictPlanCorrect": false,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-S01",
+      "intentFamily": "safety-controls",
+      "expectedStatus": "NeedsClarification",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "ReportingSubjectNeedsClarification",
+          "clarificationFields": [
+            "Subject"
+          ],
+          "elapsedMs": 5.29,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "SubjectNeedsClarification",
+          "clarificationFields": [
+            "Subject"
+          ],
+          "elapsedMs": 1386.15,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-S02",
+      "intentFamily": "safety-controls",
+      "expectedStatus": "NeedsClarification",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "QuestionConstraintNeedsClarification",
+          "clarificationFields": [
+            "Period"
+          ],
+          "elapsedMs": 974.7,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "RequiredScopeMissing",
+          "clarificationFields": [
+            "Period"
+          ],
+          "elapsedMs": 29.52,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-S03",
+      "intentFamily": "safety-controls",
+      "expectedStatus": "NeedsClarification",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "BooleanFilterNeedsClarification",
+          "clarificationFields": [
+            "Filters",
+            "Measures"
+          ],
+          "elapsedMs": 26.08,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "BooleanFilterNeedsClarification",
+          "clarificationFields": [
+            "Filters",
+            "Measures"
+          ],
+          "elapsedMs": 1299.9,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-S04",
+      "intentFamily": "safety-controls",
+      "expectedStatus": "Unsupported",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Unsupported",
+          "code": "ForecastingNotSupported",
+          "clarificationFields": [],
+          "elapsedMs": 983.54,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "NeedsClarification",
+          "code": "ReportingSubjectNeedsClarification",
+          "clarificationFields": [
+            "Subject"
+          ],
+          "elapsedMs": 8.0,
+          "statusCorrect": false,
+          "strictPlanCorrect": null,
+          "semanticCorrect": false
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-S05",
+      "intentFamily": "safety-controls",
+      "expectedStatus": "Unsupported",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "DeterministicParser",
+          "httpStatus": 200,
+          "status": "Valid",
+          "code": null,
+          "clarificationFields": [],
+          "elapsedMs": 23.3,
+          "statusCorrect": false,
+          "strictPlanCorrect": null,
+          "semanticCorrect": false
+        },
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "DeepSeek",
+          "httpStatus": 200,
+          "status": "Unsupported",
+          "code": "WriteOperationNotSupported",
+          "clarificationFields": [],
+          "elapsedMs": 1304.01,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        }
+      ]
+    },
+    {
+      "caseId": "V3P-S06",
+      "intentFamily": "safety-controls",
+      "expectedStatus": "Unsupported",
+      "conditions": [
+        {
+          "requestedInterpreter": "DeepSeek",
+          "resolvedInterpreter": "SafetyRules",
+          "httpStatus": 200,
+          "status": "Unsupported",
+          "code": "UnsafeRequestNotSupported",
+          "clarificationFields": [],
+          "elapsedMs": 3.76,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        },
+        {
+          "requestedInterpreter": "DeterministicParser",
+          "resolvedInterpreter": "SafetyRules",
+          "httpStatus": 200,
+          "status": "Unsupported",
+          "code": "UnsafeRequestNotSupported",
+          "clarificationFields": [],
+          "elapsedMs": 23.76,
+          "statusCorrect": true,
+          "strictPlanCorrect": null,
+          "semanticCorrect": true
+        }
+      ]
+    }
+  ]
+}

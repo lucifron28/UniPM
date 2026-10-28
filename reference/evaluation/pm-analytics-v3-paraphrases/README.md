@@ -2,6 +2,15 @@
 
 Corpus: V3P-001. Prepared October 28, 2026.
 
+## Completed first round
+
+The owner requested immediate execution after preflight. The paired run is
+complete, using the unchanged corpus and assistant-authored development labels.
+[TEST-179](../../evidence/test-runs/TEST-179-supplementary-nla-paraphrases.md)
+records results and limitations; [scoring rules](scoring-rules.md) were committed
+before execution. The preparation status below preserves the initial state,
+not the current execution status. No independent label approval is claimed.
+
 Status: author-prepared, pending label review. The initial question file is
 hash-recorded in `manifest.json`. No interpretation, scoring, preview, report
 execution or provider call has been performed on these questions.
