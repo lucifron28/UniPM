@@ -88,6 +88,8 @@ export function useScheduleAssignmentBatches(
         parseScheduleAssignmentQueue,
       ),
     enabled,
+    refetchInterval: () =>
+      86_400_000 - ((Date.now() + 8 * 3_600_000) % 86_400_000) + 1000,
     placeholderData: (previousData) => previousData,
   })
 }

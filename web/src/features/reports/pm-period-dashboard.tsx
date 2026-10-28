@@ -1,6 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
+import { assetCategorySchema } from '@/features/assets/asset-contract'
+import { useScheduleAssignmentBatches } from '@/features/schedules/schedule-queries'
+import { AlertTriangle } from 'lucide-react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -1135,6 +1138,20 @@ export function PmPeriodDashboard({
   const scopeDashboardQuery = usePmPeriodDashboard(reportScopeFilters)
   const dashboardQuery = usePmPeriodDashboard(dashboardFilters)
   const showGeneratedReport = hasValidGeneratedScope && !isChangingSelection
+  const assignmentRole = currentUser.data?.roles.includes('GSD')
+    ? 'GSD'
+    : currentUser.data?.roles.includes('Supervisor')
+      ? 'Supervisor'
+      : null
+  const attentionQuery = useScheduleAssignmentBatches(
+    {
+      year: search.year ?? 1,
+      ...(search.assetCategory ? { assetCategory: search.assetCategory } : {}),
+      ...(search.pmCycle ? { pmCycle: search.pmCycle } : {}),
+      ...(search.department ? { department: search.department } : {}),
+    },
+    Boolean(showGeneratedReport && assignmentRole && search.year),
+  )
   const canGenerate = Boolean(
     draftCategory && draftYear !== undefined && draftCycle,
   )
@@ -1343,6 +1360,87 @@ export function PmPeriodDashboard({
                 </div>
               </Card>
             </section>
+
+            {assignmentRole &&
+              (attentionQuery.isPending ||
+              attentionQuery.isPlaceholderData ||
+              attentionQuery.isFetching ? (
+                <p
+                  role="status"
+                  className="rounded-md border border-[var(--border-soft)] p-3 text-sm print:hidden"
+                >
+                  Loading assignment attention...
+                </p>
+              ) : attentionQuery.isError ||
+                attentionQuery.data?.summary.pendingAssignmentBatchCount ===
+                  undefined ||
+                attentionQuery.data?.summary.urgentAssignmentBatchCount ===
+                  undefined ? (
+                <p
+                  role="status"
+                  className="rounded-md border border-[var(--border-soft)] p-3 text-sm print:hidden"
+                >
+                  Assignment attention is unavailable.{' '}
+                  <button
+                    type="button"
+                    className="cursor-pointer underline focus-visible:outline-2"
+                    onClick={() => void attentionQuery.refetch()}
+                  >
+                    Retry
+                  </button>
+                </p>
+              ) : attentionQuery.data.summary.pendingAssignmentBatchCount >
+                0 ? (
+                <div
+                  className={`flex flex-wrap items-center gap-3 rounded-md border border-l-4 p-4 print:hidden ${attentionQuery.data.summary.urgentAssignmentBatchCount ? 'border-red-300 border-l-red-600 bg-red-50 text-red-900' : attentionQuery.data.batches.some((batch) => batch.attention?.priority === 1) ? 'border-amber-300 border-l-amber-600 bg-amber-50 text-amber-900' : 'border-slate-200 border-l-slate-500 bg-slate-50 text-slate-900'}`}
+                >
+                  <AlertTriangle
+                    aria-hidden="true"
+                    className="size-5 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h2 className="font-semibold">Assignment attention</h2>
+                    <p className="text-sm">
+                      {attentionQuery.data.summary.pendingAssignmentBatchCount}{' '}
+                      {attentionQuery.data.summary
+                        .pendingAssignmentBatchCount === 1
+                        ? 'batch needs'
+                        : 'batches need'}{' '}
+                      {assignmentRole === 'GSD'
+                        ? 'a Supervisor'
+                        : 'an Inspector'}
+                      .{' '}
+                      {attentionQuery.data.summary.urgentAssignmentBatchCount ??
+                        0}{' '}
+                      {attentionQuery.data.summary
+                        .urgentAssignmentBatchCount === 1
+                        ? 'is'
+                        : 'are'}{' '}
+                      urgent.
+                    </p>
+                    <p className="text-xs">
+                      {formatAssetCategory(search.assetCategory ?? '')} ·{' '}
+                      {search.pmCycle ? formatPmCycle(search.pmCycle) : ''} ·{' '}
+                      {search.department ?? 'All departments'}
+                    </p>
+                  </div>
+                  <Link
+                    to="/app/schedules"
+                    search={{
+                      view: 'assignments',
+                      year: search.year,
+                      assetCategory: assetCategorySchema.shape.code.parse(
+                        search.assetCategory,
+                      ),
+                      pmCycle: search.pmCycle,
+                      department: search.department,
+                    }}
+                    className="cursor-pointer rounded px-3 py-2 font-semibold underline-offset-2 hover:bg-black/5 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                  >
+                    Review assignments →
+                  </Link>
+                </div>
+              ) : null)}
 
             {dashboardQuery.isPending ? (
               <DashboardLoading />

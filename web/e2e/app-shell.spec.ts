@@ -484,3 +484,253 @@ test('quick search resets its active destination when results are filtered', asy
     page.getByRole('heading', { name: 'Supervisor Assignments' }),
   ).toBeVisible()
 })
+
+for (const width of [1440, 1536]) {
+  test(`assignment attention keeps scope and print layout at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await mockSession(page)
+    await page.route('**/api/v1/pm-period-dashboard**', (route) => {
+      const url = new URL(route.request().url())
+      const body = url.pathname.endsWith('/cycles')
+        ? [
+            {
+              assetCategory: 'fire-extinguisher',
+              year: 2026,
+              cycles: [{ pmCycle: '2026-08', scheduled: 2 }],
+            },
+          ]
+        : {
+            pmCycle: '2026-08',
+            assetCategory: 'fire-extinguisher',
+            department: 'CCMS',
+            deadline: '2026-08-31T15:59:59.999Z',
+            periodState: 'Active',
+            complianceMeasurable: false,
+            inspectionResultsAvailable: false,
+            scheduled: 2,
+            inspected: 0,
+            completedOnTime: 0,
+            completedLate: 0,
+            notCompleted: 0,
+            remaining: 2,
+            operational: 0,
+            nonOperational: 0,
+            onTimeCompliancePercent: null,
+            progressPercent: 0,
+            batches: [],
+            assets: [],
+          }
+      return route.fulfill({ json: body })
+    })
+    await page.route('**/api/v1/schedules/registry/options**', (route) =>
+      route.fulfill({
+        json: {
+          categories: [
+            {
+              code: 'fire-extinguisher',
+              displayName: 'Fire extinguishers',
+              scheduledMonths: [8],
+            },
+          ],
+          quarters: ['Q3'],
+          departments: ['CCMS'],
+          years: ['2026'],
+        },
+      }),
+    )
+    const asset = {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      assetCode: 'FE-001',
+      assetCategory: 'fire-extinguisher',
+      building: 'Main',
+      department: 'CCMS',
+      location: 'Main',
+      status: 'Active',
+      qrCodeValue: null,
+    }
+    const schedule = {
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      assetId: asset.id,
+      scheduleDate: '2026-08-31T15:59:59Z',
+      pmCycle: '2026-08',
+      periodType: 'Custom',
+      status: 'Due',
+      quarter: null,
+      semester: null,
+      year: 2026,
+      academicYear: null,
+      assignedToUserId: null,
+      assignedSupervisorUserId: null,
+      completedAt: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      asset,
+    }
+    const batch = {
+      batchKey: 'CCMS|fire-extinguisher|2026-08',
+      department: 'CCMS',
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-08',
+      scheduleCount: 2,
+      unfinishedScheduleCount: 2,
+      activeUnfinishedScheduleCount: 2,
+      completedCount: 0,
+      ongoingCount: 0,
+      overdueCount: 0,
+      cancelledCount: 0,
+      activeScheduleCount: 2,
+      supervisorState: 'Unassigned',
+      supervisorUserId: null,
+      supervisorDisplayName: null,
+      inspectorState: 'Unassigned',
+      inspectorUserId: null,
+      inspectorDisplayName: null,
+      assignmentLocked: false,
+      supervisorOwnershipIsConsistent: false,
+      buildings: ['Main'],
+      representativeSchedule: schedule,
+      attention: { state: 'Urgent', priority: 2, daysUntilMonthEnd: 5 },
+    }
+    await page.route('**/api/v1/schedules/assignment-batches**', (route) =>
+      route.fulfill({
+        json: {
+          totalScheduleCount: 2,
+          totalBatchCount: 1,
+          page: 1,
+          pageSize: 1,
+          summary: {
+            notStartedBatchCount: 1,
+            inProgressBatchCount: 0,
+            ongoingScheduleCount: 0,
+            overdueScheduleCount: 0,
+            pendingAssignmentBatchCount: 1,
+            urgentAssignmentBatchCount: 1,
+            attentionDate: '2026-08-26',
+            attentionRole: 'Supervisor',
+            attentionYear: 2026,
+            attentionAssetCategory: 'fire-extinguisher',
+            attentionDepartment: 'CCMS',
+            attentionPmCycle: '2026-08',
+          },
+          buildingOptions: ['Main'],
+          batches: [batch],
+        },
+      }),
+    )
+    await page.goto(
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&department=CCMS',
+    )
+    const action = page.getByRole('link', { name: /Review assignments/ })
+    await expect(
+      page.getByText('1 batch needs a Supervisor. 1 is urgent.'),
+    ).toBeVisible()
+    await expect(action).toBeVisible()
+    await action.focus()
+    await expect(action).toBeFocused()
+    await page.emulateMedia({ media: 'print' })
+    await expect(action).toBeHidden()
+    await expect(
+      page.getByText('Scheduled', { exact: true }).first(),
+    ).toBeVisible()
+    await page.emulateMedia({ media: 'screen' })
+    await action.focus()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(/\/app\/schedules/)
+    const url = new URL(page.url())
+    expect(url.searchParams.get('assetCategory')).toBe('fire-extinguisher')
+    expect(url.searchParams.get('pmCycle')).toBe('2026-08')
+    expect(url.searchParams.get('department')).toBe('CCMS')
+    await expect(
+      page.getByText(
+        /Supervisor needed · Assignment urgent · 5 days until month-end/,
+      ),
+    ).toBeVisible()
+    await page.goBack()
+    await expect(action).toBeVisible()
+    let unavailable = false
+    await page.route('**/api/v1/schedules/assignment-batches**', (route) =>
+      unavailable
+        ? route.fulfill({ status: 503 })
+        : route.fulfill({
+            json: {
+              totalScheduleCount: 0,
+              summary: {
+                notStartedBatchCount: 0,
+                inProgressBatchCount: 0,
+                ongoingScheduleCount: 0,
+                overdueScheduleCount: 0,
+                pendingAssignmentBatchCount: 0,
+                urgentAssignmentBatchCount: 0,
+              },
+              batches: [],
+            },
+          }),
+    )
+    await page.reload()
+    await expect(
+      page.getByText('Scheduled', { exact: true }).first(),
+    ).toBeVisible()
+    await expect(action).toHaveCount(0)
+    unavailable = true
+    await page.reload()
+    await expect(
+      page.getByText('Assignment attention is unavailable.', { exact: false }),
+    ).toBeVisible()
+    await expect(action).toHaveCount(0)
+    let roles = ['Supervisor']
+    await page.route('**/api/v1/auth/me', (route) =>
+      route.fulfill({ json: { ...session.user, roles } }),
+    )
+    await page.route('**/api/v1/auth/refresh', (route) =>
+      route.fulfill({ json: { ...session, user: { ...session.user, roles } } }),
+    )
+    await page.route('**/api/v1/schedules/assignment-batches**', (route) =>
+      route.fulfill({
+        json: {
+          totalScheduleCount: 2,
+          summary: {
+            notStartedBatchCount: 1,
+            inProgressBatchCount: 0,
+            ongoingScheduleCount: 0,
+            overdueScheduleCount: 0,
+            pendingAssignmentBatchCount: 1,
+            urgentAssignmentBatchCount: 1,
+          },
+          batches: [
+            {
+              ...batch,
+              supervisorState: 'Assigned',
+              supervisorUserId: session.user.id,
+              supervisorOwnershipIsConsistent: true,
+            },
+          ],
+        },
+      }),
+    )
+    await page.reload()
+    await expect(
+      page.getByText('1 batch needs an Inspector. 1 is urgent.'),
+    ).toBeVisible()
+    await action.click()
+    await expect(
+      page.getByRole('heading', { name: 'Inspector Assignments' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText(/Inspector needed · Assignment urgent/),
+    ).toBeVisible()
+    roles = ['GSD', 'Supervisor']
+    await page.goto(
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&department=CCMS',
+    )
+    await page.reload()
+    await expect(
+      page.getByText('1 batch needs a Supervisor. 1 is urgent.'),
+    ).toBeVisible()
+    await action.click()
+    await expect(
+      page.getByRole('heading', { name: 'Supervisor Assignments' }),
+    ).toBeVisible()
+  })
+}

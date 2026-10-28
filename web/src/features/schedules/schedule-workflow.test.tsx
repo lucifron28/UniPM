@@ -163,6 +163,15 @@ function scheduleRegistryItem(item: typeof schedule) {
   }
 }
 
+const assignmentSummary = {
+  notStartedBatchCount: 1,
+  inProgressBatchCount: 0,
+  ongoingScheduleCount: 0,
+  overdueScheduleCount: 0,
+  pendingAssignmentBatchCount: 1,
+  urgentAssignmentBatchCount: 0,
+}
+
 function assignmentBatch(overrides: Record<string, unknown> = {}) {
   return {
     batchKey: 'GSD|fire-extinguisher|2026-08',
@@ -183,6 +192,7 @@ function assignmentBatch(overrides: Record<string, unknown> = {}) {
     inspectorDisplayName: null,
     assignmentLocked: false,
     supervisorOwnershipIsConsistent: false,
+    attention: { state: 'Soon', priority: 1, daysUntilMonthEnd: 10 },
     representativeSchedule: schedule,
     ...overrides,
   }
@@ -358,6 +368,7 @@ describe('schedule workflows', () => {
       http.get(`${base}/schedules/assignment-batches`, () =>
         HttpResponse.json({
           totalScheduleCount: 6,
+          summary: assignmentSummary,
           batches: [
             assignmentBatch(),
             assignmentBatch({
@@ -366,12 +377,14 @@ describe('schedule workflows', () => {
               supervisorState: 'Assigned',
               supervisorUserId: supervisorId,
               supervisorDisplayName: 'Assigned Supervisor',
+              attention: null,
             }),
             assignmentBatch({
               batchKey: 'GSD|fire-alarm|2026-12',
               assetCategory: 'fire-alarm',
               pmCycle: '2026-12',
               assignmentLocked: true,
+              attention: null,
             }),
           ],
         }),
@@ -427,6 +440,7 @@ describe('schedule workflows', () => {
     server.use(
       http.get(`${base}/schedules/assignment-batches`, () =>
         HttpResponse.json({
+          summary: assignmentSummary,
           totalScheduleCount: pendingBatches.reduce(
             (total, batch) => total + Number(batch.scheduleCount),
             0,
@@ -526,6 +540,7 @@ describe('schedule workflows', () => {
       http.get(`${base}/schedules/assignment-batches`, () =>
         HttpResponse.json({
           totalScheduleCount: 6,
+          summary: assignmentSummary,
           batches: [
             assignmentBatch({
               supervisorState: 'Assigned',
@@ -539,6 +554,7 @@ describe('schedule workflows', () => {
               supervisorState: 'Assigned',
               supervisorUserId: supervisorId,
               supervisorDisplayName: 'Another Supervisor',
+              attention: null,
               supervisorOwnershipIsConsistent: true,
             }),
             assignmentBatch({
@@ -549,6 +565,7 @@ describe('schedule workflows', () => {
               supervisorUserId: user.id,
               supervisorOwnershipIsConsistent: true,
               assignmentLocked: true,
+              attention: null,
             }),
           ],
         }),
@@ -580,6 +597,7 @@ describe('schedule workflows', () => {
       http.get(`${base}/schedules/assignment-batches`, () =>
         HttpResponse.json({
           totalScheduleCount: 2,
+          summary: assignmentSummary,
           batches: [
             assignmentBatch({
               supervisorState: 'Assigned',
