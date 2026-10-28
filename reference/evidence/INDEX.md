@@ -11,6 +11,15 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-177: Live workflow and browser fixtures](test-runs/TEST-177-live-workflow-and-browser-fixtures.md): the synthetic multi-role workflow passed through acknowledgement and audited WMS referral; browser fixtures were corrected for the current dashboard and batch panels.
+
+- [TEST-176: Full CI and UI fixtures](test-runs/TEST-176-full-ci-and-ui-fixture-alignment.md): backend CI passed, the first full web unit run found five obsolete UI expectations, and existing fixtures were aligned with the approved redesigns.
+
+- [TEST-174: NLA guide and baseline restoration](test-runs/TEST-174-nla-guide-and-demo-restoration.md): ten exact deterministic plans and executions, five grammar cases, ten real DeepSeek plan checks and an actual clean-baseline restore.
+- [TEST-175: Desktop printing and workflow review](test-runs/TEST-175-desktop-print-and-workflow-review.md): verified 78-row PDF output and the unsuccessful live workflow fixture attempts, with the final exact-combobox correction awaiting a permitted rerun.
+
+- [TEST-173: Local synthetic scenario population](test-runs/TEST-173-demo-scenario-population.md): SQL integrity and scenario coverage for the rebuilt local fixture, including the initial referral-chronology failure and corrected rerun.
+
 ## Records
 
 > Offline evidence originally labeled TEST-084 through TEST-086 is assigned TEST-119 through TEST-121 here to avoid collisions with earlier historical records. The test results, timestamps, and tested source commits are unchanged; the original IDs are retained in this crosswalk.
@@ -20,6 +29,11 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-172 | test-run | Schedule batch side panels | executed | locally-executed | `fde2bbc` | [record](test-runs/TEST-172-schedule-batch-panels.md) | 25 schedule workflow tests passed after one existing-expectation correction; type check passed. Browser visual verification unavailable. |
+| TEST-171 | test-run | Dashboard records and detailed report | executed | locally-executed | `fd70ea4` | [record](test-runs/TEST-171-dashboard-records-print.md) | Backend build, 10 dashboard tests and type check passed. Built-in desktop table/filter/pagination checks executed; final PDF/print layout unverified. |
+| TEST-170 | test-run | Guarded local rebuilt demo reset | executed | locally-executed | `1073065` | [record](test-runs/TEST-170-rebuilt-demo-reset.md) | Manifest initialization and rollback-only reset check passed. Unrelated-data refusal was source-inspected; no committed reset. |
+| TEST-169 | test-run | Dashboard chart wording and timing availability | executed | locally-executed | `4a7e723` | [record](test-runs/TEST-169-dashboard-chart-clarity.md) | Dashboard regression 10 passed; type check and fictional browser overview, unavailable/partial timing and exact-value checks passed. E2E suite and live API/database not executed. |
+| TEST-168 | test-run | Compact dashboard chart overview | executed | locally-executed | `67810ef` | [record](test-runs/TEST-168-dashboard-chart-overview.md) | Dashboard regression 10 passed; type check and browser disclosure/selection/50-percent scale checks passed. Print CSS source-inspected only; no live API/database workflow. |
 | TEST-167 | test-run | Chart and assignment-period review corrections | executed | locally-executed | checks `35ec1c1`; import correction `bf53911`; SQL expectations `6564f3b` | [record](test-runs/TEST-167-chart-assignment-review-corrections.md) | Seven findings corrected. Backend 1 and web 6 regressions, browser gap/format checks, EF model and staging chain checks passed. Direct backend smoke blocked by assembly loading; native migration/device acceptance unverified. |
 | TEST-166 | test-run | Dashboard/NLA charts and Inspector assignment period | executed | locally-executed | backend `0f6b447`; web `19ce91b`; mobile `ae0e599` | [record](test-runs/TEST-166-charts-and-assignment-period.md) | Focused backend 2, dashboard 10, mobile 1 passed; manual calculator and chart-builder boundaries passed. Migration application, full live workflow, and physical devices unverified. |
 | TEST-165 | test-run | Saved-report integration, SQL concurrency and browser persistence | executed | locally-executed | `d6a7a510cab4e175c0c01d41bf2bd775f7d3ed9d`; backend checks at `c955ac2` | [record](test-runs/TEST-165-saved-reports-stability.md) | Backend 11/11 including SQL migration and quota race; UI 27/27; mocked browser 3/3; real browser/API/SQL 1/1. Local api:check wrapper has a retained Windows formatter failure; standalone contracts/drift pass. |

@@ -114,10 +114,15 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   ).toBeVisible()
   await expect(heading).toHaveCount(1)
   await expect(
-    workspace.getByRole('heading', { name: 'Inspection breakdown' }),
+    workspace.getByRole('heading', {
+      name: 'Preventive maintenance overview',
+    }),
   ).toBeVisible()
-  await expect(workspace.getByText('50%', { exact: true })).toBeVisible()
-  await expect(workspace.getByText('25%', { exact: true })).toBeVisible()
+  await expect(
+    workspace.getByText(
+      /Supporting rates: inspection progress 50%.*completed within the scheduled month 25%/,
+    ),
+  ).toBeVisible()
   await expect(page.getByRole('link', { name: 'Assets' })).not.toHaveAttribute(
     'title',
   )

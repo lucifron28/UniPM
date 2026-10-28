@@ -152,7 +152,9 @@ The phone and computer must be on the same trusted network, and the local
 firewall must allow the development port. Do not commit the machine's LAN
 address.
 
-## Restore the pristine starting state
+## Restore the legacy demo scenarios
+
+These commands apply to the legacy fixture only. For the rebuilt local dataset, use the workflow in the next section.
 
 Live testing changes Scenario A. Restore all three scenarios before the
 presentation:
@@ -167,3 +169,97 @@ The pristine state has three Due Scenario A schedules and no Scenario A
 inspections; one Submitted and unacknowledged Scenario B form; and one
 Acknowledged Scenario C form with two official-history documents and no
 embeddings.
+
+## Reset the rebuilt local demonstration dataset
+
+Use the scenario fixture below for the current local database. The legacy
+`--seed-demo` and `--reset-demo` commands above are a separate fixture and must
+not be run against this database.
+
+The script targets localhost, UniPMDb, with Windows authentication. It keeps
+all 153 original assets and their codes, department names and building names.
+It fills each department/category group to at least six Active assets and adds
+two Inactive and two Retired inventory-only assets per category. Registration
+dates are synthetic and precede the generated history.
+
+Initialization is a one-time adoption of the inspected synthetic database.
+It checks its expected counts, synthetic inspection/acknowledgement markers,
+assignment markers and empty dependency tables. It refuses other databases.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/reset-rebuilt-demo.ps1 -Initialize
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/reset-rebuilt-demo.ps1 -CheckOnly -SeedDate 2026-10-27
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/reset-rebuilt-demo.ps1 -SeedDate 2026-10-27
+```
+
+After initialization, full-row fingerprints of all eleven affected tables
+protect edits and added or deleted records. Reset stops if any fingerprint
+changes, including after hands-on demonstrations. Do not remove the manifest
+or reinitialize to bypass a conflict. Preserve the backup and review those
+changes before authorizing a new baseline. A copy-only, checksum-verified SQL
+backup precedes every applying reset. CheckOnly rolls back and does not write
+photo files. The ignored manifest is
+`artifacts/demo-rebuild/scenario-fixture-v2.json`. It replaces the older ID-only
+manifest. Keep it with the backup.
+
+Use the pinned date above for this demonstration. The generator uses that
+calendar year and its preceding year. Omitting SeedDate anchors relative
+assignment dates to today. Ongoing coverage is based on the latest elapsed
+category cycle; the script refuses to commit if coverage assertions fail.
+Refreshing the fixture after a demonstration requires review of changed
+records, not automatic adoption. Generated IDs can change across resets;
+asset codes, scenario selection and counts are reproducible for a fixed date.
+
+## Restore the starting point after practice
+
+Capture a clean baseline once, while the scenario manifest still matches the
+database. The baseline backup is stored in SQL Server's private backup
+directory; its local record is `artifacts/demo-rebuild/clean-baseline.json`.
+The record includes the backup-set identifier and a copy of the fixture
+manifest. Do not commit either the backup or the record.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/demo-baseline.ps1 -Mode Capture
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/demo-baseline.ps1 -Mode Verify
+```
+
+Verify restores into a uniquely named disposable database, changes a fixture
+row, restores again and compares all eleven fixture-table fingerprints. It
+then drops that disposable database. It leaves UniPMDb unchanged.
+
+After practicing, stop the local API, then restore the starting point:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/demo-baseline.ps1 -Mode Restore -TargetDatabase UniPMDb
+```
+
+This explicit command restores the entire local demonstration database,
+including its accounts and session state, to the captured baseline. It creates
+and checksum-verifies a backup of the current database first, so practice
+changes remain recoverable. It restores the fixture manifest and synthetic
+photo, then verifies the fixture fingerprints. Restart the API and sign in
+again afterward. This is the restoration path for a disposable demonstration
+database, not a way to merge later work into a baseline. The conservative seed
+reset continues to refuse changed records.
+
+For isolated acceptance checks, Restore also accepts an explicitly named
+`UniPMDb_DemoCheck_` database followed by twelve hexadecimal characters. No
+other database targets are accepted. Real-device GPS and QR-camera capture
+still require separate physical-device testing.
+
+## Photo fixture and scope
+
+Photo storage uses the API's default private `server/App_Data/InspectionPhotos`
+directory, or the process variable `InspectionPhotoEvidence__StorageDirectory`.
+Pass `-PhotoDirectory` if the running API uses another private filesystem
+location. The fixture cannot seed Azure Blob storage. The included JPEG is a
+labeled synthetic illustration. One mocked location attempt has outcome
+NotConfigured and is not attached as evidence of a successful field visit.
+No real GPS success or physical-device verification is claimed.
+
+See [the scenario guide](scenario-guide.md) for workflow batches, report scopes
+and expected results. These records are fictional demonstration data. They do
+not change the manuscript's evaluation evidence. User accounts, credentials,
+reference documents and application schema are unchanged. Cancellation and
+enrollment-deferral fixtures remain outside this population task because
+institutional scheduling authority is still deferred.

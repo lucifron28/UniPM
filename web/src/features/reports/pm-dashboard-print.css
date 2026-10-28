@@ -4,6 +4,26 @@
 }
 
 @media print {
+  body:has(.pm-dashboard-report)
+    :is(.app-shell, .app-shell-body, .app-shell-main, .app-workspace) {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  body:has(.pm-dashboard-report) :is(.app-sidebar, .app-page-header) {
+    display: none !important;
+  }
+  .pm-dashboard-report details.report-chart__data > .report-chart__table,
+  .pm-dashboard-report details.report-chart__data::details-content {
+    display: block !important;
+    content-visibility: visible !important;
+  }
+  .pm-dashboard-report details.report-chart__data > summary {
+    display: none !important;
+  }
+
   body:has(.pm-dashboard-report) {
     margin: 0 !important;
     background: #fff !important;

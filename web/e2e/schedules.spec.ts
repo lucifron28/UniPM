@@ -749,8 +749,12 @@ test.describe('Schedule workflows', () => {
       page.getByRole('button', { name: 'Open batch history' }),
     ).toBeVisible()
     await page.getByRole('button', { name: 'Open batch history' }).click()
-    await expect(page.getByRole('link', { name: 'FE-001' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
+    const batchPanel = page.locator('#schedule-batch-panel')
+    await expect(batchPanel).toBeVisible()
+    await expect(batchPanel.getByRole('link', { name: 'FE-001' })).toBeVisible()
+    await expect(batchPanel.getByRole('link', { name: 'FE-026' })).toBeVisible()
+    await batchPanel.getByRole('button', { name: 'Back to batches' }).click()
+    await expect(batchPanel).toHaveCount(0)
     const next = page.getByRole('button', { name: 'Next' })
     const workspace = page.locator('.app-workspace')
     await next.scrollIntoViewIfNeeded()
@@ -762,24 +766,45 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/page=2/)
-    await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', {
+        name: 'GSD · Fire extinguishers',
+        exact: true,
+      }),
+    ).toBeVisible()
     await expect
       .poll(() => workspace.evaluate((element) => element.scrollTop))
       .toBe(scrollTop)
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
+    await page.getByRole('button', { name: 'Open batch history' }).click()
+    await expect(batchPanel.getByRole('link', { name: 'FE-026' })).toBeVisible()
+    await batchPanel.getByRole('button', { name: 'Back to batches' }).click()
+    await expect(batchPanel).toHaveCount(0)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
-    await expect(page.getByRole('link', { name: 'FE-001' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', {
+        name: 'GSD · Fire extinguishers',
+        exact: true,
+      }),
+    ).toBeVisible()
     await expect
       .poll(() => workspace.evaluate((element) => element.scrollTop))
       .toBe(scrollTop)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
+    await page.getByRole('button', { name: 'Open batch history' }).click()
+    await expect(batchPanel.getByRole('link', { name: 'FE-001' })).toBeVisible()
+    await batchPanel.getByRole('button', { name: 'Back to batches' }).click()
+    await expect(batchPanel).toHaveCount(0)
 
     await page.goto(
       '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=2',
     )
     await expect(page).toHaveURL(/page=2/)
+    const scheduleRecords = page.getByRole('region', {
+      name: 'Schedule records',
+    })
     await page.getByRole('button', { name: 'Open batch history' }).click()
     await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
     await page.reload()
@@ -809,19 +834,19 @@ test.describe('Schedule workflows', () => {
       await page
         .locator('.app-workspace')
         .evaluate((workspace) => (workspace.scrollTop = 0))
-      await page.getByRole('button', { name: 'Open batch history' }).click()
-      const pagination = page.getByRole('navigation', {
-        name: 'Schedules pagination',
-      })
-
-      if (width < 768) {
-        const mobileSchedule = page
-          .getByRole('link', { name: 'FE-026' })
-          .locator('xpath=../../../..')
-        await expect(mobileSchedule).toBeVisible()
-      } else {
-        await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
+      await scheduleRecords
+        .getByRole('button', { name: 'Open batch history' })
+        .click()
+      await expect(batchPanel).toBeVisible()
+      await expect(
+        batchPanel.getByRole('link', { name: 'FE-026' }),
+      ).toBeVisible()
+      const panelBounds = await batchPanel.boundingBox()
+      if (!panelBounds) {
+        throw new Error('Schedule batch panel geometry could not be measured')
       }
+      expect(panelBounds.x).toBeGreaterThanOrEqual(0)
+      expect(panelBounds.x + panelBounds.width).toBeLessThanOrEqual(width)
 
       const geometry = await horizontalOverflowGeometry(page)
       console.log(
@@ -835,10 +860,20 @@ test.describe('Schedule workflows', () => {
         path: testInfo.outputPath(`schedule-pagination-${width}.png`),
       })
 
+      await batchPanel.getByRole('button', { name: 'Back to batches' }).click()
+      await expect(batchPanel).toHaveCount(0)
+      const batchHeading = scheduleRecords.getByRole('heading', {
+        name: 'GSD · Fire extinguishers',
+        exact: true,
+      })
+      await expect(batchHeading).toBeVisible()
+      const pagination = scheduleRecords.getByRole('navigation', {
+        name: 'Schedules pagination',
+      })
+
       if (width < 768) {
-        const mobileSchedule = page
-          .getByRole('link', { name: 'FE-026' })
-          .locator('xpath=../../../..')
+        const mobileSchedule = batchHeading.locator('xpath=../../..')
+        await expect(mobileSchedule).toBeVisible()
         await pagination.scrollIntoViewIfNeeded()
         const [scheduleBounds, paginationBounds] = await Promise.all([
           mobileSchedule.boundingBox(),
@@ -989,30 +1024,41 @@ test.describe('Schedule workflows', () => {
     await expect(
       page.getByRole('heading', { name: 'GSD · Fire extinguishers' }),
     ).toBeVisible()
-    const viewBatchLink = page.getByRole('link', {
+    const viewBatchButton = page.getByRole('button', {
       name: 'View schedules in batch',
     })
-    await expect(viewBatchLink).toHaveAttribute('href', /view=history/)
+    await expect(viewBatchButton).toBeEnabled()
     await page.screenshot({
       path: 'test-results/web-ui-polish-schedules-planning-desktop.png',
       fullPage: true,
       animations: 'disabled',
     })
-    await viewBatchLink.click()
+    await viewBatchButton.click()
+    const batchPanel = page.getByRole('dialog', {
+      name: 'GSD · Fire extinguishers',
+    })
+    await expect(batchPanel).toBeVisible()
+    await expect(batchPanel).toContainText('August 2026')
+    await expect(batchPanel.getByRole('table')).toBeVisible()
+    await batchPanel.getByRole('button', { name: 'Back to batches' }).click()
+    await expect(batchPanel).toHaveCount(0)
+    await page.goto(
+      '/app/schedules?view=history&year=2026&department=GSD&assetCategory=fire-extinguisher&pmCycle=2026-08',
+    )
     await expect(page).toHaveURL(/view=history/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/department=GSD/)
     await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
     await expect(page).toHaveURL(/pmCycle=2026-08/)
-    const sectionHeadings = await page
-      .locator('main h1, main h2')
-      .allTextContents()
-    expect(sectionHeadings.slice(0, 4)).toEqual([
-      'Schedules',
-      'Find schedules',
-      'Schedule summary',
-      'Schedule records',
-    ])
+    const sectionHeadings = page.locator('main h1, main h2')
+    await expect
+      .poll(async () => (await sectionHeadings.allTextContents()).slice(0, 4))
+      .toEqual([
+        'Schedules',
+        'Find schedules',
+        'Schedule summary',
+        'Schedule records',
+      ])
     await expect(
       page.getByText(
         'Overall schedule totals, independent of registry filters.',

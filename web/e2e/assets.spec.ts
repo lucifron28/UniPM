@@ -388,17 +388,12 @@ test.describe('Asset Registry E2E Specs', () => {
     ).toBeVisible()
     await expect(
       registry.getByRole('heading', { name: 'Overall asset inventory' }),
-    ).toBeVisible()
+    ).toHaveCount(0)
     await expect(
       registry.getByRole('heading', { name: 'Asset records' }),
     ).toBeVisible()
     const headingOrder = await registry.locator('h1, h2').allTextContents()
-    expect(headingOrder).toEqual([
-      'Assets',
-      'Find assets',
-      'Overall asset inventory',
-      'Asset records',
-    ])
+    expect(headingOrder).toEqual(['Assets', 'Find assets', 'Asset records'])
     await expect(page.getByLabel('Search assets')).toBeVisible()
     await expect(page.getByLabel('Asset category')).toBeVisible()
     await expect(page.getByLabel('Status')).toBeVisible()

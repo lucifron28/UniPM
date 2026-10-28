@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -258,17 +258,26 @@ describe('PM period dashboard period terminology', () => {
     resetApiRuntimeForTests()
   })
 
-  it('shows concise upcoming metrics and breakdown for Future periods', () => {
+  it('shows upcoming metrics and inspection completion without a duplicate breakdown', () => {
     renderState('Future')
 
-    expectMetricValue('Inspected / scheduled', '3 / 5')
-    expectMetricValue('Progress', '60%')
-    expectMetricValue('On-time compliance', 'Not measurable yet')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Completed', '3')
+    expectMetricValue('Outstanding', '2')
+    expectMetricValue('Overdue assignment', 'Not available')
+    expectMetricValue('Unassigned', 'Not available')
     expectMetricValue('Non-operational', '1')
     expect(
-      screen.getByRole('heading', { name: 'Inspection breakdown' }),
-    ).toBeInTheDocument()
-    expectMetricValue('Scheduled', '2')
+      screen.queryByRole('heading', { name: 'Inspection breakdown' }),
+    ).not.toBeInTheDocument()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'More comparisons' }),
+      { target: { value: 'month' } },
+    )
+    const chart = screen.getByRole('region', {
+      name: 'Completion within the scheduled month',
+    })
+    expect(within(chart).getByRole('list')).toHaveTextContent('Still due')
     expect(
       screen.queryByText('Not completed', { exact: true }),
     ).not.toBeInTheDocument()
@@ -277,10 +286,19 @@ describe('PM period dashboard period terminology', () => {
   it('shows pending inspections for Active periods', () => {
     renderState('Active')
 
-    expectMetricValue('Inspected / scheduled', '3 / 5')
-    expectMetricValue('Progress', '60%')
-    expectMetricValue('On-time compliance', 'Not measurable yet')
-    expectMetricValue('Pending', '2')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Completed', '3')
+    expectMetricValue('Outstanding', '2')
+    expectMetricValue('Overdue assignment', 'Not available')
+    expectMetricValue('Unassigned', 'Not available')
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'More comparisons' }),
+      { target: { value: 'month' } },
+    )
+    const chart = screen.getByRole('region', {
+      name: 'Completion within the scheduled month',
+    })
+    expect(within(chart).getByRole('list')).toHaveTextContent('Still due')
     expect(
       screen.queryByText('Not completed', { exact: true }),
     ).not.toBeInTheDocument()
@@ -289,13 +307,31 @@ describe('PM period dashboard period terminology', () => {
   it('uses final completion terminology for Closed periods', () => {
     renderState('Closed')
 
-    expectMetricValue('Inspected / scheduled', '3 / 5')
-    expectMetricValue('Progress', '60%')
-    expectMetricValue('On-time compliance', '50%')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Completed', '3')
+    expectMetricValue('Outstanding', '1')
+    expectMetricValue('Overdue assignment', 'Not available')
+    expectMetricValue('Unassigned', 'Not available')
     expectMetricValue('Non-operational', '1')
-    expectMetricValue('Completed on time', '2')
-    expectMetricValue('Completed late', '1')
-    expectMetricValue('Not completed', '1')
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'More comparisons' }),
+      { target: { value: 'month' } },
+    )
+    const chart = screen.getByRole('region', {
+      name: 'Completion within the scheduled month',
+    })
+    expect(
+      within(chart)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Within scheduled month', 'After scheduled month', 'Unfinished'])
+    fireEvent.click(within(chart).getByText('View data', { exact: true }))
+    const row = within(chart).getByRole('row', { name: /CCMS/ })
+    expect(
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['2 schedules', '1 schedule', '1 schedule'])
     expect(
       screen.queryByText('Remaining', { exact: true }),
     ).not.toBeInTheDocument()
@@ -501,7 +537,9 @@ describe('PM period dashboard period selection', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      await screen.findByText('3 / 5', { exact: true }),
+      await screen.findByRole('heading', {
+        name: 'Preventive maintenance overview',
+      }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Change period' }))
@@ -515,7 +553,7 @@ describe('PM period dashboard period selection', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Inspection breakdown' }),
+      screen.getByRole('heading', { name: 'Preventive maintenance overview' }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Change period' }))

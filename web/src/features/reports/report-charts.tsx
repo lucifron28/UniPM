@@ -10,6 +10,27 @@ const SERIES_COLORS = [
   'var(--text-neutral)',
 ] as const
 
+const OUTCOME_COLORS: Record<string, string> = {
+  'completed-on-time': 'var(--success)',
+  'completed-late': 'var(--warning)',
+  'not-completed': 'var(--text-neutral)',
+  remaining: 'var(--text-neutral)',
+  operational: 'var(--success)',
+  'non-operational': 'var(--error)',
+  'assignment-completed-within': 'var(--success)',
+  'assignment-completed-late': 'var(--warning)',
+  'assignment-open-within': 'var(--information)',
+  'assignment-overdue-unfinished': 'var(--error)',
+  'unknown-assignment-period': 'var(--text-neutral)',
+}
+
+function seriesColor(id: string, index: number) {
+  return (
+    OUTCOME_COLORS[id] ??
+    SERIES_COLORS[Math.max(index, 0) % SERIES_COLORS.length]
+  )
+}
+
 export type ReportChartValue = {
   seriesId: string
   seriesLabel: string
@@ -31,8 +52,11 @@ export type ReportChartVariant = 'bar' | 'grouped' | 'stacked' | 'line'
 export type ReportChartProps = {
   title: string
   description?: string
+  subtitle?: string
+  groupLabel?: string
   variant: ReportChartVariant
   rows: ReportChartRow[]
+  compact?: boolean
   onDrilldown?: (row: ReportChartRow, value: ReportChartValue) => void
 }
 
@@ -45,7 +69,15 @@ function formatValue(value: ReportChartValue) {
     return value.unavailableReason ?? 'Not available'
   }
 
-  const unit = value.unit.trim()
+  const singular: Record<string, string> = {
+    schedules: 'schedule',
+    assets: 'asset',
+    'asset-cycles': 'asset-cycle',
+    'inspection results': 'inspection result',
+  }
+  const rawUnit = value.unit.trim()
+  const unit =
+    Math.abs(value.value) === 1 ? (singular[rawUnit] ?? rawUnit) : rawUnit
   const unitLabel =
     unit === '%' || unit.toLowerCase() === 'percent'
       ? '%'
@@ -64,6 +96,23 @@ function formatValue(value: ReportChartValue) {
   }
 
   return `${displayedValue} (${formatNumber(value.numerator)} / ${formatNumber(value.denominator)})`
+}
+
+function isPercentage(value: ReportChartValue) {
+  return value.unit === '%' || value.unit.toLowerCase() === 'percent'
+}
+
+function compactValue(value: ReportChartValue) {
+  if (value.value === null || !Number.isFinite(value.value))
+    return 'Unavailable'
+  const number = value.value.toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })
+  const ratio =
+    value.numerator !== undefined && value.denominator !== undefined
+      ? ` · ${value.numerator.toLocaleString()} of ${value.denominator.toLocaleString()}`
+      : ''
+  return isPercentage(value) ? `${number}%${ratio}` : number
 }
 
 function visualValue(value: ReportChartValue) {
@@ -101,8 +150,17 @@ function ReportLineChart({
     maxValue === minValue
       ? Math.max(1, Math.abs(maxValue))
       : maxValue - minValue
-  const domainMin = maxValue === minValue ? minValue - range / 2 : minValue
-  const domainMax = maxValue === minValue ? maxValue + range / 2 : maxValue
+  const percentage = rows.flatMap((row) => row.values).every(isPercentage)
+  const domainMin = percentage
+    ? 0
+    : maxValue === minValue
+      ? minValue - range / 2
+      : minValue
+  const domainMax = percentage
+    ? 100
+    : maxValue === minValue
+      ? maxValue + range / 2
+      : maxValue
   const pointsFor = (seriesId: string) =>
     rows.map((row, index) => {
       const value = row.values.find(
@@ -169,7 +227,7 @@ function ReportLineChart({
               key={`${line.id}:${pathIndex}`}
               d={path}
               fill="none"
-              stroke={SERIES_COLORS[seriesIndex % SERIES_COLORS.length]}
+              stroke={seriesColor(line.id, seriesIndex)}
               strokeWidth="2.5"
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -185,7 +243,7 @@ function ReportLineChart({
                   cy={point.y}
                   r="4"
                   fill="white"
-                  stroke={SERIES_COLORS[seriesIndex % SERIES_COLORS.length]}
+                  stroke={seriesColor(line.id, seriesIndex)}
                   strokeWidth="2"
                 />
                 <text
@@ -238,9 +296,12 @@ function ReportLineChart({
 export function ReportChart({
   title,
   description,
+  subtitle,
+  groupLabel = 'Group',
   variant,
   rows,
   onDrilldown,
+  compact = false,
 }: ReportChartProps) {
   const titleId = useId()
   const series = Array.from(
@@ -257,16 +318,21 @@ export function ReportChart({
     ).values(),
   )
   const values = rows.flatMap((row) => row.values)
-  const maxBarValue = Math.max(0, ...values.map(visualValue))
-  const maxStackedValue = Math.max(
-    0,
-    ...rows.map((row) =>
-      row.values.reduce((total, value) => total + visualValue(value), 0),
-    ),
-  )
+  const percentage = values.length > 0 && values.every(isPercentage)
+  const maxBarValue = percentage ? 100 : Math.max(0, ...values.map(visualValue))
+  const maxStackedValue = percentage
+    ? 100
+    : Math.max(
+        0,
+        ...rows.map((row) =>
+          row.values.reduce((total, value) => total + visualValue(value), 0),
+        ),
+      )
   const hasNegativeValues = values.some(
     (value) => variant !== 'line' && value.value !== null && value.value < 0,
   )
+
+  const DataContainer = compact ? 'details' : 'div'
 
   return (
     <section
@@ -279,11 +345,22 @@ export function ReportChart({
       >
         {title}
       </h3>
-      {description && (
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          {description}
-        </p>
+      {subtitle && (
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">{subtitle}</p>
       )}
+      {description &&
+        (compact ? (
+          <details className="mt-1 text-sm text-[var(--text-secondary)] print:hidden">
+            <summary className="min-h-9 cursor-pointer py-1.5 text-xs font-medium focus-visible:outline-2">
+              How this is calculated
+            </summary>
+            <p className="pb-2">{description}</p>
+          </details>
+        ) : (
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {description}
+          </p>
+        ))}
 
       {rows.length === 0 ? (
         <p
@@ -294,7 +371,7 @@ export function ReportChart({
         </p>
       ) : (
         <>
-          {series.length > 0 && (
+          {series.length > 0 && (!compact || series.length > 1) && (
             <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-[var(--text-secondary)]">
               {series.map((item, index) => (
                 <li key={item.id} className="inline-flex items-center gap-2">
@@ -302,8 +379,7 @@ export function ReportChart({
                     aria-hidden="true"
                     className="h-3 w-3 shrink-0 rounded-sm"
                     style={{
-                      backgroundColor:
-                        SERIES_COLORS[index % SERIES_COLORS.length],
+                      backgroundColor: seriesColor(item.id, index),
                     }}
                   />
                   {item.label}
@@ -329,33 +405,44 @@ export function ReportChart({
                     {row.label}
                   </p>
                   {variant === 'stacked' ? (
-                    <div className="h-4 overflow-hidden rounded-full bg-[var(--surface-muted)]">
-                      <div className="flex h-full">
-                        {row.values.map((value) => {
-                          const width =
-                            maxStackedValue === 0
-                              ? 0
-                              : (visualValue(value) / maxStackedValue) * 100
-                          const colorIndex = series.findIndex(
-                            (item) => item.id === value.seriesId,
-                          )
+                    <div>
+                      <div className="h-4 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                        <div className="flex h-full">
+                          {row.values.map((value) => {
+                            const width =
+                              maxStackedValue === 0
+                                ? 0
+                                : (visualValue(value) / maxStackedValue) * 100
+                            const colorIndex = series.findIndex(
+                              (item) => item.id === value.seriesId,
+                            )
 
-                          return (
-                            <span
-                              key={value.seriesId}
-                              className="h-full"
-                              style={{
-                                width: `${width}%`,
-                                backgroundColor:
-                                  SERIES_COLORS[
-                                    Math.max(colorIndex, 0) %
-                                      SERIES_COLORS.length
-                                  ],
-                              }}
-                            />
-                          )
-                        })}
+                            return (
+                              <span
+                                key={value.seriesId}
+                                className="h-full"
+                                style={{
+                                  width: `${Math.min(100, width)}%`,
+                                  backgroundColor: seriesColor(
+                                    value.seriesId,
+                                    colorIndex,
+                                  ),
+                                }}
+                              />
+                            )
+                          })}
+                        </div>
                       </div>
+                      {compact && (
+                        <p className="mt-2 text-xs text-[var(--text-secondary)] tabular-nums">
+                          {row.values
+                            .map(
+                              (value) =>
+                                `${value.seriesLabel}: ${compactValue(value)}`,
+                            )
+                            .join(' · ')}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -371,23 +458,31 @@ export function ReportChart({
                         return (
                           <div
                             key={value.seriesId}
-                            className="grid grid-cols-[minmax(6rem,8rem)_minmax(0,1fr)] items-center gap-2"
+                            className={
+                              compact && series.length === 1
+                                ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3'
+                                : 'grid grid-cols-[minmax(6rem,8rem)_minmax(0,1fr)_auto] items-center gap-2'
+                            }
                           >
-                            <span className="truncate text-xs text-[var(--text-secondary)]">
-                              {value.seriesLabel}
-                            </span>
+                            {(!compact || series.length > 1) && (
+                              <span className="text-xs text-[var(--text-secondary)]">
+                                {value.seriesLabel}
+                              </span>
+                            )}
                             <span className="block h-3 overflow-hidden rounded-full bg-[var(--surface-muted)]">
                               <span
                                 className="block h-full rounded-full"
                                 style={{
-                                  width: `${width}%`,
-                                  backgroundColor:
-                                    SERIES_COLORS[
-                                      Math.max(colorIndex, 0) %
-                                        SERIES_COLORS.length
-                                    ],
+                                  width: `${Math.min(100, width)}%`,
+                                  backgroundColor: seriesColor(
+                                    value.seriesId,
+                                    colorIndex,
+                                  ),
                                 }}
                               />
+                            </span>
+                            <span className="text-xs font-semibold whitespace-nowrap text-[var(--text-primary)] tabular-nums">
+                              {compactValue(value)}
                             </span>
                           </div>
                         )
@@ -406,77 +501,85 @@ export function ReportChart({
             </p>
           )}
 
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <caption className="sr-only">Exact values for {title}</caption>
-              <thead className="border-b border-[var(--border-soft)]">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-2 py-2 font-semibold text-[var(--text-primary)]"
-                  >
-                    Group
-                  </th>
-                  {series.map((item) => (
+          <DataContainer className="report-chart__data mt-4 border-t border-[var(--border-soft)] pt-2">
+            {compact && (
+              <summary className="min-h-10 cursor-pointer py-2 text-sm font-medium text-[var(--primary)] focus-visible:outline-2">
+                View data
+              </summary>
+            )}
+            <div className="report-chart__table overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">Exact values for {title}</caption>
+                <thead className="border-b border-[var(--border-soft)]">
+                  <tr>
                     <th
-                      key={item.id}
                       scope="col"
                       className="px-2 py-2 font-semibold text-[var(--text-primary)]"
                     >
-                      {item.label}
+                      {groupLabel}
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="report-chart__table-row border-b border-[var(--border-soft)] last:border-0"
-                  >
-                    <th
-                      scope="row"
-                      className="px-2 py-2 font-medium break-words text-[var(--text-primary)]"
-                    >
-                      {row.label}
-                    </th>
-                    {series.map((item) => {
-                      const value = row.values.find(
-                        (candidate) => candidate.seriesId === item.id,
-                      )
-                      const displayed = value
-                        ? formatValue(value)
-                        : 'Not returned for this group'
-
-                      return (
-                        <td
-                          key={item.id}
-                          className="px-2 py-2 break-words text-[var(--text-secondary)]"
-                        >
-                          <span>{displayed}</span>
-                          {value?.value === null && value.unavailableReason && (
-                            <span className="mt-1 block text-xs">
-                              {value.unavailableReason}
-                            </span>
-                          )}
-                          {value && onDrilldown && value.value !== null && (
-                            <button
-                              type="button"
-                              className="ml-2 min-h-10 rounded px-1 font-semibold text-[var(--primary)] underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none print:hidden"
-                              aria-label={`Open ${item.label} source records for ${row.label}`}
-                              onClick={() => onDrilldown(row, value)}
-                            >
-                              View sources
-                            </button>
-                          )}
-                        </td>
-                      )
-                    })}
+                    {series.map((item) => (
+                      <th
+                        key={item.id}
+                        scope="col"
+                        className="px-2 py-2 font-semibold text-[var(--text-primary)]"
+                      >
+                        {item.label}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="report-chart__table-row border-b border-[var(--border-soft)] last:border-0"
+                    >
+                      <th
+                        scope="row"
+                        className="px-2 py-2 font-medium break-words text-[var(--text-primary)]"
+                      >
+                        {row.label}
+                      </th>
+                      {series.map((item) => {
+                        const value = row.values.find(
+                          (candidate) => candidate.seriesId === item.id,
+                        )
+                        const displayed = value
+                          ? formatValue(value)
+                          : 'Not returned for this group'
+
+                        return (
+                          <td
+                            key={item.id}
+                            className="px-2 py-2 break-words text-[var(--text-secondary)]"
+                          >
+                            <span>{displayed}</span>
+                            {value?.value === null &&
+                              value.unavailableReason && (
+                                <span className="mt-1 block text-xs">
+                                  {value.unavailableReason}
+                                </span>
+                              )}
+                            {value && onDrilldown && value.value !== null && (
+                              <button
+                                type="button"
+                                className="ml-2 min-h-10 cursor-pointer rounded-md px-3 font-semibold text-[var(--primary)] underline underline-offset-2 transition-colors hover:bg-[var(--primary)] hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none print:hidden"
+                                aria-label={`Open ${item.label} source records for ${row.label}`}
+                                onClick={() => onDrilldown(row, value)}
+                              >
+                                View sources
+                              </button>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </DataContainer>
         </>
       )}
     </section>

@@ -326,7 +326,7 @@ export function AnalyticsChartView({
                                       measure !== 'distinctAssetCount' && (
                                         <button
                                           type="button"
-                                          className="block min-h-11 w-full text-xs font-semibold underline print:hidden"
+                                          className="block min-h-11 w-full cursor-pointer rounded-md px-2 text-xs font-semibold underline transition-colors hover:bg-[var(--primary)] hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none print:hidden"
                                           onClick={() =>
                                             onMeasureSource(row.values, measure)
                                           }

@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
+using UniPM.Api.Features.Schedules;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -431,6 +433,19 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         var clarificationDetails = new List<string>();
         if (!isInventory)
         {
+            var explicitStatusFilters = PmAnalyticsV3RuleParser.ResolveExplicitStatusFilters(question);
+            if (explicitStatusFilters.Count > 0)
+            {
+                var matchingFilters = (plan.MatchingFilters ?? [])
+                    .Where(filter => explicitStatusFilters.All(explicitFilter => explicitFilter.Field != filter.Field))
+                    .Concat(explicitStatusFilters)
+                    .ToArray();
+                plan = plan with { MatchingFilters = matchingFilters };
+            }
+        }
+
+        if (!isInventory)
+        {
             var categories = PmAnalyticsV3RuleParser.ResolveCategories(question);
             if (PmAnalyticsV3RuleParser.HasAllCategories(question))
             {
@@ -459,6 +474,29 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 fieldsToClarify.Add("Period");
                 clarificationDetails.Add("Confirm the requested scheduled PM-cycle period.");
             }
+        }
+
+        if (PmAnalyticsV3RuleParser.HasExplicitSortIntent(question))
+        {
+            var explicitSort = PmAnalyticsV3RuleParser.ResolveExplicitSort(question, plan.Columns ?? []);
+            if (explicitSort is null)
+            {
+                return Unsupported(
+                    "UnsupportedQuestionOrdering",
+                    "Question-based sorting needs one supported output field and an explicit ascending or descending direction.",
+                    interpreter);
+            }
+
+            if (plan.Top is not null
+                && (plan.Top.Measure != explicitSort.Field || plan.Top.Direction != explicitSort.Direction))
+            {
+                return Unsupported(
+                    "UnsupportedQuestionOrdering",
+                    "V3 does not combine top or bottom selection with a separate output sort.",
+                    interpreter);
+            }
+
+            plan = plan with { OrderBy = [explicitSort] };
         }
 
         if (HasExplicitThresholdMismatch(question, plan))
@@ -579,9 +617,20 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
 
         var expectedMeasure = asksOverdue ? PmAnalyticsV3Catalog.MissedCount : PmAnalyticsV3Catalog.CompletedLateCount;
         var expectedTimeliness = asksOverdue ? "Missed" : "Late";
+        var asksInspectorAssignmentOverdue = asksOverdue
+            && Regex.IsMatch(question, @"\binspector\s+assignment\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout);
+        if (asksInspectorAssignmentOverdue)
+        {
+            expectedMeasure = PmAnalyticsV3Catalog.AssignmentOverdueCount;
+        }
+
         var matchingFilters = plan.MatchingFilters ?? [];
         var matches = matchingFilters.Any(filter => filter.Field == PmAnalyticsV3Catalog.Timeliness
+                && !asksInspectorAssignmentOverdue
                 && filter.Values?.Contains(expectedTimeliness, StringComparer.Ordinal) == true)
+            || asksInspectorAssignmentOverdue && matchingFilters.Any(filter =>
+                filter.Field == PmAnalyticsV3Catalog.AssignmentPeriodStatus
+                && filter.Values?.Contains("Overdue", StringComparer.Ordinal) == true)
             || (plan.Measures ?? []).Contains(expectedMeasure, StringComparer.Ordinal);
         return !matches;
     }
@@ -684,6 +733,20 @@ internal static class PmAnalyticsV3RuleParser
         @"\bor\b",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
+    private const string SupportedCategoryNamePattern =
+        @"(?:fire[\s-]+extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|emergency[\s-]+lights?|water\s+drinking\s+stations?)";
+    private static readonly Regex CategoryNameAtEndRegex = new(
+        $@"\b{SupportedCategoryNamePattern}\s*$",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
+    private static readonly Regex CategoryNameAtStartRegex = new(
+        $@"^\s*{SupportedCategoryNamePattern}\b",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
+    private static readonly Regex SeparateMissedAndLateCountsRegex = new(
+        @"\bseparate\s+counts?\s+(?:of|for)\s+(?:missed\s+or\s+completed[ -]late|completed[ -]late\s+or\s+missed)\b",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
     private static readonly Regex UnsupportedAssetCategoryRegex = new(
         @"\b(?:elevators?|lifts?)\s+(?:maintenance|pm|inspection|compliance|records?|assets?|systems?|cycles?)\b|\b(?:maintenance|pm|inspection|compliance|records?|assets?|systems?|cycles?)\s+(?:for|of)\s+(?:elevators?|lifts?)\b",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
@@ -697,7 +760,11 @@ internal static class PmAnalyticsV3RuleParser
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
     private static readonly Regex ExplicitSortIntentRegex = new(
-        @"\b(?:sort(?:ed)?|order(?:ed)?)\b",
+        @"\bsort(?:ed|ing)?\b.{0,100}\bby\b|\border(?:ed|ing)?\s+(?:(?:the\s+)?(?:results?|records?|assets?|rows?|lists?)\s+)?by\b|\bin\s+(?:ascending|descending|alphabetical|chronological)\s+order\b|\b(?:sort(?:ed|ing)?|order(?:ed|ing)?)\s+(?:ascending|descending|alphabetically|chronologically)\b",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
+    private static readonly Regex ExplicitSortRequestRegex = new(
+        @"\bsort(?:ed|ing)?\b.{0,100}?\bby\s+(?<field>[\p{L}\p{N}][\p{L}\p{N}\s-]{0,63}?)\s+(?:in\s+)?(?<direction>ascending|descending)\b(?:\s+order)?[.?!]?\s*$|\border(?:ed|ing)?\s+(?:(?:the\s+)?(?:results?|records?|assets?|rows?|lists?)\s+)?by\s+(?<field>[\p{L}\p{N}][\p{L}\p{N}\s-]{0,63}?)\s+(?:in\s+)?(?<direction>ascending|descending)\b(?:\s+order)?[.?!]?\s*$",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
     private static readonly Regex UnsupportedForecastRegex = new(
@@ -750,7 +817,17 @@ internal static class PmAnalyticsV3RuleParser
                 "Exclusion conditions are not supported. Rephrase the question using the result or records you want included.");
         }
 
-        if (BooleanOrRegex.IsMatch(question))
+        if (HasMultipleExplicitStatusValues(question))
+        {
+            return new PmAnalyticsV3ModelOutput(
+                "NeedsClarification",
+                null,
+                ["Filters"],
+                "MultipleStatusValuesNeedClarification",
+                "State one schedule status and one form status for this report.");
+        }
+
+        if (HasAmbiguousBooleanOr(question))
         {
             return new PmAnalyticsV3ModelOutput(
                 "NeedsClarification",
@@ -760,7 +837,7 @@ internal static class PmAnalyticsV3RuleParser
                 "The report cannot infer whether 'or' means separate results or a combined filter. Ask one question at a time or clarify which result you want.");
         }
 
-        if (ExplicitSortIntentRegex.IsMatch(question))
+        if (HasExplicitSortIntent(question) && !TryGetExplicitSort(question, out _, out _))
         {
             return new PmAnalyticsV3ModelOutput(
                 "Unsupported",
@@ -781,6 +858,158 @@ internal static class PmAnalyticsV3RuleParser
         }
 
         return null;
+    }
+
+    internal static bool HasExplicitSortIntent(string question) => ExplicitSortIntentRegex.IsMatch(question);
+
+    internal static PmAnalyticsV3OrderBy? ResolveExplicitSort(
+        string question,
+        IReadOnlyList<string> outputColumns)
+    {
+        if (!TryGetExplicitSort(question, out var field, out var direction)
+            || !outputColumns.Contains(field, StringComparer.Ordinal))
+        {
+            return null;
+        }
+
+        return new PmAnalyticsV3OrderBy(field, direction);
+    }
+
+    internal static List<PmAnalyticsV3Filter> ResolveExplicitStatusFilters(string question)
+    {
+        var result = new List<PmAnalyticsV3Filter>();
+        AddExplicitStatusFilter(
+            question,
+            "schedule status",
+            PmAnalyticsV3Catalog.ScheduleStatus,
+            ScheduleStatusCatalog.PersistedValues.Where(value => value != ScheduleStatusCatalog.Cancelled),
+            result);
+        AddExplicitStatusFilter(
+            question,
+            "form status",
+            PmAnalyticsV3Catalog.FormStatus,
+            PreventiveMaintenanceFormStatusCatalog.PersistedValues,
+            result);
+        return result;
+    }
+
+    private static bool HasAmbiguousBooleanOr(string question)
+    {
+        var separateCounts = SeparateMissedAndLateCountsRegex.Match(question);
+        return BooleanOrRegex.Matches(question).Cast<Match>().Any(match =>
+            !IsSupportedCategoryUnion(question, match)
+            && !(separateCounts.Success
+                && match.Index >= separateCounts.Index
+                && match.Index < separateCounts.Index + separateCounts.Length));
+    }
+
+    private static bool IsSupportedCategoryUnion(string question, Match match)
+    {
+        var left = question[..match.Index];
+        var right = question[(match.Index + match.Length)..];
+        return CategoryNameAtEndRegex.IsMatch(left) && CategoryNameAtStartRegex.IsMatch(right);
+    }
+
+    private static bool TryGetExplicitSort(
+        string question,
+        out string field,
+        out PmAnalyticsV3SortDirection direction)
+    {
+        field = string.Empty;
+        direction = PmAnalyticsV3SortDirection.Ascending;
+        var match = ExplicitSortRequestRegex.Match(question);
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        var requestedField = Regex.Replace(
+            match.Groups["field"].Value.Trim(),
+            @"^the\s+",
+            string.Empty,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(100));
+        field = ResolveSortField(requestedField) ?? string.Empty;
+        if (field.Length == 0)
+        {
+            return false;
+        }
+
+        direction = match.Groups["direction"].Value.Equals("ascending", StringComparison.OrdinalIgnoreCase)
+            ? PmAnalyticsV3SortDirection.Ascending
+            : PmAnalyticsV3SortDirection.Descending;
+        return true;
+    }
+
+    private static string? ResolveSortField(string value)
+    {
+        var normalized = Regex.Replace(
+            value.Trim(),
+            @"\s+",
+            " ",
+            RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(100)).ToLowerInvariant();
+        return normalized switch
+        {
+            "asset code" => PmAnalyticsV3Catalog.AssetCode,
+            "asset category" or "category" or "categories" => PmAnalyticsV3Catalog.AssetCategory,
+            "department" or "departments" => PmAnalyticsV3Catalog.Department,
+            "building" or "buildings" => PmAnalyticsV3Catalog.Building,
+            "location" or "locations" => PmAnalyticsV3Catalog.Location,
+            "pm cycle" or "pm cycles" or "cycle" or "cycles" => PmAnalyticsV3Catalog.PmCycle,
+            "calendar quarter" or "calendar quarters" or "quarter" or "quarters" => PmAnalyticsV3Catalog.CalendarQuarter,
+            "calendar year" or "calendar years" or "year" or "years" => PmAnalyticsV3Catalog.CalendarYear,
+            "registration status" => PmAnalyticsV3Catalog.RegistrationStatus,
+            "schedule status" => PmAnalyticsV3Catalog.ScheduleStatus,
+            "form status" => PmAnalyticsV3Catalog.FormStatus,
+            "inspector assignment period" or "assignment period" => PmAnalyticsV3Catalog.AssignmentPeriodStatus,
+            "condition" or "inspection condition" => PmAnalyticsV3Catalog.Condition,
+            "timeliness" => PmAnalyticsV3Catalog.Timeliness,
+            "deadline" => PmAnalyticsV3Catalog.Deadline,
+            "completion date" or "completed at" => PmAnalyticsV3Catalog.CompletedAt,
+            _ => ResolveSingleSortMeasure(value)
+        };
+    }
+
+    private static string? ResolveSingleSortMeasure(string value)
+    {
+        var measures = ResolveMeasures(value);
+        return measures.Count == 1 ? measures[0] : null;
+    }
+
+    private static bool HasMultipleExplicitStatusValues(string question) =>
+        HasMultipleExplicitStatusValues(question, "schedule status", ScheduleStatusCatalog.PersistedValues.Where(value => value != ScheduleStatusCatalog.Cancelled))
+        || HasMultipleExplicitStatusValues(question, "form status", PreventiveMaintenanceFormStatusCatalog.PersistedValues);
+
+    private static bool HasMultipleExplicitStatusValues(
+        string question,
+        string label,
+        IEnumerable<string> allowedValues) =>
+        allowedValues.Count(value => Regex.IsMatch(
+            question,
+            $@"\b{Regex.Escape(label)}\s+(?:is\s+)?{Regex.Escape(value)}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(100))) > 1;
+
+    private static void AddExplicitStatusFilter(
+        string question,
+        string label,
+        string field,
+        IEnumerable<string> allowedValues,
+        ICollection<PmAnalyticsV3Filter> output)
+    {
+        var values = allowedValues.Where(value => Regex.IsMatch(
+            question,
+            $@"\b{Regex.Escape(label)}\s+(?:is\s+)?{Regex.Escape(value)}\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromMilliseconds(100))).ToArray();
+        if (values.Length == 1)
+        {
+            output.Add(new PmAnalyticsV3Filter(
+                field,
+                PmAnalyticsV3FilterOperator.Equal,
+                [values[0]]));
+        }
     }
 
     internal static PmAnalyticsV3ModelOutput Parse(string question, DateTimeOffset nowUtc)
@@ -949,6 +1178,32 @@ internal static class PmAnalyticsV3RuleParser
         var orderBy = top is null
             ? Array.Empty<PmAnalyticsV3OrderBy>()
             : new[] { new PmAnalyticsV3OrderBy(top.Measure, top.Direction) };
+        if (HasExplicitSortIntent(question))
+        {
+            var explicitSort = ResolveExplicitSort(question, columns);
+            if (explicitSort is null)
+            {
+                return new PmAnalyticsV3ModelOutput(
+                    "Unsupported",
+                    null,
+                    [],
+                    "UnsupportedQuestionOrdering",
+                    "Question-based sorting needs one supported output field and an explicit ascending or descending direction.");
+            }
+
+            if (top is not null
+                && (top.Measure != explicitSort.Field || top.Direction != explicitSort.Direction))
+            {
+                return new PmAnalyticsV3ModelOutput(
+                    "Unsupported",
+                    null,
+                    [],
+                    "UnsupportedQuestionOrdering",
+                    "V3 does not combine top or bottom selection with a separate output sort.");
+            }
+
+            orderBy = [explicitSort];
+        }
 
         var plan = new PmAnalyticsV3ReportPlan(
             3,
@@ -1282,8 +1537,22 @@ internal static class PmAnalyticsV3RuleParser
     {
         var matches = new List<string>();
         AddIf(question, "distinct assets", PmAnalyticsV3Catalog.DistinctAssetCount, matches);
-        AddIf(question, "scheduled", PmAnalyticsV3Catalog.ScheduledCount, matches);
-        AddIf(question, "completed late", PmAnalyticsV3Catalog.CompletedLateCount, matches);
+        if (!Regex.IsMatch(
+                question,
+                @"\bscheduled\s+pm[- ]?cycles?\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100)))
+        {
+            AddIf(question, "scheduled", PmAnalyticsV3Catalog.ScheduledCount, matches);
+        }
+        if (Regex.IsMatch(
+                question,
+                @"\bcompleted[ -]late\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100)))
+        {
+            matches.Add(PmAnalyticsV3Catalog.CompletedLateCount);
+        }
         AddIf(question, "late inspections", PmAnalyticsV3Catalog.CompletedLateCount, matches);
         AddIf(question, "late inspection", PmAnalyticsV3Catalog.CompletedLateCount, matches);
         AddIf(question, "late findings", PmAnalyticsV3Catalog.CompletedLateCount, matches);
@@ -1301,10 +1570,37 @@ internal static class PmAnalyticsV3RuleParser
         AddIf(question, "non operational", PmAnalyticsV3Catalog.NonOperationalCount, matches);
         AddIf(question, "missed", PmAnalyticsV3Catalog.MissedCount, matches);
         AddIf(question, "remaining", PmAnalyticsV3Catalog.RemainingCount, matches);
+        if (Regex.IsMatch(
+                question,
+                @"\boverdue\s+inspector\s+assignment\s+counts?\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100)))
+        {
+            matches.Add(PmAnalyticsV3Catalog.AssignmentOverdueCount);
+        }
+
+        if (Regex.IsMatch(
+                question,
+                @"\bcompleted\s+within\s+(?:the\s+)?inspector\s+assignment\s+period\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100)))
+        {
+            matches.Add(PmAnalyticsV3Catalog.AssignmentCompletedWithinCount);
+        }
+
         AddIf(question, "on-time compliance", PmAnalyticsV3Catalog.OnTimeCompliancePercent, matches);
         AddIf(question, "compliance", PmAnalyticsV3Catalog.OnTimeCompliancePercent, matches);
-        if (!ContainsPhrase(question, "completed late")
-            && !ContainsPhrase(question, "completed on time"))
+        if (!Regex.IsMatch(
+                question,
+                @"\bcompleted[ -]late\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100))
+            && !ContainsPhrase(question, "completed on time")
+            && !Regex.IsMatch(
+                question,
+                @"\bcompleted\s+within\s+(?:the\s+)?inspector\s+assignment\s+period\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100)))
         {
             AddIf(question, "completed", PmAnalyticsV3Catalog.CompletedCount, matches);
         }
@@ -1486,6 +1782,8 @@ internal static class PmAnalyticsV3RuleParser
         {
             result.Add(new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Timeliness, PmAnalyticsV3FilterOperator.Equal, ["Future"]));
         }
+
+        result.AddRange(ResolveExplicitStatusFilters(question));
 
         return result;
     }

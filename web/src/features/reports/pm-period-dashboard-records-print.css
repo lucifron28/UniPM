@@ -1,0 +1,209 @@
+@page pm-dashboard-records {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+.pm-records-print {
+  display: none;
+}
+
+.pm-records-table th,
+.pm-records-table td {
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  html:has(.pm-records-print),
+  body:has(.pm-records-print) {
+    page: pm-dashboard-records;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  body:has(.pm-records-print) #root,
+  body:has(.pm-records-print) .pm-records-page {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body:has(.pm-records-print) .app-shell,
+  body:has(.pm-records-print) .app-shell-body,
+  body:has(.pm-records-print) .app-shell-main,
+  body:has(.pm-records-print) .app-workspace {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body:has(.pm-records-print) .app-shell-main {
+    flex: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body:has(.pm-records-print) .app-sidebar,
+  body:has(.pm-records-print) .app-page-header,
+  body:has(.pm-records-print) .tsqd-parent-container,
+  body:has(.pm-records-print)
+    footer:has([aria-label='Open TanStack Router Devtools']),
+  body:has(.pm-records-print) [aria-label='Close navigation'],
+  body:has(.pm-records-print) .app-workspace > :not(.pm-records-page) {
+    display: none !important;
+  }
+
+  .pm-records-screen {
+    display: none !important;
+  }
+
+  .pm-records-print {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #111 !important;
+    font-size: 8pt;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .pm-records-print,
+  .pm-records-print * {
+    box-sizing: border-box;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  .pm-records-print__header {
+    margin-bottom: 8pt;
+    border-bottom: 1px solid #999;
+    padding-bottom: 6pt;
+  }
+
+  .pm-records-print__eyebrow {
+    margin: 0 0 3pt;
+    font-size: 7pt;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .pm-records-print__header h1 {
+    margin: 0 0 3pt;
+    font-size: 15pt;
+  }
+
+  .pm-records-print__header p,
+  .pm-records-print__summary p {
+    margin: 2pt 0;
+  }
+
+  .pm-records-print__summary {
+    margin-bottom: 7pt;
+  }
+
+  .pm-records-print__summary h2 {
+    margin: 4pt 0 2pt;
+    font-size: 8pt;
+  }
+
+  .pm-records-print__note {
+    color: #444;
+    font-size: 7pt;
+  }
+
+  .pm-records-print__table,
+  .pm-records-print__table [class*='overflow-x-auto'] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .pm-records-print table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 6.8pt;
+  }
+
+  .pm-records-print table * {
+    font-size: 6.8pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .pm-records-print th,
+  .pm-records-print td {
+    min-width: 0 !important;
+    border: 0.5pt solid #aaa;
+    padding: 3pt !important;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+    white-space: normal !important;
+  }
+
+  .pm-records-print td p {
+    margin: 0 !important;
+  }
+
+  .pm-records-print thead {
+    display: table-header-group;
+  }
+
+  .pm-records-print tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pm-records-print th:nth-child(1),
+  .pm-records-print td:nth-child(1) {
+    width: 11%;
+  }
+
+  .pm-records-print th:nth-child(2),
+  .pm-records-print td:nth-child(2) {
+    width: 18%;
+  }
+
+  .pm-records-print th:nth-child(3),
+  .pm-records-print td:nth-child(3) {
+    width: 13%;
+  }
+
+  .pm-records-print th:nth-child(4),
+  .pm-records-print td:nth-child(4) {
+    width: 23%;
+  }
+
+  .pm-records-print th:nth-child(5),
+  .pm-records-print td:nth-child(5) {
+    width: 15%;
+  }
+
+  .pm-records-print th:nth-child(6),
+  .pm-records-print td:nth-child(6) {
+    width: 10%;
+  }
+
+  .pm-records-print th:nth-child(7),
+  .pm-records-print td:nth-child(7) {
+    width: 10%;
+  }
+
+  .pm-records-print col:nth-child(8),
+  .pm-records-print th:nth-child(8),
+  .pm-records-print td:nth-child(8) {
+    display: none !important;
+  }
+}

@@ -39,7 +39,11 @@ public sealed record PmAssignmentPeriodSummary(
     int CompletedWithinPeriod,
     int CompletedLate,
     int OpenWithinPeriod,
-    int OverdueUnfinished);
+    int OverdueUnfinished)
+{
+    public int UnassignedUnfinishedCount { get; init; }
+    public int UnassignedUnavailableCount { get; init; }
+}
 
 public sealed record PmPeriodDashboardBatchResponse(
     string? Department,
@@ -93,6 +97,7 @@ public sealed record PmPeriodDashboardAssetRowResponse(
     public DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
     public DateTimeOffset? FirstInspectorAssignedAt { get; init; }
     public DateTimeOffset? InspectorAssignmentDueAt { get; init; }
+    public Guid? AssignedInspectorUserId { get; init; }
     public string AssignmentPeriodStatus { get; init; } = "Unavailable";
 }
 

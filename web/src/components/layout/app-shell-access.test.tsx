@@ -590,7 +590,7 @@ describe('app shell role access and layout', () => {
       await screen.findByText(/1 pending batch · 2 unfinished schedules/),
     ).toBeVisible()
     expect(
-      screen.getByRole('link', { name: 'View schedules in batch' }),
+      screen.getByRole('button', { name: 'View schedules in batch' }),
     ).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Assign Supervisor' }))
     expect(

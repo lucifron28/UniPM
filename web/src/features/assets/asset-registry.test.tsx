@@ -212,7 +212,7 @@ describe('AssetRegistry feature component', () => {
     server.use(http.get(meUrl, () => HttpResponse.json(gsdUser)))
   })
 
-  it('renders assets table, summary cards, and handles filter draft state', async () => {
+  it('renders asset records and handles filter draft state', async () => {
     server.use(
       ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
@@ -235,11 +235,12 @@ describe('AssetRegistry feature component', () => {
       headingOrder.indexOf('Find assets'),
     )
     expect(headingOrder.indexOf('Find assets')).toBeLessThan(
-      headingOrder.indexOf('Overall asset inventory'),
-    )
-    expect(headingOrder.indexOf('Overall asset inventory')).toBeLessThan(
       headingOrder.indexOf('Asset records'),
     )
+    expect(screen.getByText('2 matching assets')).toBeVisible()
+    expect(
+      screen.queryByText('Overall asset inventory'),
+    ).not.toBeInTheDocument()
     expect(screen.getByLabelText('Search assets')).toBeVisible()
     expect(screen.getByLabelText('Asset category')).toBeVisible()
     expect(screen.getByLabelText('Status')).toBeVisible()
@@ -580,11 +581,6 @@ describe('AssetRegistry feature component', () => {
   it('displays loading skeleton elements while queries are pending', async () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(gsdUser)),
-      http.get(assetRegistrySummaryUrl, async () => {
-        await new Promise((r) => setTimeout(r, 2000))
-        return HttpResponse.json(registrySummaryFor(sampleAssets))
-      }),
-      ...registryHandlers(),
       http.get(assetRegistryUrl, async ({ request }) => {
         await new Promise((r) => setTimeout(r, 2000))
         const params = new URL(request.url).searchParams
@@ -597,6 +593,7 @@ describe('AssetRegistry feature component', () => {
           totalCount: sampleAssets.length,
         })
       }),
+      ...registryHandlers(),
       http.get(categoriesUrl, async () => {
         await new Promise((r) => setTimeout(r, 2000))
         return HttpResponse.json(sampleCategories)
@@ -608,7 +605,7 @@ describe('AssetRegistry feature component', () => {
     )
 
     expect(
-      await screen.findByRole('status', { name: 'Loading summary statistics' }),
+      await screen.findByRole('status', { name: 'Loading assets' }),
     ).toBeInTheDocument()
   })
 
@@ -632,7 +629,8 @@ describe('AssetRegistry feature component', () => {
     expect(
       await screen.findByText('Categories unavailable'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Overall asset inventory')).toBeInTheDocument()
+    expect(await screen.findByText('2 matching assets')).toBeVisible()
+    expect(screen.getAllByText('FE-001').length).toBeGreaterThan(0)
 
     const actor = userEvent.setup()
     await actor.click(screen.getByRole('button', { name: 'Retry categories' }))
@@ -678,11 +676,20 @@ describe('AssetRegistry feature component', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows retry button on summary card failure without displaying false zeros', async () => {
+  it('retries a failed registry request without displaying false empty results', async () => {
+    let registryAttempts = 0
     server.use(
-      http.get(assetRegistrySummaryUrl, () =>
-        HttpResponse.json(null, { status: 500 }),
-      ),
+      http.get(assetRegistryUrl, () => {
+        registryAttempts++
+        return registryAttempts === 1
+          ? HttpResponse.json(null, { status: 500 })
+          : HttpResponse.json({
+              items: sampleAssets,
+              page: 1,
+              pageSize: 25,
+              totalCount: sampleAssets.length,
+            })
+      }),
       ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
@@ -695,11 +702,14 @@ describe('AssetRegistry feature component', () => {
     )
 
     expect(
-      await screen.findByText('Summary statistics are currently unavailable.'),
+      await screen.findByText('Assets could not be loaded. Please try again.'),
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Retry summary' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('0')).not.toBeInTheDocument()
+      screen.queryByText('No assets are registered yet.'),
+    ).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+    expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
+    expect(screen.getByText('2 matching assets')).toBeVisible()
   })
 })
