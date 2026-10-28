@@ -111,6 +111,11 @@ in a new engineering evidence record with the exact tested commit and hashes.
 
 ## Next work
 
+The [preflight review](preflight-review.md) records successful gold-plan
+validation, the bounded wording-overlap scan and remaining scoring decisions.
+Run `dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- validate-paraphrases`
+for structural and gold-plan validation without invoking either interpreter.
+
 The existing V3 evaluation runner is hardwired to the earlier corpus. Do not
 replace its files to run this set. Prepare a separate runner input path or
 bounded adapter, validate the proposed gold plans, complete label review and
