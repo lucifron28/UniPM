@@ -4,6 +4,7 @@
  * UniPM.Api | v1
  * OpenAPI spec version: 1.0.0
  */
+import type { ScheduleAssignmentAttention } from './scheduleAssignmentAttention'
 import type { ScheduleResponse } from './scheduleResponse'
 
 export interface ScheduleAssignmentQueueBatchResponse {
@@ -41,4 +42,5 @@ export interface ScheduleAssignmentQueueBatchResponse {
   supervisorOwnershipIsConsistent: boolean
   buildings: string[]
   representativeSchedule: ScheduleResponse
+  attention?: null | ScheduleAssignmentAttention
 }

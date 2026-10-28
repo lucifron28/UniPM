@@ -10921,6 +10921,16 @@
           },
           "representativeSchedule": {
             "$ref": "#/components/schemas/ScheduleResponse"
+          },
+          "attention": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleAssignmentAttention"
+              }
+            ]
           }
         }
       },
@@ -11001,6 +11011,36 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
+          },
+          "pendingAssignmentBatchCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "urgentAssignmentBatchCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "attentionDate": {
+            "type": "string"
+          },
+          "attentionRole": {
+            "type": "string"
+          },
+          "attentionYear": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "attentionAssetCategory": {
+            "type": ["null", "string"]
+          },
+          "attentionDepartment": {
+            "type": ["null", "string"]
+          },
+          "attentionPmCycle": {
+            "type": ["null", "string"]
           }
         }
       },
@@ -11752,6 +11792,25 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "ScheduleAssignmentAttention": {
+        "required": ["state", "priority", "daysUntilMonthEnd"],
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "priority": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "daysUntilMonthEnd": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
           }
         }
       }

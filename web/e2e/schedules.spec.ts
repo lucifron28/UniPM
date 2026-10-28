@@ -983,6 +983,14 @@ test.describe('Schedule workflows', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           totalScheduleCount: 1,
+          summary: {
+            notStartedBatchCount: 1,
+            inProgressBatchCount: 0,
+            ongoingScheduleCount: 0,
+            overdueScheduleCount: 0,
+            pendingAssignmentBatchCount: 1,
+            urgentAssignmentBatchCount: 0,
+          },
           batches: [
             {
               batchKey: 'GSD|fire-extinguisher|2026-08',
@@ -1001,7 +1009,12 @@ test.describe('Schedule workflows', () => {
               inspectorUserId: null,
               inspectorDisplayName: null,
               assignmentLocked: false,
-              supervisorOwnershipIsConsistent: true,
+              supervisorOwnershipIsConsistent: false,
+              attention: {
+                state: 'Needed',
+                priority: 0,
+                daysUntilMonthEnd: 15,
+              },
               buildings: ['Main Building'],
               representativeSchedule: schedule,
             },

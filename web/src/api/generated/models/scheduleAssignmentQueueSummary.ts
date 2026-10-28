@@ -14,4 +14,18 @@ export interface ScheduleAssignmentQueueSummary {
   ongoingScheduleCount: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   overdueScheduleCount: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  pendingAssignmentBatchCount?: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  urgentAssignmentBatchCount?: number | string
+  attentionDate?: string
+  attentionRole?: string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  attentionYear?: number | string
+  /** @nullable */
+  attentionAssetCategory?: string | null
+  /** @nullable */
+  attentionDepartment?: string | null
+  /** @nullable */
+  attentionPmCycle?: string | null
 }

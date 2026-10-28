@@ -129,6 +129,15 @@ const scheduleAssignmentQueueBatchSchema = z
     inspectorState: scheduleAssignmentStateSchema,
     inspectorUserId: z.string().uuid().nullable(),
     inspectorDisplayName: z.string().nullable(),
+    attention: z
+      .object({
+        state: z.enum(['Pending', 'Needed', 'Soon', 'Urgent', 'MonthEnded']),
+        priority: z.number().int().min(0).max(2),
+        daysUntilMonthEnd: z.number().int(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
     assignmentLocked: z.boolean(),
     supervisorOwnershipIsConsistent: z.boolean(),
     buildings: z.array(z.string().trim().min(1).max(256)),
@@ -155,6 +164,14 @@ const scheduleAssignmentQueueSchema = z
         inProgressBatchCount: z.number().int().nonnegative(),
         ongoingScheduleCount: z.number().int().nonnegative(),
         overdueScheduleCount: z.number().int().nonnegative(),
+        pendingAssignmentBatchCount: z.number().int().nonnegative().optional(),
+        urgentAssignmentBatchCount: z.number().int().nonnegative().optional(),
+        attentionDate: z.string().optional(),
+        attentionRole: z.string().optional(),
+        attentionYear: z.number().int().optional(),
+        attentionAssetCategory: z.string().nullable().optional(),
+        attentionDepartment: z.string().nullable().optional(),
+        attentionPmCycle: z.string().nullable().optional(),
       })
       .strict()
       .optional(),
@@ -172,6 +189,14 @@ const scheduleAssignmentQueueSchema = z
       inProgressBatchCount: 0,
       ongoingScheduleCount: 0,
       overdueScheduleCount: 0,
+      pendingAssignmentBatchCount: undefined,
+      urgentAssignmentBatchCount: undefined,
+      attentionDate: undefined,
+      attentionRole: undefined,
+      attentionYear: undefined,
+      attentionAssetCategory: undefined,
+      attentionDepartment: undefined,
+      attentionPmCycle: undefined,
     },
     buildingOptions: queue.buildingOptions ?? [],
   }))

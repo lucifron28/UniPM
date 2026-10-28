@@ -73,6 +73,7 @@ export function ScheduleAssignmentQueue({
     ScheduleBatch[] | null
   >(null)
   const [assignmentNotice, setAssignmentNotice] = useState('')
+  const [noticeScope, setNoticeScope] = useState('')
   const assignmentScopeKey = [
     role,
     selectedYear,
@@ -95,8 +96,18 @@ export function ScheduleAssignmentQueue({
     ...(search.department ? { department: search.department } : {}),
     ...(search.pmCycle ? { pmCycle: search.pmCycle } : {}),
   })
+  const attentionUnavailable = Boolean(
+    scheduleBatches.data &&
+    (scheduleBatches.data.summary.pendingAssignmentBatchCount === undefined ||
+      scheduleBatches.data.summary.urgentAssignmentBatchCount === undefined ||
+      scheduleBatches.data.batches.some(
+        (batch) => batch.attention === undefined,
+      )),
+  )
   const assignmentsUnavailable =
-    scheduleBatches.isPlaceholderData || scheduleBatches.isFetching
+    scheduleBatches.isPlaceholderData ||
+    scheduleBatches.isFetching ||
+    attentionUnavailable
   const assignmentRefreshMessage = scheduleBatches.isPlaceholderData
     ? 'Filters changed. Previous batch results are shown while the new results load; assignment is temporarily unavailable.'
     : 'Schedule batches are refreshing; assignment is temporarily unavailable.'
@@ -143,25 +154,7 @@ export function ScheduleAssignmentQueue({
       representative: batch.representativeSchedule,
     }),
   )
-  const eligibleBatches = batches
-    .filter((batch) => !batch.assignmentLocked)
-    .filter((batch) => batch.unfinishedScheduleCount > 0)
-    .filter((batch) =>
-      role === 'GSD'
-        ? batch.supervisorState === 'Unassigned' &&
-          batch.inspectorState === 'Unassigned'
-        : batch.supervisorState === 'Assigned' &&
-          batch.supervisorOwnershipIsConsistent &&
-          batch.supervisorUserId === currentUser.data?.id &&
-          batch.inspectorState === 'Unassigned',
-    )
-    .sort((left, right) => {
-      return (
-        left.pmCycle.localeCompare(right.pmCycle) ||
-        left.department.localeCompare(right.department) ||
-        left.assetCategory.localeCompare(right.assetCategory)
-      )
-    })
+  const eligibleBatches = batches.filter((batch) => batch.attention != null)
   const buildingNames = [
     ...new Set(eligibleBatches.flatMap((batch) => batch.buildings)),
   ].sort((left, right) => left.localeCompare(right))
@@ -251,6 +244,7 @@ export function ScheduleAssignmentQueue({
     })
     setAssignmentDialogOpen(false)
     setAssignmentDialogBatches(null)
+    setNoticeScope(assignmentScopeKey)
     setAssignmentNotice(
       result.failedBatchIds.length === 0
         ? `${role === 'GSD' ? 'Supervisor' : 'Inspector'} assigned to ${result.assignedBatchIds.length} ${result.assignedBatchIds.length === 1 ? 'batch' : 'batches'} (${result.assignedScheduleCount} schedules).`
@@ -384,7 +378,7 @@ export function ScheduleAssignmentQueue({
         </div>
       </Card>
 
-      {assignmentNotice && (
+      {assignmentNotice && noticeScope === assignmentScopeKey && (
         <Card role="status" className="p-3 text-sm shadow-none">
           {assignmentNotice}
         </Card>
@@ -412,7 +406,7 @@ export function ScheduleAssignmentQueue({
             ? 'Loading batches ready for Supervisor assignment…'
             : 'Loading batches ready for Inspector assignment…'}
         </Card>
-      ) : scheduleBatches.isError ? (
+      ) : scheduleBatches.isError || attentionUnavailable ? (
         <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
           <p className="text-sm font-semibold text-[var(--error)]">
             Schedule batches could not be loaded.
@@ -540,8 +534,18 @@ export function ScheduleAssignmentQueue({
                           {batch.department} ·{' '}
                           {formatAssetCategory(batch.assetCategory)}
                         </h2>
-                        {role === 'Supervisor' && (
-                          <Badge variant="warning">Needs Inspector</Badge>
+                        {batch.attention && (
+                          <Badge
+                            variant={
+                              batch.attention.priority === 2
+                                ? 'danger'
+                                : batch.attention.priority === 1
+                                  ? 'warning'
+                                  : 'neutral'
+                            }
+                          >
+                            {assignmentAttentionLabel(batch.attention, role)}
+                          </Badge>
                         )}
                       </div>
                       <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -917,4 +921,26 @@ function ScheduleBatchAssignmentDialog({
       </form>
     </dialog>
   )
+}
+
+function assignmentAttentionLabel(
+  attention: NonNullable<ScheduleAssignmentQueueBatch['attention']>,
+  role: 'GSD' | 'Supervisor',
+) {
+  const needed = role === 'GSD' ? 'Supervisor needed' : 'Inspector needed'
+  if (attention.state === 'MonthEnded')
+    return `${needed} · Scheduled month ended · Assignment pending`
+  if (attention.state === 'Pending')
+    return `${needed} · Assignment pending · ${attention.daysUntilMonthEnd} days until month-end`
+  const timing =
+    attention.daysUntilMonthEnd === 0
+      ? 'Month ends today'
+      : `${attention.daysUntilMonthEnd} ${attention.daysUntilMonthEnd === 1 ? 'day' : 'days'} until month-end`
+  const urgency =
+    attention.state === 'Urgent'
+      ? 'Assignment urgent'
+      : attention.state === 'Soon'
+        ? 'Assign soon'
+        : 'Assignment pending'
+  return `${needed} · ${urgency} · ${timing}`
 }
