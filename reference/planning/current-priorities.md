@@ -1,5 +1,15 @@
 # Current Priorities - PMIS Validation Baseline
 
+## Recorded follow-up, October 28, 2026
+
+[Dashboard assignment attention](dashboard-assignment-attention-plan.md) is a
+written implementation plan for GSD and Supervisor warning banners, batch
+urgency badges and scoped assignment navigation. The proposed month-end
+warnings remain separate from the Inspector's existing 30-calendar-day period.
+Implementation and CI verification are complete on `dd5c017`; see
+[TEST-178](../evidence/test-runs/TEST-178-assignment-attention.md). Native SQL
+Server and physical-device verification remain outside these checks.
+
 ## Recorded follow-ups, October 26, 2026
 
 [Dashboard/NLA charts and the 30-calendar-day assignment period](chart-and-assignment-followups-2026-10-26.md)
