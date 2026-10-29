@@ -18,6 +18,48 @@ public static class InspectionsEndpoints
     {
         var group = endpoints.MapGroup("/inspections").WithTags("Inspections");
 
+        group.MapGet("/attention", async (
+            string? stage,
+            int? page,
+            ClaimsPrincipal principal,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            if (stage is not null && stage != "acknowledgement" && stage != "referral" && stage != "referred")
+                return ApiErrors.Validation(new Dictionary<string, string[]> { ["stage"] = ["Unknown attention stage."] });
+            var number = page ?? 1;
+            if (number < 1 || number > 100000)
+                return ApiErrors.Validation(new Dictionary<string, string[]> { ["page"] = ["Page must be between 1 and 100000."] });
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var forms = context.PreventiveMaintenanceForms.WhereReadableTo(principal);
+            var query = context.InspectionRecords.AsNoTracking()
+                .WhereReadableTo(principal, forms)
+                .Where(i => !i.IsOperational && i.PreventiveMaintenanceForm != null);
+            var awaitingAcknowledgement = await query.CountAsync(i => i.PreventiveMaintenanceForm!.Status != "Acknowledged", cancellationToken);
+            var awaitingReferral = await query.CountAsync(i => i.PreventiveMaintenanceForm!.Status == "Acknowledged" && i.WmsReferral == null, cancellationToken);
+            var referred = await query.CountAsync(i => i.WmsReferral != null, cancellationToken);
+            query = stage == "acknowledgement"
+                ? query.Where(i => i.PreventiveMaintenanceForm!.Status != "Acknowledged")
+                : stage == "referred" ? query.Where(i => i.WmsReferral != null)
+                : query.Where(i => i.PreventiveMaintenanceForm!.Status == "Acknowledged" && i.WmsReferral == null);
+            var total = await query.CountAsync(cancellationToken);
+            var items = await query.OrderBy(i => i.DateInspected).ThenBy(i => i.Id)
+                .Skip((number - 1) * 20).Take(20)
+                .Select(i => new InspectionAttentionRow(i.Id, i.PreventiveMaintenanceFormId!.Value,
+                    i.Asset == null ? "Not recorded" : i.Asset.AssetCode,
+                    i.Asset == null ? null : i.Asset.Department,
+                    i.Asset == null ? null : i.Asset.Location,
+                    i.DateInspected, i.Remarks, i.PhotoEvidence != null,
+                    i.PreventiveMaintenanceForm!.Status,
+                    i.WmsReferral == null ? null : i.WmsReferral.ExternalPmNumber))
+                .ToListAsync(cancellationToken);
+            return Results.Ok(new InspectionAttentionResponse(awaitingAcknowledgement, awaitingReferral, referred, total, number, items));
+        })
+        .RequireAuthorization(AuthPolicyCatalog.CanManageWmsReferral)
+        .WithName("GetInspectionAttention")
+        .WithSummary("Lists scoped non-operational findings across all PM periods")
+        .Produces<InspectionAttentionResponse>();
+
         group.MapGet("/history/{assetId}", async (
             Guid assetId,
             ClaimsPrincipal principal,
@@ -54,11 +96,14 @@ public static class InspectionsEndpoints
 
         group.MapGet("/{id}/wms-referral", async (
             Guid id,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms.WhereReadableTo(principal);
             var inspection = await context.InspectionRecords
+                .WhereReadableTo(principal, readableForms)
                 .AsNoTracking()
                 .Include(candidate => candidate.PreventiveMaintenanceForm)
                 .Include(candidate => candidate.WmsReferral)
@@ -116,7 +161,9 @@ public static class InspectionsEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms.WhereReadableTo(principal);
             var inspection = await context.InspectionRecords
+                .WhereReadableTo(principal, readableForms)
                 .Include(candidate => candidate.PreventiveMaintenanceForm)
                 .Include(candidate => candidate.WmsReferral)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
@@ -1176,3 +1223,9 @@ public sealed record InspectionHistoryResponse(
     bool? WaterReplaceCarbonFilter = null,
     bool? WaterReplaceSedimentFilter = null,
     bool? WaterCheckUvLight = null);
+
+public sealed record InspectionAttentionRow(Guid Id, Guid FormId, string AssetCode, string? Department,
+    string? Location, DateTimeOffset DateInspected, string? Remarks, bool HasPhotoEvidence,
+    string FormStatus, string? ExternalPmNumber);
+public sealed record InspectionAttentionResponse(int AwaitingAcknowledgement, int AwaitingReferral,
+    int Referred, int TotalCount, int Page, List<InspectionAttentionRow> Items);

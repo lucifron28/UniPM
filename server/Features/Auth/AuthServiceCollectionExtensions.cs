@@ -135,10 +135,10 @@ internal static class AuthServiceCollectionExtensions
                 });
             options.AddPolicy(
                 AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor));
             options.AddPolicy(
                 AuthPolicyCatalog.CanManageWmsReferral,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor));
         });
 
         return services;

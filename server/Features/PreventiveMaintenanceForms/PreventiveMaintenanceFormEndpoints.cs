@@ -650,12 +650,14 @@ public static class PreventiveMaintenanceFormEndpoints
 
         group.MapGet("/{id}/corrective-handoff", async (
             Guid id,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var form = await context.PreventiveMaintenanceForms
                 .AsNoTracking()
+                .WhereReadableTo(principal)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
             if (form is null)
             {
