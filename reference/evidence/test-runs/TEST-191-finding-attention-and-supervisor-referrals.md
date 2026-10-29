@@ -57,6 +57,19 @@ and `attention-complete-final.log`. The reproducible local browser probe is
 `artifacts/attention-qa.mjs`, with fixture modules derived from committed browser
 fixtures. No live GSD record or provider call was used for this feature check.
 
+## CI selector follow-up
+
+Head `6988066670d093963ed1195697ea49c0abe60a5a` passed backend CI.
+Web CI passed its unit, coverage, contract and build checks, then reported
+62 browser scenarios passed, two skipped and one failed. The inspection-detail
+check selected `Recommendation` by substring, matching both the enclosing
+section heading and the field heading. It now selects the exact heading role
+and name. The same single affected scenario passed locally without changing
+its visibility or record-content assertions. The source correction was tested
+as an uncommitted change based on that head. Output is retained in
+`artifacts/attention-selector-verification.log`; the original failing CI output
+is retained in `artifacts/attention-ci-failure.log`.
+
 ## Limits
 
 The browser API responses are mocked. Native SQL Server translation, deployed
