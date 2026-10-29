@@ -13,6 +13,8 @@ record's evidence level and tested/source commit.
 
 - [TEST-183: Mobile countdown ordering correction](test-runs/TEST-183-mobile-countdown-ordering-fix.md): restored urgency-first ordering, retained countdown, fixed Dart formatting; all nine existing home-screen tests passed without assertion changes.
 
+- [TEST-185: Asset modal and schedule navigation](test-runs/TEST-185-asset-modal-schedule-navigation.md): 25 focused workflow tests passed after one correction; desktop inspection confirmed a fixed tab layout and History/Tracking return navigation with mocked API responses.
+
 - [TEST-182: Instrumented NLA repeat](test-runs/TEST-182-instrumented-nla-development-evaluation.md): 60 requests, 28 real provider calls, complete usage/cache measurements, estimated USD 0.003819264; zero provider failures, one backend InvalidPlan rejection. Raw/final proposals and backend effects preserved.
 
 - [TEST-181: Unified 30-question NLA evaluation](test-runs/TEST-181-unified-nla-development-evaluation.md): 60 paired requests; full semantic case agreement parser 19/30, DeepSeek 22/30. Frozen assistant-authored complete expectations; development evidence, not held-out accuracy.
