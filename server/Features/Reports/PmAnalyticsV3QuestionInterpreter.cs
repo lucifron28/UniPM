@@ -100,6 +100,13 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 SafetyRulesInterpreter);
         }
 
+        // Reject explicit unsupported operations before subject inference or provider dispatch.
+        var explicitConstraint = PmAnalyticsV3RuleParser.CheckExplicitQuestionConstraints(sanitized);
+        if (explicitConstraint?.Status == "Unsupported")
+        {
+            return Unsupported(explicitConstraint.Code ?? "RequestNotSupported", explicitConstraint.Detail);
+        }
+
         var options = _options.CurrentValue;
         var deepSeekAvailable = options.V3DeepSeekEnabled
             && (_environment.IsDevelopment() || options.V3DeepSeekProductionEnabled);
@@ -302,7 +309,17 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 return Unsupported(candidate.Code, candidate.Detail, interpreter);
             }
 
-            throw InvalidModelOutput("InvalidPlan", planErrors.Keys);
+            var clarificationFields = planErrors.Keys.ToArray();
+            if (useDeepSeek && clarificationFields.Length > 0
+                && clarificationFields.All(field => PmAnalyticsV3Catalog.ClarificationFields.Contains(field, StringComparer.Ordinal)))
+            {
+                return new PmAnalyticsV3InterpretationResponse(
+                    "NeedsClarification", null, clarificationFields, "InvalidPlanNeedsClarification",
+                    "The proposed report could not be validated. Clarify the requested report fields or rephrase the question before trying again.",
+                    interpreter);
+            }
+
+            throw InvalidModelOutput("InvalidPlan", clarificationFields);
         }
 
         var resolution = await _queryService.NormalizeAndResolveAsync(candidate.Plan, cancellationToken);
@@ -606,6 +623,7 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         PmAnalyticsV3ReportPlan plan,
         out string clarificationField)
     {
+        question = PmAnalyticsV3RuleParser.NormalizeInclusiveCompletionWording(question);
         var asksOverdue = Regex.IsMatch(question, @"\b(?:overdue|missed)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout)
             || Regex.IsMatch(question, @"\b(?:incomplete|unfinished|not completed|not finished)\b.{0,40}\b(?:past|after|beyond)\s+(?:their\s+|the\s+)?(?:deadline|due date)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout);
         var asksLate = !asksOverdue
@@ -799,6 +817,14 @@ internal static class PmAnalyticsV3RuleParser
 
     internal static PmAnalyticsV3ModelOutput? CheckExplicitQuestionConstraints(string question)
     {
+        // Unsupported operations take precedence over clarification of report details.
+        if (UnsupportedForecastRegex.IsMatch(question))
+        {
+            return new PmAnalyticsV3ModelOutput(
+                "Unsupported", null, [], "ForecastingNotSupported",
+                "V3 reports stored schedules and recorded outcomes; it does not forecast future maintenance activity.");
+        }
+
         if (UnsupportedAssetCategoryRegex.IsMatch(question))
         {
             return new PmAnalyticsV3ModelOutput(
@@ -849,16 +875,6 @@ internal static class PmAnalyticsV3RuleParser
                 "Question-based sorting is not supported yet. Ask for the results grouped by a supported field, or remove the requested ordering.");
         }
 
-        if (UnsupportedForecastRegex.IsMatch(question))
-        {
-            return new PmAnalyticsV3ModelOutput(
-                "Unsupported",
-                null,
-                [],
-                "ForecastingNotSupported",
-                "V3 reports stored schedules and recorded outcomes; it does not forecast future maintenance activity.");
-        }
-
         return null;
     }
 
@@ -900,9 +916,27 @@ internal static class PmAnalyticsV3RuleParser
         var separateCounts = SeparateMissedAndLateCountsRegex.Match(question);
         return BooleanOrRegex.Matches(question).Cast<Match>().Any(match =>
             !IsSupportedCategoryUnion(question, match)
+            && !IsInclusiveComparisonOr(question, match)
             && !(separateCounts.Success
                 && match.Index >= separateCounts.Index
                 && match.Index < separateCounts.Index + separateCounts.Length));
+    }
+
+    private const string InclusiveCompletionPattern = @"\bwhether\s+(?:timely|on[ -]time)\s+or\s+late\b";
+
+    internal static string NormalizeInclusiveCompletionWording(string question) => Regex.Replace(
+        question, InclusiveCompletionPattern, "completed",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
+
+    private static bool IsInclusiveComparisonOr(string question, Match orMatch)
+    {
+        // These phrases express one inclusive comparison, not a union of filters.
+        const string pattern = InclusiveCompletionPattern
+            + @"|\b\d{1,3}(?:\.\d+)?\s*(?:%|percent(?:age)?)?\s+or\s+(?:higher|lower|greater|less)\b";
+        return Regex.Matches(question, pattern,
+                RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100))
+            .Cast<Match>().Any(phrase => orMatch.Index >= phrase.Index
+                && orMatch.Index < phrase.Index + phrase.Length);
     }
 
     private static bool IsSupportedCategoryUnion(string question, Match match)
@@ -1882,7 +1916,15 @@ internal static class PmAnalyticsV3QuestionParsing
             .Distinct()
             .ToArray();
 
-    internal static MatchCollection FindThresholds(string question) => PmAnalyticsV3QuestionInterpreter.ThresholdRegex.Matches(question);
+    internal static MatchCollection FindThresholds(string question)
+    {
+        // Keep the inclusive numeric operator available to both parsing and validation.
+        var normalized = Regex.Replace(question,
+            @"\b(?<value>\d{1,3}(?:\.\d+)?)\s*(?:%|percent(?:age)?)?\s+or\s+(?<direction>higher|lower|greater|less)\b",
+            match => $"{(match.Groups["direction"].Value.ToLowerInvariant() is "higher" or "greater" ? "at least" : "at most")} {match.Groups["value"].Value}%",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
+        return PmAnalyticsV3QuestionInterpreter.ThresholdRegex.Matches(normalized);
+    }
 
     internal static Match FindTop(string question) => PmAnalyticsV3QuestionInterpreter.TopRegex.Match(question);
 
