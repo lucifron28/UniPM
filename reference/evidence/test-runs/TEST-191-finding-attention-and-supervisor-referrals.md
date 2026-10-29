@@ -3,7 +3,7 @@ id: TEST-191
 type: test-run
 title: Non-operational finding attention and Supervisor referrals
 status: executed
-recordedAtUtc: 2026-10-29T14:00:00Z
+recordedAtUtc: 2026-10-29T13:32:36Z
 testedCommit: d970d527ed35b91ebc9fe3e84c7c1a21811bb6d0
 sourceBranch: feature/nonoperational-attention
 evidenceLevel: locally-executed
@@ -63,3 +63,4 @@ The browser API responses are mocked. Native SQL Server translation, deployed
 role behavior, physical phones and real photo storage were not exercised for
 this feature. Historical scores and evidence records are unchanged. This record
 does not claim deployment or institutional acceptance.
+
