@@ -1,0 +1,31 @@
+{
+  "sourceUrl": "https://api-docs.deepseek.com/quick_start/pricing/",
+  "retrievedUtc": "2026-10-28T17:23:24.778094+00:00",
+  "htmlSha256": "b856a6e93fa4793ecc8f3fd03a01bb7d8f7572f78a4739da8ce6dbdb09328d66",
+  "currency": "USD",
+  "units": "per 1000000 tokens",
+  "configuredAlias": "deepseek-flash",
+  "offPeak": {
+    "cacheHit": "0.003",
+    "cacheMiss": "0.15",
+    "output": "0.60"
+  },
+  "peak": {
+    "cacheHit": "0.006",
+    "cacheMiss": "0.30",
+    "output": "1.20"
+  },
+  "peakUtcIntervals": [
+    [
+      1,
+      4
+    ],
+    [
+      6,
+      10
+    ]
+  ],
+  "peakWeekdays": "Monday through Friday, excluding Chinese public holidays",
+  "selection": "Use observed dispatch UTC. Outside peak intervals the rate is unambiguously off-peak; within weekday peak intervals holiday status is unavailable unless independently verified, so report a range rather than assume.",
+  "invoiceCostAvailable": false
+}

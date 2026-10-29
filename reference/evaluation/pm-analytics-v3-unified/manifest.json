@@ -1,0 +1,13 @@
+{
+  "evidenceRecord": "TEST-181",
+  "count": 30,
+  "statusCounts": {
+    "Valid": 16,
+    "NeedsClarification": 9,
+    "Unsupported": 5
+  },
+  "corpusSha256": "5e75f4360e564792f0a64eb89b79137e738df127df954a2f74bbb14c634c2b2d",
+  "originalCorpusSha256": "dd313076a40ea5dd8eddfef610ff8db37ca6c5ba1934a286c6023a1586ca0e25",
+  "labelProvenance": "Assistant-authored expansion using question meaning, public contract and previously exposed development evidence. User authorized execution; no independent researcher/GSD label review.",
+  "historicalLabelsUnchanged": true
+}
