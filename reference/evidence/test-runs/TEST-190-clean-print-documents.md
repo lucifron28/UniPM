@@ -107,6 +107,14 @@ The command output is retained in `artifacts/clean-print-ci-correction.log`.
 The initial failing CI output is retained separately in
 `artifacts/clean-print-ci-failure.log`.
 
+All 15 PDF scenarios also passed at head
+`6922e26bf2ea8ade66df70c0e54e2cd22f7473e0`; their output is retained in
+`artifacts/clean-print-qa-corrected.log`. CI then rejected direct property
+assignment on the DOM host stored by `useState` under the React immutability
+lint rule. The host now sets its class through the DOM `setAttribute` API,
+as it already did for its accessible label. A focused ESLint run on
+`print-document.tsx` passed. No rule or assertion was disabled.
+
 ## Limits
 
 These checks verify Chromium rendering with mocked API responses. They do

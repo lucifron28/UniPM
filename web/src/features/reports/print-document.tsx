@@ -17,7 +17,7 @@ export function PrintDocument({
   )
   useLayoutEffect(() => {
     if (!printing) return
-    host.className = `print-document ${className}`
+    host.setAttribute('class', `print-document ${className}`)
     host.setAttribute('aria-label', label)
     document.body.prepend(host)
     return () => host.remove()
