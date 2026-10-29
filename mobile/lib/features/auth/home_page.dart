@@ -345,6 +345,15 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
     tasks.sort((left, right) {
+      final leftDueDate = getPmCycleDueDate(left.pmCycle);
+      final rightDueDate = getPmCycleDueDate(right.pmCycle);
+      if (leftDueDate == null && rightDueDate != null) return 1;
+      if (leftDueDate != null && rightDueDate == null) return -1;
+      if (leftDueDate != null && rightDueDate != null) {
+        final dueDateOrder = leftDueDate.compareTo(rightDueDate);
+        if (dueDateOrder != 0) return dueDateOrder;
+      }
+
       final statusOrder = _statusOrder(
         left.status,
       ).compareTo(_statusOrder(right.status));
@@ -391,6 +400,7 @@ class _HomePageState extends State<HomePage> {
         completedCount: draft.inspections.length,
         totalCount: total,
         building: draft.building,
+        daysUntilDue: getPmCycleDaysUntilDue(cycle),
         actionLabel: 'Continue PM batch',
         onAction: widget.onOpenForm == null ? null : openDraft,
         onTap: widget.onOpenForm == null ? null : openDraft,
