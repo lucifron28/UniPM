@@ -815,6 +815,14 @@ internal static class PmAnalyticsV3RuleParser
 
     internal static PmAnalyticsV3ModelOutput? CheckExplicitQuestionConstraints(string question)
     {
+        // Unsupported operations take precedence over clarification of report details.
+        if (UnsupportedForecastRegex.IsMatch(question))
+        {
+            return new PmAnalyticsV3ModelOutput(
+                "Unsupported", null, [], "ForecastingNotSupported",
+                "V3 reports stored schedules and recorded outcomes; it does not forecast future maintenance activity.");
+        }
+
         if (UnsupportedAssetCategoryRegex.IsMatch(question))
         {
             return new PmAnalyticsV3ModelOutput(
@@ -863,16 +871,6 @@ internal static class PmAnalyticsV3RuleParser
                 [],
                 "UnsupportedQuestionOrdering",
                 "Question-based sorting is not supported yet. Ask for the results grouped by a supported field, or remove the requested ordering.");
-        }
-
-        if (UnsupportedForecastRegex.IsMatch(question))
-        {
-            return new PmAnalyticsV3ModelOutput(
-                "Unsupported",
-                null,
-                [],
-                "ForecastingNotSupported",
-                "V3 reports stored schedules and recorded outcomes; it does not forecast future maintenance activity.");
         }
 
         return null;

@@ -26,6 +26,7 @@ public sealed class PmAnalyticsV3GuardCorrectionTests
     [InlineData("Update fire extinguisher assets in 2024.")]
     [InlineData("Predict which fire extinguishers will fail in 2027.")]
     [InlineData("Forecast late fire-alarm inspections for 2027.")]
+    [InlineData("Predict late or missed fire-alarm inspections for 2027.")]
     public async Task Unsupported_intent_precedes_subject_clarification_and_provider_calls(string question)
     {
         foreach (var mode in new[] { PmAnalyticsV3Interpreter.DeterministicParser, PmAnalyticsV3Interpreter.DeepSeek })
