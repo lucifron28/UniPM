@@ -562,6 +562,11 @@ test.describe('PM period dashboard', () => {
       'true',
     )
     await page.emulateMedia({ media: 'print' })
+    await expect(page.locator('.pm-summary-print-heading')).toBeVisible()
+    await expect(page.locator('.pm-dashboard-report')).toHaveCSS(
+      'visibility',
+      'visible',
+    )
     await expect(
       page.getByRole('button', { name: 'Print summary' }),
     ).toBeHidden()
