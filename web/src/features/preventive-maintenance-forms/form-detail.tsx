@@ -1019,7 +1019,6 @@ export function FormDetail({
     <DetailBackLink
       context={returnContext}
       fallback={returnFallback}
-      className="inline-flex min-h-10 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
     />
   )
 
