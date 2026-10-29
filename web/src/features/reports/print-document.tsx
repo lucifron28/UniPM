@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import './print-document.css'
 
@@ -11,9 +11,17 @@ export function PrintDocument({
   className?: string
   label: string
 }) {
+  const [host] = useState(() => document.createElement('section'))
   const [printing, setPrinting] = useState(
     () => window.matchMedia?.('print').matches ?? false,
   )
+  useLayoutEffect(() => {
+    if (!printing) return
+    host.className = `print-document ${className}`
+    host.setAttribute('aria-label', label)
+    document.body.prepend(host)
+    return () => host.remove()
+  }, [printing, host, className, label])
   useEffect(() => {
     const media = window.matchMedia?.('print')
     const before = () => flushSync(() => setPrinting(true))
@@ -30,10 +38,5 @@ export function PrintDocument({
     }
   }, [])
   if (!printing) return null
-  return createPortal(
-    <section className={`print-document ${className}`} aria-label={label}>
-      {children}
-    </section>,
-    document.body,
-  )
+  return createPortal(children, host)
 }
