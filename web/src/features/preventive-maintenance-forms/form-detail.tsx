@@ -1,3 +1,4 @@
+import { InspectionPhotoEvidencePanel } from '@/features/inspections/inspection-detail'
 import {
   RecordField as DetailItem,
   RecordHeader,
@@ -346,7 +347,7 @@ function CorrectiveHandoff({
     <section aria-labelledby="corrective-handoff-title" className="space-y-4">
       <div>
         <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-          GSD preparation view
+          Corrective follow-up
         </p>
         <h2
           id="corrective-handoff-title"
@@ -356,8 +357,9 @@ function CorrectiveHandoff({
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           This read model prepares acknowledged findings for later human-led
-          follow-up. GSD can record a supplied WMS PM number as a separate
-          reference; UniPM does not create or manage external WMS or RMRF work.
+          follow-up. GSD or the assigned Supervisor can record a supplied WMS PM
+          number as a separate reference; UniPM does not create or manage
+          external WMS or RMRF work.
         </p>
       </div>
       <Card className="record-panel grid gap-4 shadow-none sm:grid-cols-2 lg:grid-cols-4">
@@ -465,6 +467,10 @@ function InspectionRow({
       <p className="mt-2 text-sm text-[var(--text-secondary)]">
         {excerpt(row.remarks) || 'No finding was recorded.'}
       </p>
+      <InspectionPhotoEvidencePanel
+        inspectionId={row.id}
+        hasPhotoEvidence={row.hasPhotoEvidence === true}
+      />
       <details className="record-metadata mt-3 text-sm">
         <summary className="cursor-pointer font-semibold text-[var(--primary)]">
           Row details
@@ -991,11 +997,12 @@ export function FormDetail({
     currentRoles?.includes('Supervisor') === true && !canAcknowledge
   const readOnlyView = readOnly || isReadOnlySupervisor
   const isGsd = isGsdRole(currentRoles)
+  const canRefer = isGsd || currentRoles?.includes('Supervisor') === true
   const validId = uuidPattern.test(formId)
   const form = usePreventiveMaintenanceForm(formId, canReview && validId)
   const handoff = useCorrectiveMaintenanceHandoff(
     formId,
-    isGsd && form.data?.status === 'Acknowledged',
+    canRefer && form.data?.status === 'Acknowledged',
   )
   const returnFallback: DetailReturnFallback = reviewContext
     ? {
@@ -1178,7 +1185,7 @@ export function FormDetail({
           </p>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
             {isReadOnlySupervisor
-              ? 'This view is read-only. Editing, submission, and acknowledgement controls are unavailable.'
+              ? 'Form editing, submission, and acknowledgement are unavailable. WMS PM numbers can be recorded for eligible acknowledged findings.'
               : 'This view shows the complete submitted PM form without editing or acknowledgement controls.'}
           </p>
         </Card>
@@ -1203,17 +1210,19 @@ export function FormDetail({
           </Card>
         ) : (
           <div className="space-y-3" role="list" aria-label="Inspection rows">
-            {record.inspections.map((row) => (
-              <InspectionRow
-                key={row.id}
-                row={row}
-                showWmsPending={
-                  isGsd &&
-                  record.status !== 'Acknowledged' &&
-                  !row.isOperational
-                }
-              />
-            ))}
+            {[...record.inspections]
+              .sort((a, b) => Number(a.isOperational) - Number(b.isOperational))
+              .map((row) => (
+                <InspectionRow
+                  key={row.id}
+                  row={row}
+                  showWmsPending={
+                    canRefer &&
+                    record.status !== 'Acknowledged' &&
+                    !row.isOperational
+                  }
+                />
+              ))}
           </div>
         )}
       </section>
@@ -1232,7 +1241,7 @@ export function FormDetail({
             onAcknowledged={setAcknowledgement}
           />
         )}
-      {isGsd && record.status === 'Acknowledged' && (
+      {canRefer && record.status === 'Acknowledged' && (
         <CorrectiveHandoff query={handoff} />
       )}
       <RecordMetadata title="Record information">

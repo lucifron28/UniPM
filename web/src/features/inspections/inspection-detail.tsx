@@ -70,7 +70,7 @@ function DetailError({
   )
 }
 
-function InspectionPhotoEvidencePanel({
+export function InspectionPhotoEvidencePanel({
   inspectionId,
   hasPhotoEvidence,
 }: {
