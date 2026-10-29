@@ -1471,7 +1471,12 @@ describe('preventive-maintenance form review', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Acknowledged (Asia/Manila)')).toBeInTheDocument()
     expect(screen.getByText('Jul 29, 2026, 10:00 AM')).toBeInTheDocument()
-    expect(screen.getAllByText('Acknowledged')).toHaveLength(1)
+    expect(screen.getAllByText('Acknowledged')).toHaveLength(2)
+    expect(
+      within(screen.getByRole('list', { name: 'Form lifecycle' })).getByText(
+        'Acknowledged',
+      ),
+    ).toHaveAttribute('aria-current', 'step')
     expect(
       screen.queryByRole('button', { name: 'Acknowledge form' }),
     ).not.toBeInTheDocument()
@@ -1548,7 +1553,7 @@ describe('preventive-maintenance form review', () => {
       expect(
         await screen.findByRole('heading', {
           name: 'FE-TEST-001',
-          level: 2,
+          level: 1,
         }),
       ).toBeInTheDocument()
       expect(

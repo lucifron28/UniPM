@@ -508,7 +508,7 @@ for (const viewport of dashboardViewports) {
 
       await page.getByRole('link', { name: 'View inspection' }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 2 }),
+        page.getByRole('heading', { name: 'FE-001', level: 1 }),
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Back to PM dashboard' }),
@@ -517,7 +517,7 @@ for (const viewport of dashboardViewports) {
 
       await page.getByRole('link', { name: 'FE-001', exact: true }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 2 }),
+        page.getByRole('heading', { name: 'FE-001', level: 1 }),
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Back to inspection' }),
@@ -525,7 +525,7 @@ for (const viewport of dashboardViewports) {
 
       await page.getByRole('link', { name: 'View source' }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 2 }),
+        page.getByRole('heading', { name: 'FE-001', level: 1 }),
       ).toBeVisible()
       await expect(
         page.getByRole('heading', { name: 'Record information' }),
@@ -537,7 +537,7 @@ for (const viewport of dashboardViewports) {
 
       await page.getByRole('link', { name: 'August 2026', exact: true }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 2 }),
+        page.getByRole('heading', { name: 'FE-001', level: 1 }),
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Back to inspection' }),
@@ -561,6 +561,18 @@ for (const viewport of dashboardViewports) {
       await expect(page).toHaveURL(/pmCycle=2026-08/)
       await expect(page).toHaveURL(/department=GSD/)
 
+      // Asset label CSS remains loaded after client-side navigation.
+      await page.emulateMedia({ media: 'print' })
+      await expect(page.locator('.pm-summary-print-heading')).toBeVisible()
+      await expect(page.locator('.pm-dashboard-report')).toHaveCSS(
+        'visibility',
+        'visible',
+      )
+      await expect(
+        page.getByRole('link', { name: 'Schedules', exact: true }),
+      ).toBeHidden()
+      await page.emulateMedia({ media: 'screen' })
+
       await page.goto('/app/assets/' + assetId)
       await expect(
         page.getByRole('link', { name: 'Back to assets' }),
@@ -577,7 +589,7 @@ for (const viewport of dashboardViewports) {
       if (viewport.width === 375) await expectNoHorizontalOverflow(page)
       await page.getByRole('link', { name: 'Back to inspection' }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 2 }),
+        page.getByRole('heading', { name: 'FE-001', level: 1 }),
       ).toBeVisible()
 
       await page.goto('/app/inspections/' + inspectionId)
@@ -654,7 +666,7 @@ test('returns to filtered, paged assets and keeps the back link keyboard reachab
   await expect(finalAssetRow).toBeVisible()
   await finalAssetRow.getByRole('link', { name: 'View details' }).click()
   await expect(
-    page.getByRole('heading', { name: 'FE-026', level: 2 }),
+    page.getByRole('heading', { name: 'FE-026', level: 1 }),
   ).toBeVisible()
 
   await page.setViewportSize({ width: 375, height: 667 })
@@ -713,7 +725,7 @@ test('returns from submitted batch inspection and form detail to the exact revie
 
   await page.getByRole('link', { name: 'View full PM form' }).click()
   await expect(
-    page.getByRole('heading', { name: 'PMF-2026-0001', level: 2 }),
+    page.getByRole('heading', { name: 'PMF-2026-0001', level: 1 }),
   ).toBeVisible()
   await expect(
     page.getByRole('heading', { name: 'Record information' }),

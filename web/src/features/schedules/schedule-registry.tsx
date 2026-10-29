@@ -339,8 +339,10 @@ const createColumns = (
 export function ScheduleRegistry({
   search,
   onSearchChange,
+  embedded = false,
 }: {
   search: ScheduleSearch
+  embedded?: boolean
   onSearchChange: (
     next: ScheduleSearch,
     options?: { replace?: boolean; preserveScroll?: boolean },
@@ -1031,20 +1033,44 @@ export function ScheduleRegistry({
   }
 
   return (
-    <section aria-labelledby="schedules-title" className="space-y-4">
-      <PageHeading
-        id="schedules-title"
-        eyebrow="Preventive maintenance"
-        title="Schedules"
-        description="Review current and historical PM cycles generated from CPMP frequencies, due dates, and recorded schedule status."
-        actions={
-          canGenerate ? (
+    <section
+      aria-labelledby={embedded ? 'schedule-history-title' : 'schedules-title'}
+      className="space-y-4"
+    >
+      {embedded ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2
+              id="schedule-history-title"
+              className="text-xl font-bold text-[var(--text-primary)]"
+            >
+              Schedule history
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
+              Review PM cycles, due dates, and recorded schedule status.
+            </p>
+          </div>
+          {canGenerate && (
             <Button asChild variant="secondary">
               <a href="#schedule-management">Manage schedules</a>
             </Button>
-          ) : undefined
-        }
-      />
+          )}
+        </div>
+      ) : (
+        <PageHeading
+          id="schedules-title"
+          eyebrow="Preventive maintenance"
+          title="Schedules"
+          description="Review current and historical PM cycles generated from CPMP frequencies, due dates, and recorded schedule status."
+          actions={
+            canGenerate ? (
+              <Button asChild variant="secondary">
+                <a href="#schedule-management">Manage schedules</a>
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
 
       <section aria-labelledby="schedule-filters-title" className="space-y-2">
         <div>

@@ -11,12 +11,15 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-186: Detail pages and print layouts](test-runs/TEST-186-detail-pages-and-print-layouts.md): 278 unit tests and 63 browser scenarios passed; desktop detail pages checked at 1440 and 1536 pixels, plus six synthetic PDF samples including multi-page tables. Live-backend and physical-printer verification remain outside this record.
 - [TEST-184: Production DeepSeek opt-in](test-runs/TEST-184-production-deepseek-opt-in.md): explicit production flags deployed after CI passed; the live fire-alarm inventory question returned a valid DeepSeek plan without executing a report.
 - [TEST-187: Guard and mobile countdown corrections](test-runs/TEST-187-nla-guard-and-mobile-corrections.md): 61 NLA checks and 20 mobile widget tests passed; three opt-in SQL numerical tests skipped.
 - [TEST-188: First post-fix paired repeat](test-runs/TEST-188-post-fix-paired-repeat.md): 60 requests, semantic case agreement parser 22/30 and DeepSeek-selected path 23/30. Preserved before the final forecast-priority correction.
 - [TEST-189: Final guard-priority paired repeat](test-runs/TEST-189-final-guard-paired-repeat.md): 60 requests, zero endpoint failures, semantic case agreement parser 22/30 and DeepSeek-selected path 23/30. Same frozen development set and scoring; not independent accuracy.
 
 - [TEST-183: Mobile countdown ordering correction](test-runs/TEST-183-mobile-countdown-ordering-fix.md): restored urgency-first ordering, retained countdown, fixed Dart formatting; all nine existing home-screen tests passed without assertion changes.
+
+- [TEST-185: Asset modal and schedule navigation](test-runs/TEST-185-asset-modal-schedule-navigation.md): 25 focused workflow tests passed after one correction; desktop inspection confirmed a fixed tab layout and History/Tracking return navigation with mocked API responses.
 
 - [TEST-182: Instrumented NLA repeat](test-runs/TEST-182-instrumented-nla-development-evaluation.md): 60 requests, 28 real provider calls, complete usage/cache measurements, estimated USD 0.003819264; zero provider failures, one backend InvalidPlan rejection. Raw/final proposals and backend effects preserved.
 

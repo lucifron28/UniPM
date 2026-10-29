@@ -1,3 +1,9 @@
+import {
+  RecordField as DetailItem,
+  RecordHeader,
+  RecordMetadata,
+  RecordSection,
+} from '@/features/shared/record-layout'
 import { useEffect, useRef } from 'react'
 import { ZodError } from 'zod'
 import { ApiError } from '@/api/problem-details'
@@ -15,19 +21,6 @@ import type {
   DetailReturnContext,
   DetailReturnFallback,
 } from '@/features/shared/detail-navigation'
-
-function DetailItem({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm break-words text-[var(--text-primary)]">
-        {value || 'Not recorded'}
-      </dd>
-    </div>
-  )
-}
 
 export function AssetDetail({
   assetId,
@@ -186,58 +179,57 @@ export function AssetDetail({
   )
 
   return (
-    <section
-      aria-labelledby="asset-detail-title"
-      className="max-w-5xl space-y-6"
-    >
-      <DetailBackLink
-        context={returnContext}
-        fallback={returnFallback}
-        className="inline-flex min-h-10 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-      />
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Asset record
-          </p>
-          <h2
-            ref={heading}
-            id="asset-detail-title"
-            tabIndex={-1}
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)] outline-none"
+    <section aria-labelledby="asset-detail-title" className="record-page">
+      <DetailBackLink context={returnContext} fallback={returnFallback} />
+      <RecordHeader
+        id="asset-detail-title"
+        eyebrow="Asset record"
+        title={record.assetCode}
+        headingRef={heading}
+        description={categoryLabel(category, record.assetCategory)}
+        status={
+          <Badge
+            variant={record.status === 'Active' ? 'success' : 'neutral'}
+            className="px-3 text-sm"
           >
-            {record.assetCode}
-          </h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            {categoryLabel(category, record.assetCategory)}
-          </p>
-        </div>
-        <Badge
-          variant={record.status === 'Active' ? 'success' : 'neutral'}
-          className="px-3 text-sm font-semibold"
-        >
-          {record.status}
-        </Badge>
-      </div>
-      <Card className="grid gap-6 shadow-none md:grid-cols-2 lg:grid-cols-3">
-        <DetailItem
-          label="Category"
-          value={categoryLabel(category, record.assetCategory)}
-        />
-        <DetailItem label="Building" value={record.building} />
-        <DetailItem label="Department" value={record.department} />
-        <DetailItem label="Location" value={record.location} />
-        <DetailItem label="Created" value={formatDate(record.createdAt)} />
-        <DetailItem label="Last updated" value={formatDate(record.updatedAt)} />
-      </Card>
-      <AssetQrLabel
-        qrCodeValue={record.qrCodeValue}
-        assetCode={record.assetCode}
-        assetCategory={categoryLabel(category, record.assetCategory)}
-        department={record.department}
-        building={record.building}
-        location={record.location}
+            {record.status}
+          </Badge>
+        }
       />
+      <div className="record-columns">
+        <RecordSection title="Equipment and location">
+          <dl className="grid gap-5 sm:grid-cols-2">
+            <DetailItem
+              label="Category"
+              value={categoryLabel(category, record.assetCategory)}
+            />
+            <DetailItem label="Department" value={record.department} />
+            <DetailItem label="Building" value={record.building} />
+            <DetailItem label="Location" value={record.location} />
+          </dl>
+          <p className="record-note mt-5">
+            Use the QR label to identify this asset during inspection. Its
+            recorded maintenance appears below.
+          </p>
+        </RecordSection>
+        <AssetQrLabel
+          qrCodeValue={record.qrCodeValue}
+          assetCode={record.assetCode}
+          assetCategory={categoryLabel(category, record.assetCategory)}
+          department={record.department}
+          building={record.building}
+          location={record.location}
+        />
+      </div>
+      <RecordMetadata title="Record information">
+        <dl className="grid gap-4 sm:grid-cols-2">
+          <DetailItem label="Created" value={formatDate(record.createdAt)} />
+          <DetailItem
+            label="Last updated"
+            value={formatDate(record.updatedAt)}
+          />
+        </dl>
+      </RecordMetadata>
       <InspectionHistory
         assetId={record.id}
         assetCode={record.assetCode}

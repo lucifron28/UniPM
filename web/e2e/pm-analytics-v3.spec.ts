@@ -639,6 +639,15 @@ test('runs a V3 report through source-record review at a narrow viewport', async
   ).toBeVisible()
   await page.getByRole('button', { name: 'Confirm and generate' }).click()
   await expect(page.getByText('100%', { exact: true })).toBeVisible()
+  await page.emulateMedia({ media: 'print' })
+  await expect(page.locator('.nla-print-heading')).toBeVisible()
+  await expect(page.locator('.nla-print-report')).toHaveCSS(
+    'visibility',
+    'visible',
+  )
+  await expect(page.getByRole('button', { name: 'Print result' })).toBeHidden()
+  await expect(page.getByRole('textbox', { name: 'Question' })).toBeHidden()
+  await page.emulateMedia({ media: 'screen' })
   await page.getByRole('button', { name: 'View contributing records' }).click()
   await expect(
     page.getByText(/records plan for Progress is ready/),

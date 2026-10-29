@@ -6,13 +6,16 @@ import { useScheduleRegistry } from './schedule-queries'
 import { formatPmCycle } from './schedule-presentation'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import type { ScheduleAssignmentQueueBatch } from './schedule-contract'
+import type { ScheduleSearch } from './schedule-registry'
 
 export function ScheduleAssignmentRecordsPanel({
   batch,
   onClose,
+  registrySearch,
 }: {
   batch: ScheduleAssignmentQueueBatch
   onClose: () => void
+  registrySearch?: ScheduleSearch
 }) {
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -40,7 +43,7 @@ export function ScheduleAssignmentRecordsPanel({
         </div>
       ) : (
         <>
-          <p className="mb-3 text-sm text-[var(--text-secondary)]">
+          <p className="mb-4 rounded-lg border-l-4 border-[var(--primary)] bg-[#f7f2ef] p-3 text-sm text-[var(--text-secondary)]">
             {total} schedules in this batch.
           </p>
           <table className="w-full text-left text-sm">
@@ -80,7 +83,7 @@ export function ScheduleAssignmentRecordsPanel({
                       search={{
                         returnContext: {
                           kind: 'scheduleRegistry',
-                          search: {
+                          search: registrySearch ?? {
                             view: 'assignments',
                             department: batch.department,
                             assetCategory: batch.assetCategory,

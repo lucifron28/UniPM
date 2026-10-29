@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
 import {
   resolveDetailReturn,
   type DetailReturnContext,
   type DetailReturnFallback,
 } from '@/features/shared/detail-navigation'
 const backLinkClassName =
-  'inline-flex min-h-10 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none'
+  'inline-flex w-fit min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-[var(--border-soft)] bg-white px-4 py-2 text-sm font-semibold text-[var(--primary)] transition-colors hover:border-[var(--primary)] hover:bg-[var(--primary)] hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none print:hidden'
 
 export function DetailBackLink({
   context,
@@ -26,6 +27,7 @@ export function DetailBackLink({
     case 'dashboard':
       return (
         <Link to="/app/dashboard" search={target.search} className={className}>
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
@@ -41,12 +43,14 @@ export function DetailBackLink({
           }}
           className={className}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
     case 'assetRegistry':
       return (
         <Link to="/app/assets" search={target.search} className={className}>
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
@@ -57,12 +61,14 @@ export function DetailBackLink({
           search={target.search}
           className={className}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
     case 'scheduleRegistry':
       return (
         <Link to="/app/schedules" search={target.search} className={className}>
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
@@ -73,6 +79,7 @@ export function DetailBackLink({
           search={target.search}
           className={className}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
@@ -84,6 +91,7 @@ export function DetailBackLink({
           search={{ ...target.search, returnContext: target.returnContext }}
           className={className}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
@@ -95,6 +103,7 @@ export function DetailBackLink({
           search={searchContext}
           className={className}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
@@ -106,6 +115,7 @@ export function DetailBackLink({
           search={searchContext}
           className={className}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )
@@ -117,6 +127,7 @@ export function DetailBackLink({
           search={searchContext}
           className={className}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
           {target.label}
         </Link>
       )

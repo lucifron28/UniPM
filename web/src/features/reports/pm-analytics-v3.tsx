@@ -1,3 +1,4 @@
+import './nla-print.css'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
@@ -2487,7 +2488,7 @@ export function PmAnalyticsV3Panel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="nla-panel space-y-4">
       <SavedReports
         reviewedPlan={
           preview && (stage === 'preview' || stage === 'results')
@@ -5186,11 +5187,24 @@ export function PmAnalyticsV3Panel({
 
       {response && catalog && stage === 'results' && (
         <Card
-          className="space-y-5 p-4 shadow-none sm:p-5"
+          className="nla-print-report record-panel space-y-5 p-4 shadow-none sm:p-5"
           aria-live="polite"
           aria-labelledby="pm-v3-results-title"
         >
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="nla-print-heading">
+            <p>
+              <strong>UniPM / Natural Language Analytics</strong>
+            </p>
+            <p>Question: {submittedQuestion || question}</p>
+            <p>Scope: {preview?.summary ?? 'See report scope below.'}</p>
+            <p>
+              Printed results page {response.page} of {response.totalPages}.{' '}
+              {formatNumber(response.population.sourceTotalCount)} matching
+              source records in the full scope. This printout contains the
+              currently displayed results page.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border-l-4 border-[var(--primary)] bg-[#f7f2ef] p-4">
             <div>
               <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
                 Report result
@@ -5250,13 +5264,11 @@ export function PmAnalyticsV3Panel({
           </div>
 
           {preview && (
-            <details className="rounded-md border border-[var(--border-soft)] px-3 py-2">
+            <details className="rounded-md border border-[var(--border-soft)] px-3 py-2 print:hidden">
               <summary className="cursor-pointer text-sm font-medium text-[var(--primary)]">
                 Report scope
               </summary>
-              <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                {preview.summary}
-              </p>
+              <p className="record-note mt-2">{preview.summary}</p>
             </details>
           )}
 
@@ -5293,7 +5305,7 @@ export function PmAnalyticsV3Panel({
             ).map(([label, value]) => (
               <div
                 key={String(label)}
-                className="rounded-md border border-[var(--border-soft)] p-3"
+                className="rounded-md border border-t-2 border-[var(--border-soft)] border-t-[#d6bcb4] bg-[#f8f5f2] p-3"
               >
                 <dt className="text-xs font-semibold tracking-[0.06em] text-[var(--text-neutral)] uppercase">
                   {label}
@@ -5317,7 +5329,7 @@ export function PmAnalyticsV3Panel({
                     return (
                       <div
                         key={measure.id}
-                        className="rounded-md border border-[var(--border-soft)] p-4"
+                        className="rounded-md border border-t-2 border-[var(--border-soft)] border-t-[#d6bcb4] bg-[#f8f5f2] p-4"
                       >
                         <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
                           {measure.label}
@@ -5447,7 +5459,7 @@ export function PmAnalyticsV3Panel({
                   return (
                     <div
                       key={measure.id}
-                      className="rounded-md border border-[var(--border-soft)] p-3"
+                      className="rounded-md border border-t-2 border-[var(--border-soft)] border-t-[#d6bcb4] bg-[#f8f5f2] p-3"
                     >
                       <dt className="font-semibold text-[var(--text-primary)]">
                         {measure.label} ({measure.unit})
@@ -5473,7 +5485,7 @@ export function PmAnalyticsV3Panel({
                 })}
               </dl>
               {!isInventory && (
-                <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                <p className="mt-3 text-sm text-[var(--text-secondary)] print:hidden">
                   Source-record actions open a separate records plan filtered to
                   the rows contributing to each measure numerator. Review its
                   preview before running it.

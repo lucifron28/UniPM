@@ -1,3 +1,9 @@
+import {
+  RecordField as DetailItem,
+  RecordHeader,
+  RecordMetadata,
+  RecordSection,
+} from '@/features/shared/record-layout'
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import { ApiError } from '@/api/problem-details'
@@ -23,19 +29,6 @@ import {
   type DetailReturnContext,
   type DetailReturnFallback,
 } from '@/features/shared/detail-navigation'
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm break-words text-[var(--text-primary)]">
-        {value || 'Not recorded'}
-      </dd>
-    </div>
-  )
-}
 
 export function ScheduleDetail({
   scheduleId,
@@ -130,164 +123,180 @@ export function ScheduleDetail({
     hasSupervisorRole &&
     currentUser.data?.id === record.assignedSupervisorUserId
   return (
-    <section
-      aria-labelledby="schedule-detail-title"
-      className="max-w-5xl space-y-6"
-    >
-      <DetailBackLink
-        context={returnContext}
-        fallback={returnFallback}
-        className="inline-flex min-h-10 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-      />
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Preventive maintenance schedule
-          </p>
-          <h2
-            id="schedule-detail-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            {record.asset?.assetCode ?? 'Schedule record'}
-          </h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            Scheduled month: {formatPmCycle(record.pmCycle)}
-          </p>
-        </div>
-        <Badge
-          variant={
-            record.status === 'Completed'
-              ? 'success'
-              : record.status === 'Overdue'
-                ? 'danger'
-                : record.status === 'Due' || record.status === 'Ongoing'
-                  ? 'warning'
-                  : 'neutral'
-          }
-          className="px-3 text-sm font-semibold"
-        >
-          {record.status}
-        </Badge>
-      </div>
-
-      <Card className="grid gap-6 shadow-none md:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Asset code
-          </dt>
-          <dd className="mt-1 text-sm">
-            <Link
-              to="/app/assets/$assetId"
-              params={{ assetId: record.assetId }}
-              search={{
-                returnContext: scheduleDetailReturnContext(
-                  record.id,
-                  returnContext,
-                  returnFallback,
-                ),
-              }}
-              className="font-semibold text-[var(--primary)] hover:underline"
-            >
-              {record.asset?.assetCode ?? record.assetId}
-            </Link>
-          </dd>
-        </div>
-        <DetailItem
-          label="Asset category"
-          value={
-            record.asset
+    <section aria-labelledby="schedule-detail-title" className="record-page">
+      <DetailBackLink context={returnContext} fallback={returnFallback} />
+      <RecordHeader
+        id="schedule-detail-title"
+        eyebrow="Preventive maintenance schedule"
+        title={record.asset?.assetCode ?? 'Schedule record'}
+        description={
+          <>
+            {record.asset
               ? formatAssetCategory(record.asset.assetCategory)
-              : 'Not recorded'
-          }
-        />
-        <DetailItem
-          label="Location"
-          value={record.asset?.location ?? 'Not recorded'}
-        />
-        <DetailItem
-          label="Due date"
-          value={formatPmCycleDueDate(record.pmCycle)}
-        />
-        <DetailItem label="Period type" value={record.periodType} />
-        <DetailItem label="Quarter" value={record.quarter ?? 'Not recorded'} />
-        <DetailItem
-          label="Semester"
-          value={record.semester ?? 'Not recorded'}
-        />
-        <DetailItem
-          label="Year"
-          value={record.year?.toString() ?? 'Not recorded'}
-        />
-        <DetailItem label="Recorded status" value={record.status} />
-        <DetailItem
-          label="Academic year"
-          value={record.academicYear ?? 'Not recorded'}
-        />
-        <DetailItem
-          label="Completed"
-          value={formatScheduleDateTime(record.completedAt)}
-        />
-        <DetailItem
-          label="Created"
-          value={formatScheduleDateTime(record.createdAt)}
-        />
-        <DetailItem
-          label="Last updated"
-          value={formatScheduleDateTime(record.updatedAt)}
-        />
-      </Card>
-
-      <Card
-        aria-labelledby="schedule-assignment-period-title"
-        className="space-y-4 p-5 shadow-none"
-      >
-        <div>
-          <h3
-            id="schedule-assignment-period-title"
-            className="text-lg font-semibold text-[var(--text-primary)]"
+              : 'Asset category unavailable'}{' '}
+            · {record.asset?.department ?? 'Department unavailable'} ·{' '}
+            {formatPmCycle(record.pmCycle)}
+          </>
+        }
+        status={
+          <Badge
+            variant={
+              record.status === 'Completed'
+                ? 'success'
+                : record.status === 'Overdue'
+                  ? 'danger'
+                  : record.status === 'Cancelled'
+                    ? 'neutral'
+                    : 'warning'
+            }
+            className="px-3 text-sm"
           >
-            Inspector assignment period
-          </h3>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            This is separate from the original PM due date above. The
-            30-calendar-day period starts at the first saved Inspector
-            assignment. Reassignment does not reset it or change the PM due
-            date.
-          </p>
-        </div>
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <DetailItem
-            label="First Supervisor assignment"
-            value={formatAssignmentPeriodDateTime(
-              record.firstSupervisorAssignedAt ?? null,
-            )}
-          />
-          <DetailItem
-            label="First Inspector assignment"
-            value={formatAssignmentPeriodDateTime(
-              record.firstInspectorAssignedAt ?? null,
-            )}
-          />
-          <DetailItem
-            label="Inspector assignment due"
-            value={formatAssignmentPeriodDateTime(
-              record.inspectorAssignmentDueAt ?? null,
-            )}
-          />
-          <DetailItem
-            label="Assignment-period status"
-            value={formatAssignmentPeriodStatus(record.assignmentPeriodStatus)}
-          />
-        </dl>
-      </Card>
-
-      <ScheduleBatchAssignment
-        key={`${record.id}-${record.assignedSupervisorUserId ?? ''}-${record.assignedToUserId ?? ''}`}
-        schedule={record}
-        canAssignSupervisor={canAssignSupervisor}
-        canAssignWorker={canAssignWorker}
-        hasSupervisorRole={hasSupervisorRole}
+            {record.status}
+          </Badge>
+        }
       />
+      <div className="record-columns">
+        <div className="record-stack">
+          <RecordSection title="Deadlines and progress">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="record-deadline">
+                <p className="text-xs font-semibold text-[var(--primary)]">
+                  Original PM deadline
+                </p>
+                <strong>{formatPmCycleDueDate(record.pmCycle)}</strong>
+                <p className="record-note">
+                  Scheduled month: {formatPmCycle(record.pmCycle)}. Assignment
+                  does not change this date.
+                </p>
+              </div>
+              <div
+                className="record-deadline"
+                data-attention={record.assignmentPeriodStatus === 'Overdue'}
+              >
+                <p className="text-xs font-semibold text-[var(--primary)]">
+                  Inspector assignment due
+                </p>
+                <strong>
+                  {record.inspectorAssignmentDueAt
+                    ? formatAssignmentPeriodDateTime(
+                        record.inspectorAssignmentDueAt,
+                      )
+                    : record.assignedToUserId
+                      ? 'Timing unavailable'
+                      : 'Not assigned'}
+                </strong>
+                <p className="record-note">
+                  {formatAssignmentPeriodStatus(record.assignmentPeriodStatus)}
+                </p>
+              </div>
+            </div>
+            <p className="record-note mt-4">
+              The Inspector has 30 calendar days from the first saved
+              assignment. Reassignment does not restart that period.
+            </p>
+            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DetailItem
+                label="Completed"
+                value={
+                  record.completedAt
+                    ? formatScheduleDateTime(record.completedAt)
+                    : 'Not completed'
+                }
+              />
+              <DetailItem label="Recorded status" value={record.status} />
+            </dl>
+          </RecordSection>
+
+          <ScheduleBatchAssignment
+            key={`${record.id}-${record.assignedSupervisorUserId ?? ''}-${record.assignedToUserId ?? ''}`}
+            schedule={record}
+            canAssignSupervisor={canAssignSupervisor}
+            canAssignWorker={canAssignWorker}
+            hasSupervisorRole={hasSupervisorRole}
+          />
+        </div>
+        <div className="record-stack">
+          <RecordSection title="Asset and location">
+            <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+              <DetailItem
+                label="Asset code"
+                value={
+                  <Link
+                    to="/app/assets/$assetId"
+                    params={{ assetId: record.assetId }}
+                    search={{
+                      returnContext: scheduleDetailReturnContext(
+                        record.id,
+                        returnContext,
+                        returnFallback,
+                      ),
+                    }}
+                    className="font-semibold text-[var(--primary)] underline-offset-4 hover:underline"
+                  >
+                    {record.asset?.assetCode ?? record.assetId}
+                  </Link>
+                }
+              />
+              <DetailItem
+                label="Asset category"
+                value={
+                  record.asset
+                    ? formatAssetCategory(record.asset.assetCategory)
+                    : 'Not recorded'
+                }
+              />
+              <DetailItem label="Department" value={record.asset?.department} />
+              <DetailItem label="Building" value={record.asset?.building} />
+              <DetailItem label="Location" value={record.asset?.location} />
+            </dl>
+          </RecordSection>
+          <RecordMetadata title="Assignment timing details">
+            <dl className="grid gap-4">
+              <DetailItem
+                label="First Supervisor assignment"
+                value={
+                  record.firstSupervisorAssignedAt
+                    ? formatAssignmentPeriodDateTime(
+                        record.firstSupervisorAssignedAt,
+                      )
+                    : 'Timing unavailable'
+                }
+              />
+              <DetailItem
+                label="First Inspector assignment"
+                value={
+                  record.firstInspectorAssignedAt
+                    ? formatAssignmentPeriodDateTime(
+                        record.firstInspectorAssignedAt,
+                      )
+                    : 'Timing unavailable'
+                }
+              />
+            </dl>
+          </RecordMetadata>
+          <RecordMetadata>
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <DetailItem
+                label="Due date"
+                value={formatPmCycleDueDate(record.pmCycle)}
+              />
+              <DetailItem label="Period type" value={record.periodType} />
+              <DetailItem label="Quarter" value={record.quarter} />
+              <DetailItem label="Semester" value={record.semester} />
+              <DetailItem label="Year" value={record.year?.toString()} />
+              <DetailItem label="Academic year" value={record.academicYear} />
+              <DetailItem
+                label="Created"
+                value={formatScheduleDateTime(record.createdAt)}
+              />
+              <DetailItem
+                label="Last updated"
+                value={formatScheduleDateTime(record.updatedAt)}
+              />
+            </dl>
+          </RecordMetadata>
+        </div>
+      </div>
     </section>
   )
 }

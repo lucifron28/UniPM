@@ -529,7 +529,7 @@ test.describe('Asset Registry E2E Specs', () => {
     expect(response.status()).toBe(200)
     expect((await response.json()).assetCode).toBe('FE-026')
     await expect(
-      page.getByRole('heading', { name: 'FE-026', level: 2 }),
+      page.getByRole('heading', { name: 'FE-026', level: 1 }),
     ).toBeVisible()
     await page.getByRole('link', { name: 'Back to assets' }).click()
     await expect(page).toHaveURL(/status=Active/)

@@ -1,0 +1,45 @@
+import { z } from 'zod'
+import { assetCategoryCodes } from '@/features/assets/asset-contract'
+import { scheduleQuarterCodes, scheduleStatusCodes } from './schedule-contract'
+
+const dateTime = z.string().datetime({ offset: true })
+export const scheduleSearchSchema = z
+  .object({
+    assetId: z.string().uuid().optional(),
+    assetCategory: z.enum(assetCategoryCodes).optional(),
+    department: z.string().trim().max(256).optional(),
+    search: z.string().trim().max(256).optional(),
+    status: z.enum(scheduleStatusCodes).optional(),
+    from: dateTime.optional(),
+    to: dateTime.optional(),
+    quarter: z.enum(scheduleQuarterCodes).optional(),
+    pmCycle: z
+      .string()
+      .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
+      .optional(),
+    year: z.coerce
+      .number()
+      .int()
+      .min(2000)
+      .max(new Date().getUTCFullYear() + 5)
+      .optional(),
+    view: z.enum(['assignments', 'tracking', 'history']).optional(),
+    progress: z.enum(['not-started', 'in-progress']).optional(),
+    overdueOnly: z.boolean().optional(),
+    building: z.string().trim().max(256).optional(),
+    inspectorUserId: z.string().uuid().optional(),
+    supervisorUserId: z.string().uuid().optional(),
+    assignmentFilter: z
+      .enum(['needs-supervisor', 'needs-inspector'])
+      .optional(),
+    page: z.coerce.number().int().positive().max(10000).optional(),
+  })
+  .refine((value) => !value.from || !value.to || value.from <= value.to)
+  .refine(
+    (value) =>
+      !value.pmCycle ||
+      ((!value.year || Number(value.pmCycle.slice(0, 4)) === value.year) &&
+        (!value.quarter ||
+          `Q${Math.floor((Number(value.pmCycle.slice(5, 7)) - 1) / 3) + 1}` ===
+            value.quarter)),
+  )
