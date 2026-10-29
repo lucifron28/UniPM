@@ -64,12 +64,14 @@ import type {
   DraftInspectionRowResponse,
   GenerateScheduleCyclesDto,
   GetAssetRegistryOptionsParams,
+  GetInspectionAttentionParams,
   GetInspectionRegistryOptionsParams,
   GetPmAnalyticsV3CatalogParams,
   GetPmAnalyticsV3FilterValuesParams,
   GetPmPeriodDashboardParams,
   GetScheduleRegistryOptionsParams,
   HttpValidationProblemDetails,
+  InspectionAttentionResponse,
   InspectionHistoryResponse,
   InspectionLocationAttemptResponse,
   InspectionRegistryOptionsResponse,
@@ -12257,4 +12259,163 @@ export const useInterpretPmAnalyticsQuestion = <
     getInterpretPmAnalyticsQuestionMutationOptions(options),
     queryClient,
   )
+}
+
+/**
+ * @summary Lists scoped non-operational findings across all PM periods
+ */
+export const getInspectionAttention = (
+  params?: GetInspectionAttentionParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<InspectionAttentionResponse>({
+    url: `/api/v1/inspections/attention`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getGetInspectionAttentionQueryKey = (
+  params?: GetInspectionAttentionParams,
+) => {
+  return [`/api/v1/inspections/attention`, ...(params ? [params] : [])] as const
+}
+
+export const getGetInspectionAttentionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionAttention>>,
+  TError = unknown,
+>(
+  params?: GetInspectionAttentionParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionAttention>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInspectionAttentionQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInspectionAttention>>
+  > = ({ signal }) => getInspectionAttention(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInspectionAttention>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInspectionAttentionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionAttention>>
+>
+export type GetInspectionAttentionQueryError = unknown
+
+export function useGetInspectionAttention<
+  TData = Awaited<ReturnType<typeof getInspectionAttention>>,
+  TError = unknown,
+>(
+  params: undefined | GetInspectionAttentionParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionAttention>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionAttention>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionAttention>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionAttention<
+  TData = Awaited<ReturnType<typeof getInspectionAttention>>,
+  TError = unknown,
+>(
+  params?: GetInspectionAttentionParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionAttention>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionAttention>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionAttention>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionAttention<
+  TData = Awaited<ReturnType<typeof getInspectionAttention>>,
+  TError = unknown,
+>(
+  params?: GetInspectionAttentionParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionAttention>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists scoped non-operational findings across all PM periods
+ */
+
+export function useGetInspectionAttention<
+  TData = Awaited<ReturnType<typeof getInspectionAttention>>,
+  TError = unknown,
+>(
+  params?: GetInspectionAttentionParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionAttention>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetInspectionAttentionQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
 }
