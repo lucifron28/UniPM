@@ -11,6 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-192: Compact dashboard attention navigation](test-runs/TEST-192-compact-attention-navigation.md): eight focused backend cases passed; desktop synthetic checks cover both role-specific links, preserved form filters, back navigation and zero counts. Replaces the dashboard layout from TEST-191.
+
 - [TEST-191: Finding attention and Supervisor referrals](test-runs/TEST-191-finding-attention-and-supervisor-referrals.md): eight focused backend cases passed; synthetic desktop checks cover form photos and PM-number entry for GSD and Supervisor. No deployed or physical-device verification claimed.
 
 - [TEST-186: Detail pages and print layouts](test-runs/TEST-186-detail-pages-and-print-layouts.md): 278 unit tests and 63 browser scenarios passed; desktop detail pages checked at 1440 and 1536 pixels, plus six synthetic PDF samples including multi-page tables. Live-backend and physical-printer verification remain outside this record.
