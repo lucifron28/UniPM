@@ -1,5 +1,19 @@
 # Azure Container Apps staging preparation
 
+## Explicit NLA V3 DeepSeek activation
+
+The owner approved DeepSeek activation on the deployed demonstration app on
+October 29, 2026. Keep `ASPNETCORE_ENVIRONMENT=Production`. Enable both
+`NaturalLanguageAnalytics__V3DeepSeekEnabled=true` and
+`NaturalLanguageAnalytics__V3DeepSeekProductionEnabled=true`, and provide
+`DEEPSEEK_API_KEY` through a backend Container App secret reference. Both flags
+default to false. Never put the key in client configuration or source files.
+Explicit deterministic-parser requests remain available. This opt-in does not
+enable the older analytics integration or change report validation and execution.
+See [TEST-184](../evidence/test-runs/TEST-184-production-deepseek-opt-in.md) for
+the live verification and its limits. The preparation notes below describe the
+earlier configuration before this activation.
+
 This guide prepares a Linux container for the existing published .NET 10 API and bundled React web app. It does not create or deploy Azure resources. No migrations, seed operations, reset commands, or live SQL calls belong in this workflow. The existing Azure SQL database already contains user data; treat it as live.
 
 ## Local package and context
