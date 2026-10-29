@@ -100,7 +100,9 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 SafetyRulesInterpreter);
         }
 
-        var deepSeekAvailable = _environment.IsDevelopment() && _options.CurrentValue.V3DeepSeekEnabled;
+        var options = _options.CurrentValue;
+        var deepSeekAvailable = options.V3DeepSeekEnabled
+            && (_environment.IsDevelopment() || options.V3DeepSeekProductionEnabled);
         var useDeepSeek = requestedInterpreter switch
         {
             null => deepSeekAvailable,

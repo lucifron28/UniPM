@@ -6,6 +6,7 @@ public sealed class NaturalLanguageAnalyticsOptions
 
     public bool Enabled { get; set; }
     public bool V3DeepSeekEnabled { get; set; }
+    public bool V3DeepSeekProductionEnabled { get; set; }
     public string BaseAddress { get; set; } = "http://127.0.0.1:11434/";
     public string Model { get; set; } = "qwen3:4b-instruct";
     public int TimeoutSeconds { get; set; } = 60;
