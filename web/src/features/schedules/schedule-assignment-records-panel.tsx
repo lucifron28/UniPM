@@ -6,13 +6,16 @@ import { useScheduleRegistry } from './schedule-queries'
 import { formatPmCycle } from './schedule-presentation'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import type { ScheduleAssignmentQueueBatch } from './schedule-contract'
+import type { ScheduleSearch } from './schedule-registry'
 
 export function ScheduleAssignmentRecordsPanel({
   batch,
   onClose,
+  registrySearch,
 }: {
   batch: ScheduleAssignmentQueueBatch
   onClose: () => void
+  registrySearch?: ScheduleSearch
 }) {
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -80,7 +83,7 @@ export function ScheduleAssignmentRecordsPanel({
                       search={{
                         returnContext: {
                           kind: 'scheduleRegistry',
-                          search: {
+                          search: registrySearch ?? {
                             view: 'assignments',
                             department: batch.department,
                             assetCategory: batch.assetCategory,

@@ -63,7 +63,14 @@ export function ScheduleAssignmentQueue({
   const [recordsBatch, setRecordsBatch] = useState<ScheduleBatch | null>(null)
   const currentYear = getCurrentManilaYear()
   const selectedYear = search.year ?? currentYear
-  const [buildingFilter, setBuildingFilter] = useState('')
+  const [buildingSelection, setBuildingSelection] = useState({
+    routeBuilding: search.building,
+    value: search.building ?? '',
+  })
+  const buildingFilter =
+    buildingSelection.routeBuilding === search.building
+      ? buildingSelection.value
+      : (search.building ?? '')
   const [selection, setSelection] = useState<{
     scopeKey: string
     batchIds: string[]
@@ -191,12 +198,16 @@ export function ScheduleAssignmentQueue({
   const updateFilters = (patch: Partial<ScheduleSearch>) => {
     setRecordsBatch(null)
     clearSelection()
-    setBuildingFilter('')
+    setBuildingSelection({
+      routeBuilding: search.building,
+      value: patch.building ?? '',
+    })
     setAssignmentDialogOpen(false)
     setAssignmentDialogBatches(null)
     setAssignmentNotice('')
     onSearchChange({
       ...search,
+      building: undefined,
       ...patch,
       view: 'assignments',
       page: undefined,
@@ -204,12 +215,7 @@ export function ScheduleAssignmentQueue({
   }
 
   const updateBuildingFilter = (building: string) => {
-    setRecordsBatch(null)
-    setBuildingFilter(building)
-    clearSelection()
-    setAssignmentDialogOpen(false)
-    setAssignmentDialogBatches(null)
-    setAssignmentNotice('')
+    updateFilters({ building: building || undefined })
   }
 
   const toggleBatch = (batchId: string, checked: boolean) => {
@@ -258,16 +264,13 @@ export function ScheduleAssignmentQueue({
       className="space-y-4"
     >
       <div>
-        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-          Batch assignment
-        </p>
-        <h1
+        <h2
           id="schedule-assignment-queue-title"
-          className="mt-1 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
+          className="text-xl font-bold text-[var(--text-primary)]"
         >
           {role === 'GSD' ? 'Supervisor Assignments' : 'Inspector Assignments'}
-        </h1>
-        <p className="mt-2 max-w-3xl text-[var(--text-secondary)]">
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
           {role === 'GSD'
             ? 'Assign Supervisors to pending PM batches.'
             : 'Assign Inspectors to your pending PM batches.'}
@@ -629,6 +632,7 @@ export function ScheduleAssignmentQueue({
         <ScheduleAssignmentRecordsPanel
           key={recordsBatch.id}
           batch={recordsBatch}
+          registrySearch={{ ...search, view: 'assignments' }}
           onClose={() => setRecordsBatch(null)}
         />
       )}

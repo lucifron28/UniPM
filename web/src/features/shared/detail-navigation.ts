@@ -1,3 +1,4 @@
+import { scheduleSearchSchema } from '@/features/schedules/schedule-search'
 import { z } from 'zod'
 import {
   assetCategoryCodes,
@@ -8,10 +9,7 @@ import type { InspectionSearch } from '@/features/inspections/inspection-registr
 import { inspectionFollowUpStatusCodes } from '@/features/inspections/inspection-contract'
 import type { FormSearch } from '@/features/preventive-maintenance-forms/form-registry'
 import { preventiveMaintenanceFormStatusCodes } from '@/features/preventive-maintenance-forms/form-contract'
-import {
-  scheduleQuarterCodes,
-  scheduleStatusCodes,
-} from '@/features/schedules/schedule-contract'
+import { scheduleQuarterCodes } from '@/features/schedules/schedule-contract'
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 
@@ -149,28 +147,6 @@ const inspectionSearchSchema = z
       (value.quarter === undefined || value.quarter === quarter)
     )
   })
-const scheduleSearchSchema = z.object({
-  assetId: z.string().uuid().optional(),
-  assetCategory: z.enum(assetCategoryCodes).optional(),
-  department: z.string().trim().max(256).optional(),
-  search: z.string().trim().max(256).optional(),
-  status: z.enum(scheduleStatusCodes).optional(),
-  from: z.string().datetime({ offset: true }).optional(),
-  to: z.string().datetime({ offset: true }).optional(),
-  quarter: z.enum(scheduleQuarterCodes).optional(),
-  year: z.coerce
-    .number()
-    .int()
-    .min(2000)
-    .max(new Date().getUTCFullYear() + 5)
-    .optional(),
-  pmCycle: z
-    .string()
-    .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
-    .optional(),
-  view: z.enum(['assignments']).optional(),
-  page: pageSchema,
-})
 const formSearchSchema = z.object({
   status: z.enum(preventiveMaintenanceFormStatusCodes).optional(),
   assetCategory: z.enum(assetCategoryCodes).optional(),

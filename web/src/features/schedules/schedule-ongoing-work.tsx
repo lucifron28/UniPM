@@ -293,15 +293,12 @@ export function ScheduleOngoingWork({
     <section aria-labelledby="schedule-tracking-title" className="space-y-4">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Inspection tracking
-          </p>
-          <h1
+          <h2
             id="schedule-tracking-title"
-            className="mt-1 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
+            className="text-xl font-bold text-[var(--text-primary)]"
           >
             Work tracking
-          </h1>
+          </h2>
           <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
             Assigned work, saved inspection progress, and overdue schedules.
           </p>
@@ -930,7 +927,11 @@ export function ScheduleOngoingWork({
       )}
 
       {openBatch && (
-        <ScheduleTrackingProgressPanel batch={openBatch} onClose={closeBatch} />
+        <ScheduleTrackingProgressPanel
+          batch={openBatch}
+          onClose={closeBatch}
+          registrySearch={search}
+        />
       )}
     </section>
   )
@@ -1054,9 +1055,11 @@ function ProgressBar({
 function ScheduleTrackingProgressPanel({
   batch,
   onClose,
+  registrySearch,
 }: {
   batch: ScheduleAssignmentQueueBatch
   onClose: () => void
+  registrySearch: ScheduleSearch
 }) {
   const dialogRef = useRef<HTMLElement>(null)
   const [assetText, setAssetText] = useState('')
@@ -1287,6 +1290,12 @@ function ScheduleTrackingProgressPanel({
                           <Link
                             to="/app/schedules/$scheduleId"
                             params={{ scheduleId: schedule.id }}
+                            search={{
+                              returnContext: {
+                                kind: 'scheduleRegistry',
+                                search: { ...registrySearch, view: 'tracking' },
+                              },
+                            }}
                             className="font-semibold text-[var(--primary)] hover:underline"
                           >
                             View details
