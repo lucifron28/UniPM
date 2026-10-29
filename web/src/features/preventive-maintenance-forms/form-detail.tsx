@@ -1016,10 +1016,7 @@ export function FormDetail({
       : { kind: 'formRegistry' }
 
   const backLink = (
-    <DetailBackLink
-      context={returnContext}
-      fallback={returnFallback}
-    />
+    <DetailBackLink context={returnContext} fallback={returnFallback} />
   )
 
   if (currentUser.isPending) {
