@@ -88,6 +88,25 @@ Raw browser observations, PDFs, screenshots and command logs are retained
 locally under ignored `artifacts/clean-print-qa/` and
 `artifacts/clean-print-*.log`. They contain synthetic fixtures only.
 
+## CI follow-up
+
+The first pushed head, `98e501a5b260c12d1c0e0f9d54a2ae62c800b3e2`,
+passed backend CI. Web CI passed its unit checks and build, then reported
+61 browser tests passed, two skipped and two failed. Both failures selected
+the first exact `Scheduled` label, which belonged to the hidden screen rather
+than the printed table. The print table itself was present.
+
+Commit `7cec5b5dd8701c6d452993f8c931d2bdee015ac9` mounts the body-level
+print document before the hidden application content. It also removes that
+host on print exit or component unmount. Screen labels and test assertions
+remain unchanged. The same two affected checks passed locally at 1440 and
+1536 pixels using `npm run e2e -- e2e/app-shell.spec.ts --grep
+'assignment attention keeps scope and print layout'`. The correction was
+tested as an uncommitted working-tree change before creating that commit.
+The command output is retained in `artifacts/clean-print-ci-correction.log`.
+The initial failing CI output is retained separately in
+`artifacts/clean-print-ci-failure.log`.
+
 ## Limits
 
 These checks verify Chromium rendering with mocked API responses. They do
