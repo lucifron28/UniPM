@@ -25,7 +25,7 @@ import {
   formatPmCycleDueDate,
 } from '@/features/schedules/schedule-presentation'
 import { ReportChart, type ReportChartRow } from './report-charts'
-import './pm-dashboard-print.css'
+import { PrintDocument } from './print-document'
 import type { PmPeriodDashboardRecordsSearch } from './pm-period-dashboard-records'
 
 export type PmPeriodDashboardSearch = {
@@ -1036,6 +1036,114 @@ export function PmPeriodDashboardPresentation({
   )
 }
 
+function DashboardPrintDocument({
+  dashboard,
+  updatedAt,
+}: {
+  dashboard: PmPeriodDashboardResponse
+  updatedAt: number
+}) {
+  const assignment = dashboard.assignmentPeriod
+  return (
+    <PrintDocument label="Printable PM summary">
+      <header className="pm-summary-print-heading">
+        <p>
+          <strong>UniPM · General Services Department</strong>
+        </p>
+        <h1>Preventive maintenance summary</h1>
+        <p>
+          {formatAssetCategory(dashboard.assetCategory)} ·{' '}
+          {formatPmCycle(dashboard.pmCycle)} ·{' '}
+          {dashboard.department || 'All departments'}
+        </p>
+        <p className="print-note">
+          Data loaded{' '}
+          {new Intl.DateTimeFormat('en-PH', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+            timeZone: 'Asia/Manila',
+          }).format(updatedAt)}{' '}
+          · Manila time
+        </p>
+      </header>
+      <p>
+        {formatNumber(dashboard.inspected)} of{' '}
+        {formatNumber(dashboard.scheduled)} scheduled inspections completed ·{' '}
+        {formatNumber(dashboard.remaining)} outstanding ·{' '}
+        {formatNumber(dashboard.nonOperational)} non-operational findings
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Department</th>
+            <th>Scheduled</th>
+            <th>Completed</th>
+            <th>Outstanding</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dashboard.batches.map((batch, index) => (
+            <tr key={index}>
+              <td>{batch.department || 'Not recorded'}</td>
+              <td>{formatNumber(batch.scheduled)}</td>
+              <td>{formatNumber(batch.inspected)}</td>
+              <td>{formatNumber(batch.remaining)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h2>Inspector assignment period</h2>
+      {assignment ? (
+        <>
+          <table>
+            <thead>
+              <tr>
+                <th>Completed within 30 days</th>
+                <th>Completed after 30 days</th>
+                <th>Outstanding within 30 days</th>
+                <th>Overdue after 30 days</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{formatNumber(assignment.completedWithinPeriod)}</td>
+                <td>{formatNumber(assignment.completedLate)}</td>
+                <td>{formatNumber(assignment.openWithinPeriod)}</td>
+                <td>{formatNumber(assignment.overdueUnfinished)}</td>
+              </tr>
+            </tbody>
+          </table>
+          {Number(assignment.unknownAssignmentCount) > 0 && (
+            <p className="print-note">
+              {formatNumber(assignment.unknownAssignmentCount)} schedules have
+              unavailable assignment timing and are excluded from these
+              outcomes.
+            </p>
+          )}
+        </>
+      ) : (
+        <p>Assignment timing is unavailable for this scope.</p>
+      )}
+      <p className="print-note">
+        Inspectors have 30 calendar days from their first saved assignment.
+        Reassignment does not restart this period. The original scheduled month
+        remains {formatPmCycle(dashboard.pmCycle)}.
+      </p>
+      {dashboard.complianceMeasurable && (
+        <p className="print-note">
+          Completed within the scheduled month:{' '}
+          {formatPercent(dashboard.onTimeCompliancePercent)}. This is separate
+          from the Inspector assignment deadline.
+        </p>
+      )}
+      <p className="print-note">
+        Counts refer to scheduled inspections, not unique assets. Use the
+        detailed records report for individual assets and follow-up status.
+      </p>
+    </PrintDocument>
+  )
+}
+
 export function PmPeriodDashboard({
   search,
   onSearchChange,
@@ -1258,26 +1366,12 @@ export function PmPeriodDashboard({
       {showGeneratedReport ? (
         <>
           <div className="pm-dashboard-report space-y-4">
-            <header className="pm-summary-print-heading">
-              <p>UniPM · Preventive maintenance</p>
-              <h1>PM period summary report</h1>
-              <p>
-                {formatAssetCategory(search.assetCategory ?? '')} ·{' '}
-                {search.pmCycle ? formatPmCycle(search.pmCycle) : ''} ·{' '}
-                {search.department ?? 'All departments'}
-              </p>
-              {dashboardQuery.dataUpdatedAt > 0 && (
-                <p>
-                  Data loaded{' '}
-                  {new Intl.DateTimeFormat('en-PH', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                    timeZone: 'Asia/Manila',
-                  }).format(dashboardQuery.dataUpdatedAt)}{' '}
-                  Manila time.
-                </p>
-              )}
-            </header>
+            {dashboardQuery.data && (
+              <DashboardPrintDocument
+                dashboard={dashboardQuery.data}
+                updatedAt={dashboardQuery.dataUpdatedAt}
+              />
+            )}
             <section aria-labelledby="pm-dashboard-reporting-period">
               <Card className="content-card p-3 sm:p-4">
                 <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">

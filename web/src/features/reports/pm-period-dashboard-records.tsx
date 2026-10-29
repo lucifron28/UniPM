@@ -260,9 +260,11 @@ function filterSummary(search: PmPeriodDashboardRecordsSearch) {
 function RecordTable({
   rows,
   search,
+  printable = false,
 }: {
   rows: AssignmentAwareAssetRow[]
   search: PmPeriodDashboardRecordsSearch
+  printable?: boolean
 }) {
   const returnContext = {
     kind: 'dashboard' as const,
@@ -327,14 +329,18 @@ function RecordTable({
               </td>
               <td className="px-3 py-3 text-[var(--text-secondary)]">
                 <p>{assignmentLabel(row)}</p>
-                <p className="mt-1 text-xs">
-                  First assigned: {formatDateTime(row.firstInspectorAssignedAt)}
-                </p>
+                {!printable && (
+                  <p className="mt-1 text-xs">
+                    First assigned:{' '}
+                    {formatDateTime(row.firstInspectorAssignedAt)}
+                  </p>
+                )}
                 <p className="mt-1 text-xs">
                   Assignment due: {formatDateTime(row.inspectorAssignmentDueAt)}
                 </p>
                 <p className="mt-1 text-xs">
-                  Assignment timing: {assignmentTimingLabel(row)}
+                  {printable ? '' : 'Assignment timing: '}
+                  {assignmentTimingLabel(row)}
                 </p>
               </td>
               <td className="px-3 py-3 text-[var(--text-secondary)]">
@@ -907,14 +913,6 @@ export function PmPeriodDashboardRecords({
           className="pm-records-print__summary"
           aria-label="Report summary"
         >
-          <h2>Scope totals</h2>
-          <p>
-            {formatNumber(dashboard.scheduled)} scheduled ·{' '}
-            {formatNumber(dashboard.inspected)} completed ·{' '}
-            {formatNumber(scopeOutstanding)} outstanding · completed within the
-            scheduled month {formatPercent(dashboard.onTimeCompliancePercent)}
-          </p>
-          <h2>Filtered results</h2>
           <p>
             {filteredRows.length.toLocaleString()} matching rows ·{' '}
             {counts.completed.toLocaleString()} completed ·{' '}
@@ -922,10 +920,6 @@ export function PmPeriodDashboardRecords({
             {counts.overdueAssignment === null
               ? 'overdue assignment count unavailable'
               : `${counts.overdueAssignment.toLocaleString()} overdue assignments`}{' '}
-            ·{' '}
-            {counts.unassigned === null
-              ? 'unassigned count unavailable'
-              : `${counts.unassigned.toLocaleString()} unassigned`}{' '}
             · {counts.nonOperational.toLocaleString()} non-operational
           </p>
           <p className="pm-records-print__note">
@@ -943,7 +937,7 @@ export function PmPeriodDashboardRecords({
           {filteredRows.length === 0 ? (
             <p>No schedule rows match these filters.</p>
           ) : (
-            <RecordTable rows={filteredRows} search={search} />
+            <RecordTable rows={filteredRows} search={search} printable />
           )}
         </div>
       </section>
