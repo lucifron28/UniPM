@@ -11,6 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-186: Detail pages and print layouts](test-runs/TEST-186-detail-pages-and-print-layouts.md): 278 unit tests and 63 browser scenarios passed; desktop detail pages checked at 1440 and 1536 pixels, plus six synthetic PDF samples including multi-page tables. Live-backend and physical-printer verification remain outside this record.
+
 - [TEST-183: Mobile countdown ordering correction](test-runs/TEST-183-mobile-countdown-ordering-fix.md): restored urgency-first ordering, retained countdown, fixed Dart formatting; all nine existing home-screen tests passed without assertion changes.
 
 - [TEST-185: Asset modal and schedule navigation](test-runs/TEST-185-asset-modal-schedule-navigation.md): 25 focused workflow tests passed after one correction; desktop inspection confirmed a fixed tab layout and History/Tracking return navigation with mocked API responses.
