@@ -1,6 +1,11 @@
 @page pm-dashboard-records {
   size: A4 landscape;
-  margin: 10mm;
+  margin: 12mm;
+  @bottom-right {
+    content: 'Page ' counter(page);
+    font-size: 8pt;
+    color: #555;
+  }
 }
 
 .pm-records-print {
@@ -87,13 +92,13 @@
 
   .pm-records-print__header {
     margin-bottom: 8pt;
-    border-bottom: 1px solid #999;
+    border-bottom: 2pt solid #570000;
     padding-bottom: 6pt;
   }
 
   .pm-records-print__eyebrow {
     margin: 0 0 3pt;
-    font-size: 7pt;
+    font-size: 8pt;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -120,7 +125,7 @@
 
   .pm-records-print__note {
     color: #444;
-    font-size: 7pt;
+    font-size: 8pt;
   }
 
   .pm-records-print__table,
@@ -135,11 +140,11 @@
     min-width: 0 !important;
     table-layout: fixed;
     border-collapse: collapse;
-    font-size: 6.8pt;
+    font-size: 8pt;
   }
 
   .pm-records-print table * {
-    font-size: 6.8pt !important;
+    font-size: 8pt !important;
     line-height: 1.2 !important;
   }
 

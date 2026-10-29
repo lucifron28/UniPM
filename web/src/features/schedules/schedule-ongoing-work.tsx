@@ -1137,7 +1137,7 @@ function ScheduleTrackingProgressPanel({
         ref={dialogRef}
         className="ml-auto flex h-full w-full max-w-3xl flex-col overflow-hidden bg-white shadow-2xl"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-[var(--border-soft)] p-4 sm:p-6">
+        <header className="flex items-start justify-between gap-4 border-b border-[var(--border-soft)] bg-[#f7f2ef] p-4 sm:p-6">
           <div>
             <h2
               id="tracking-panel-title"

@@ -148,62 +148,91 @@ export function ScheduleBatchAssignment({
   }
 
   return (
-    <Card className="space-y-5 shadow-none">
+    <Card className="record-panel space-y-5 shadow-none">
       <div>
         <h2 className="font-semibold">Batch assignment</h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+        <p className="record-note mt-3">
           GSD assigns a Supervisor for the department, category, and PM cycle.
           The Supervisor then assigns an Inspector and provides oversight; this
           is not an approval step.
         </p>
       </div>
 
-      <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-            Department
-          </dt>
-          <dd className="mt-1 text-sm">
-            {schedule.asset?.department ?? 'Not recorded'}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-            Asset category
-          </dt>
-          <dd className="mt-1 text-sm">
-            {schedule.asset
-              ? formatAssetCategory(schedule.asset.assetCategory)
-              : 'Not recorded'}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-            PM cycle
-          </dt>
-          <dd className="mt-1 text-sm">{schedule.pmCycle ?? 'Not recorded'}</dd>
-        </div>
-        <div>
-          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-            Inspector
-          </dt>
-          <dd className="mt-1 text-sm">
-            {schedule.assignedToUserId
-              ? (workerName ?? 'Inspector assigned')
-              : 'Not assigned'}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-            Supervisor
-          </dt>
-          <dd className="mt-1 text-sm">
-            {schedule.assignedSupervisorUserId
-              ? (supervisorName ?? 'Supervisor assigned')
-              : 'Not assigned'}
-          </dd>
-        </div>
-      </dl>
+      <ol className="record-lifecycle" aria-label="Assignment stages">
+        <li
+          data-state={
+            schedule.assignedSupervisorUserId ? 'complete' : 'current'
+          }
+        >
+          <span aria-hidden="true">1</span>Supervisor:{' '}
+          {supervisorName ??
+            (schedule.assignedSupervisorUserId ? 'Assigned' : 'Not assigned')}
+        </li>
+        <li
+          data-state={
+            schedule.assignedToUserId
+              ? 'complete'
+              : schedule.assignedSupervisorUserId
+                ? 'current'
+                : 'pending'
+          }
+        >
+          <span aria-hidden="true">2</span>Inspector:{' '}
+          {workerName ??
+            (schedule.assignedToUserId ? 'Assigned' : 'Not assigned')}
+        </li>
+      </ol>
+      <details className="record-metadata">
+        <summary>Batch scope</summary>
+        <dl className="record-section-body grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+              Department
+            </dt>
+            <dd className="mt-1 text-sm">
+              {schedule.asset?.department ?? 'Not recorded'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+              Asset category
+            </dt>
+            <dd className="mt-1 text-sm">
+              {schedule.asset
+                ? formatAssetCategory(schedule.asset.assetCategory)
+                : 'Not recorded'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+              PM cycle
+            </dt>
+            <dd className="mt-1 text-sm">
+              {schedule.pmCycle ?? 'Not recorded'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+              Inspector
+            </dt>
+            <dd className="mt-1 text-sm">
+              {schedule.assignedToUserId
+                ? (workerName ?? 'Inspector assigned')
+                : 'Not assigned'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+              Supervisor
+            </dt>
+            <dd className="mt-1 text-sm">
+              {schedule.assignedSupervisorUserId
+                ? (supervisorName ?? 'Supervisor assigned')
+                : 'Not assigned'}
+            </dd>
+          </div>
+        </dl>
+      </details>
 
       {(showsSupervisorStage || showsWorkerStage) && (
         <div className="space-y-5 border-t border-[var(--border)] pt-5">

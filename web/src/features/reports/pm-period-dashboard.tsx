@@ -264,7 +264,7 @@ function DashboardMetrics({
 
   return (
     <section aria-label="PM period summary" className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="pm-dashboard-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <DashboardMetric
           label="Scheduled"
           value={formatNumber(dashboard.scheduled)}
@@ -1258,6 +1258,26 @@ export function PmPeriodDashboard({
       {showGeneratedReport ? (
         <>
           <div className="pm-dashboard-report space-y-4">
+            <header className="pm-summary-print-heading">
+              <p>UniPM · Preventive maintenance</p>
+              <h1>PM period summary report</h1>
+              <p>
+                {formatAssetCategory(search.assetCategory ?? '')} ·{' '}
+                {search.pmCycle ? formatPmCycle(search.pmCycle) : ''} ·{' '}
+                {search.department ?? 'All departments'}
+              </p>
+              {dashboardQuery.dataUpdatedAt > 0 && (
+                <p>
+                  Data loaded{' '}
+                  {new Intl.DateTimeFormat('en-PH', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                    timeZone: 'Asia/Manila',
+                  }).format(dashboardQuery.dataUpdatedAt)}{' '}
+                  Manila time.
+                </p>
+              )}
+            </header>
             <section aria-labelledby="pm-dashboard-reporting-period">
               <Card className="content-card p-3 sm:p-4">
                 <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">

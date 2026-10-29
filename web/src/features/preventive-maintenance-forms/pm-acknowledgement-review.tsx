@@ -1,3 +1,8 @@
+import {
+  FormLifecycle,
+  RecordMetadata,
+  RecordField as DetailItem,
+} from '@/features/shared/record-layout'
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
@@ -82,10 +87,6 @@ function formatCondition(value: string) {
   }
 }
 
-function detailValue(value: string | null | undefined) {
-  return value || 'Not recorded'
-}
-
 function locationValue(
   asset: Pick<PmPeriodDashboardAssetRowResponse, 'building' | 'location'>,
 ) {
@@ -95,17 +96,8 @@ function locationValue(
   )
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm break-words text-[var(--text-primary)]">
-        {detailValue(value)}
-      </dd>
-    </div>
-  )
+function detailValue(value: string | null | undefined) {
+  return value || 'Not recorded'
 }
 
 function ReviewError({
@@ -151,7 +143,7 @@ function Summary({
   return (
     <Card
       aria-label="Submitted batch review summary"
-      className="space-y-4 p-4 shadow-none sm:p-5"
+      className="record-panel space-y-4 p-4 shadow-none sm:p-5"
     >
       <PageHeading
         id="pm-acknowledgement-review-title"
@@ -172,7 +164,8 @@ function Summary({
             : 'No form status'}
         </Badge>
       </div>
-      <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+      <FormLifecycle status={form.status} />
+      <dl className="grid gap-4 text-sm sm:grid-cols-3">
         <DetailItem
           label="Department"
           value={batch.department ?? form.department ?? ''}
@@ -182,7 +175,8 @@ function Summary({
           value={formatAssetCategory(batch.assetCategory)}
         />
         <DetailItem label="PM cycle" value={formatCycle(batch.pmCycle)} />
-        <DetailItem label="Form period" value={formatFormPeriod(form)} />
+      </dl>
+      <dl className="record-metrics grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <DetailItem label="Scheduled" value={formatNumber(batch.scheduled)} />
         <DetailItem label="Inspected" value={formatNumber(batch.inspected)} />
         <DetailItem
@@ -193,20 +187,25 @@ function Summary({
           label="Compliance rate"
           value={formatPercent(batch.onTimeCompliancePercent)}
         />
-        <DetailItem
-          label="Field-work completion"
-          value={formatFormDate(batch.fieldWorkCompletedAt)}
-        />
-        <DetailItem
-          label="Submitted timestamp"
-          value={formatFormDate(batch.submittedAt ?? form.submittedAt)}
-        />
-        <DetailItem
-          label="Inspection rows"
-          value={String(form.inspections.length)}
-        />
-        <DetailItem label="File number" value={form.fileNumber ?? ''} />
       </dl>
+      <RecordMetadata title="Submission details">
+        <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          <DetailItem label="Form period" value={formatFormPeriod(form)} />
+          <DetailItem
+            label="Field-work completion"
+            value={formatFormDate(batch.fieldWorkCompletedAt)}
+          />
+          <DetailItem
+            label="Submitted timestamp"
+            value={formatFormDate(batch.submittedAt ?? form.submittedAt)}
+          />
+          <DetailItem
+            label="Inspection rows"
+            value={String(form.inspections.length)}
+          />
+          <DetailItem label="File number" value={form.fileNumber ?? ''} />
+        </dl>
+      </RecordMetadata>
     </Card>
   )
 }
@@ -505,7 +504,7 @@ export function PmAcknowledgementReview({
   return (
     <section
       aria-labelledby="pm-acknowledgement-review-title"
-      className="max-w-7xl space-y-5"
+      className="record-page"
     >
       <DetailBackLink
         context={returnContext}

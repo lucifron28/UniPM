@@ -1,10 +1,19 @@
+@page asset-qr-label {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
 @media print {
-  body * {
+  body:has(.asset-qr-label) {
+    page: asset-qr-label;
+    background: #fff !important;
+  }
+  body:has(.asset-qr-label) * {
     visibility: hidden !important;
   }
 
-  .asset-qr-label,
-  .asset-qr-label * {
+  body:has(.asset-qr-label) .asset-qr-label,
+  body:has(.asset-qr-label) .asset-qr-label * {
     visibility: visible !important;
   }
 
@@ -18,6 +27,17 @@
     border: 1px solid #000 !important;
     box-shadow: none !important;
     break-inside: avoid;
+  }
+
+  body:has(.asset-qr-label) :is(.app-workspace, .record-page, .record-columns) {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  body:has(.asset-qr-label) .record-page > :not(.record-columns),
+  body:has(.asset-qr-label) .record-columns > :not(.asset-qr-label) {
+    display: none !important;
   }
 
   .asset-qr-label > div:first-child {

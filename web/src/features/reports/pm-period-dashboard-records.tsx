@@ -397,7 +397,7 @@ function SummaryMetrics({
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <Card className="space-y-3 p-4 shadow-none sm:p-5">
+      <Card className="record-panel space-y-3 p-4 shadow-none sm:p-5">
         <div>
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Scope totals
@@ -413,7 +413,7 @@ function SummaryMetrics({
             </p>
           )}
         </div>
-        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+        <dl className="record-metrics grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <Metric label="Scheduled" value={formatNumber(dashboard.scheduled)} />
           <Metric label="Completed" value={formatNumber(dashboard.inspected)} />
           <Metric label="Outstanding" value={formatNumber(outstanding)} />
@@ -424,7 +424,7 @@ function SummaryMetrics({
         </dl>
       </Card>
 
-      <Card className="space-y-3 p-4 shadow-none sm:p-5">
+      <Card className="record-panel space-y-3 p-4 shadow-none sm:p-5">
         <div>
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Filtered records
@@ -433,7 +433,7 @@ function SummaryMetrics({
             Counts below use the rows that match the current filters.
           </p>
         </div>
-        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+        <dl className="record-metrics grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
           <Metric label="Matching rows" value={formatNumber(filteredCount)} />
           <Metric label="Completed" value={formatNumber(counts.completed)} />
           <Metric

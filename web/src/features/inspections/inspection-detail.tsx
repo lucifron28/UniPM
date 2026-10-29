@@ -1,3 +1,9 @@
+import {
+  RecordField as DetailItem,
+  RecordHeader,
+  RecordMetadata,
+  RecordSection,
+} from '@/features/shared/record-layout'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
@@ -32,19 +38,6 @@ import type { PmAcknowledgementReviewContext } from '@/features/preventive-maint
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm break-words text-[var(--text-primary)]">
-        {value || 'Not recorded'}
-      </dd>
-    </div>
-  )
-}
 
 function DetailError({
   title,
@@ -112,7 +105,7 @@ function InspectionPhotoEvidencePanel({
   }, [showPreview])
 
   return (
-    <Card className="space-y-3 shadow-none">
+    <Card className="record-panel space-y-3 shadow-none">
       <h2 className="font-semibold">Inspection photo evidence</h2>
       {!hasPhotoEvidence ? (
         <p className="text-sm text-[var(--text-secondary)]">
@@ -327,116 +320,124 @@ export function InspectionDetail({
     record.correctiveFollowUpStatus !== 'NoReferralRequired'
 
   return (
-    <section
-      aria-labelledby="inspection-detail-title"
-      className="max-w-5xl space-y-6"
-    >
+    <section aria-labelledby="inspection-detail-title" className="record-page">
       <DetailBackLink
         context={effectiveReturnContext}
         fallback={returnFallback}
       />
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Inspection source record
-          </p>
-          <h2
-            id="inspection-detail-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            {asset.data?.assetCode ?? 'Inspection record'}
-          </h2>
-          <p className="mt-2 text-[var(--text-secondary)]">
+      <RecordHeader
+        id="inspection-detail-title"
+        eyebrow="Inspection source record"
+        title={asset.data?.assetCode ?? 'Inspection record'}
+        description={
+          <>
             Entered inspection date:{' '}
             {formatInspectionDate(record.dateInspected)}
-          </p>
-          <p className="mt-1 text-xs text-[var(--text-neutral)]">
-            This date is entered by staff; the server records completion
-            separately.
-          </p>
-        </div>
-        <Badge
-          variant={record.isOperational ? 'success' : 'danger'}
-          className="px-3 text-sm font-semibold"
-        >
-          {inspectionOutcome(record.isOperational)}
-        </Badge>
+            <p className="record-note mt-1">
+              This date is entered by staff; the server records completion
+              separately.
+            </p>
+          </>
+        }
+        status={
+          <Badge
+            variant={record.isOperational ? 'success' : 'danger'}
+            className="px-3 text-sm"
+          >
+            {inspectionOutcome(record.isOperational)}
+          </Badge>
+        }
+      />
+      <div className="record-columns">
+        <RecordSection title="Findings and recommendation">
+          <div>
+            <h2 className="font-semibold">Remarks</h2>
+            <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
+              {record.remarks || 'No remarks were recorded.'}
+            </p>
+          </div>
+          <div>
+            <h2 className="font-semibold">Recommendation</h2>
+            <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
+              {record.actionsRecommendations ||
+                'No recommendation was recorded.'}
+            </p>
+          </div>
+        </RecordSection>
+        <InspectionPhotoEvidencePanel
+          inspectionId={record.id}
+          hasPhotoEvidence={record.hasPhotoEvidence}
+        />
       </div>
-
-      <Card className="grid gap-6 shadow-none md:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Current asset
-          </dt>
-          <dd className="mt-1 text-sm">
-            <Link
-              to="/app/assets/$assetId"
-              params={{ assetId: record.assetId }}
-              search={{
-                returnContext: inspectionDetailReturnContext(
-                  record.id,
-                  effectiveReturnContext,
-                  legacyReviewOrigin ?? returnFallback,
-                ),
-              }}
-              className="font-semibold text-[var(--primary)] hover:underline"
-            >
-              {assetLabel}
-            </Link>
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Scheduled month
-          </dt>
-          <dd className="mt-1 text-sm">
-            <Link
-              to="/app/schedules/$scheduleId"
-              params={{ scheduleId: record.scheduleId }}
-              search={{
-                returnContext: inspectionDetailReturnContext(
-                  record.id,
-                  effectiveReturnContext,
-                  legacyReviewOrigin ?? returnFallback,
-                ),
-              }}
-              className="font-semibold text-[var(--primary)] hover:underline"
-            >
-              {scheduleLabel}
-            </Link>
-          </dd>
-        </div>
-        <DetailItem
-          label="Due date"
-          value={formatPmCycleDueDate(schedule.data?.pmCycle)}
-        />
-        <DetailItem
-          label="Recorded operational result"
-          value={inspectionOutcome(record.isOperational)}
-        />
-        <DetailItem
-          label="Corrective follow-up"
-          value={
-            record.correctiveFollowUpStatus === 'ReferredToWms'
-              ? 'Referred to WMS'
-              : record.correctiveFollowUpStatus === 'CorrectiveFollowUpPending'
-                ? 'Corrective follow-up pending'
-                : 'No referral required'
-          }
-        />
-        <DetailItem
-          label="External WMS PM number"
-          value={record.externalPmNumber ?? ''}
-        />
-        <DetailItem
-          label="Created"
-          value={formatInspectionDate(record.createdAt)}
-        />
-        <DetailItem
-          label="Last updated"
-          value={formatInspectionDate(record.updatedAt)}
-        />
-      </Card>
+      <RecordSection title="Asset, schedule and follow-up">
+        <dl className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+              Current asset
+            </dt>
+            <dd className="mt-1 text-sm">
+              <Link
+                to="/app/assets/$assetId"
+                params={{ assetId: record.assetId }}
+                search={{
+                  returnContext: inspectionDetailReturnContext(
+                    record.id,
+                    effectiveReturnContext,
+                    legacyReviewOrigin ?? returnFallback,
+                  ),
+                }}
+                className="font-semibold text-[var(--primary)] hover:underline"
+              >
+                {assetLabel}
+              </Link>
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+              Scheduled month
+            </dt>
+            <dd className="mt-1 text-sm">
+              <Link
+                to="/app/schedules/$scheduleId"
+                params={{ scheduleId: record.scheduleId }}
+                search={{
+                  returnContext: inspectionDetailReturnContext(
+                    record.id,
+                    effectiveReturnContext,
+                    legacyReviewOrigin ?? returnFallback,
+                  ),
+                }}
+                className="font-semibold text-[var(--primary)] hover:underline"
+              >
+                {scheduleLabel}
+              </Link>
+            </dd>
+          </div>
+          <DetailItem
+            label="Due date"
+            value={formatPmCycleDueDate(schedule.data?.pmCycle)}
+          />
+          <DetailItem
+            label="Recorded operational result"
+            value={inspectionOutcome(record.isOperational)}
+          />
+          <DetailItem
+            label="Corrective follow-up"
+            value={
+              record.correctiveFollowUpStatus === 'ReferredToWms'
+                ? 'Referred to WMS'
+                : record.correctiveFollowUpStatus ===
+                    'CorrectiveFollowUpPending'
+                  ? 'Corrective follow-up pending'
+                  : 'No referral required'
+            }
+          />
+          <DetailItem
+            label="External WMS PM number"
+            value={record.externalPmNumber ?? ''}
+          />
+        </dl>
+      </RecordSection>
 
       {showWmsEntryGuide && (
         <Card className="flex flex-col gap-3 border-[var(--border-soft)] shadow-none sm:flex-row sm:items-center sm:justify-between">
@@ -492,7 +493,7 @@ export function InspectionDetail({
       )}
 
       {hasWaterWorkItems && (
-        <Card className="shadow-none">
+        <Card className="record-panel shadow-none">
           <h2 className="font-semibold">Water drinking station work items</h2>
           <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <DetailItem
@@ -515,28 +516,16 @@ export function InspectionDetail({
         </Card>
       )}
 
-      <InspectionPhotoEvidencePanel
-        inspectionId={record.id}
-        hasPhotoEvidence={record.hasPhotoEvidence}
-      />
-
-      <Card className="space-y-5 shadow-none">
-        <div>
-          <h2 className="font-semibold">Remarks</h2>
-          <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {record.remarks || 'No remarks were recorded.'}
-          </p>
-        </div>
-        <div>
-          <h2 className="font-semibold">Recommendation</h2>
-          <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {record.actionsRecommendations || 'No recommendation was recorded.'}
-          </p>
-        </div>
-      </Card>
-      <Card className="shadow-none">
-        <h2 className="font-semibold">Record information</h2>
+      <RecordMetadata title="Record information">
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <DetailItem
+            label="Created"
+            value={formatInspectionDate(record.createdAt)}
+          />
+          <DetailItem
+            label="Last updated"
+            value={formatInspectionDate(record.updatedAt)}
+          />
           <DetailItem label="Inspection record ID" value={record.id} />
           <DetailItem
             label="Inspector user ID"
@@ -545,7 +534,7 @@ export function InspectionDetail({
           <DetailItem label="Asset record ID" value={record.assetId} />
           <DetailItem label="Schedule record ID" value={record.scheduleId} />
         </dl>
-      </Card>
+      </RecordMetadata>
     </section>
   )
 }

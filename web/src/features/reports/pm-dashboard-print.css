@@ -1,9 +1,42 @@
 @page pm-dashboard-report {
   size: A4 landscape;
-  margin: 10mm;
+  margin: 12mm;
+  @bottom-right {
+    content: 'Page ' counter(page);
+    font-size: 8pt;
+    color: #555;
+  }
+}
+
+.pm-summary-print-heading {
+  display: none;
 }
 
 @media print {
+  .pm-summary-print-heading {
+    display: block;
+    border-bottom: 2pt solid #570000;
+    padding-bottom: 7pt;
+    margin-bottom: 8pt;
+  }
+  .pm-summary-print-heading h1 {
+    font-size: 16pt;
+    font-weight: 700;
+    margin: 3pt 0;
+  }
+  .pm-summary-print-heading p {
+    margin: 2pt 0;
+    font-size: 8pt;
+  }
+  body:has(.pm-dashboard-report) {
+    page: pm-dashboard-report;
+  }
+  body:has(.pm-dashboard-report)
+    .app-workspace
+    > section
+    > [data-page-heading] {
+    display: none !important;
+  }
   body:has(.pm-dashboard-report)
     :is(.app-shell, .app-shell-body, .app-shell-main, .app-workspace) {
     display: block !important;
@@ -104,6 +137,7 @@
   .pm-dashboard-report table {
     width: 100% !important;
     max-width: 100% !important;
+    min-width: 0 !important;
     table-layout: fixed;
     border-collapse: collapse;
     font-size: 7pt;
@@ -126,7 +160,7 @@
   }
 
   .pm-dashboard-report tr,
-  .pm-dashboard-report .grid > * {
+  .pm-dashboard-report .pm-dashboard-metrics > * {
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -139,5 +173,51 @@
   .pm-dashboard-report,
   .pm-dashboard-report * {
     box-shadow: none !important;
+  }
+}
+
+@media print {
+  .pm-dashboard-report > :first-child {
+    border-top: 3pt solid #570000;
+  }
+  .pm-dashboard-report .report-chart-grid {
+    display: block !important;
+  }
+  .pm-dashboard-report section[aria-labelledby='pm-dashboard-charts'] {
+    break-before: page;
+  }
+  .pm-dashboard-report .report-chart {
+    margin-bottom: 10pt;
+    break-inside: avoid;
+  }
+  .pm-dashboard-report [class*='grid'] {
+    gap: 8pt !important;
+  }
+  .pm-dashboard-report :is(h1, h2, h3) {
+    line-height: 1.3;
+  }
+  .pm-dashboard-report .report-chart__table {
+    margin-top: 6pt;
+  }
+  .pm-dashboard-report [class*='sticky'] {
+    position: static !important;
+  }
+  .pm-dashboard-report .pm-dashboard-metrics {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+  .pm-dashboard-report .pm-dashboard-metrics > * {
+    padding: 8pt !important;
+  }
+  .pm-dashboard-report .pm-dashboard-metrics > * p {
+    font-size: 7.5pt !important;
+  }
+  .pm-dashboard-report .pm-dashboard-metrics > * p:nth-child(2) {
+    font-size: 15pt !important;
+  }
+  .pm-dashboard-report > :not(:first-child) {
+    margin-top: 8pt !important;
+  }
+  .pm-dashboard-report p {
+    font-size: 9pt;
   }
 }

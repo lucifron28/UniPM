@@ -35,7 +35,7 @@ export function ScheduleBatchPanel({
       }}
     >
       <div className="flex h-full flex-col">
-        <header className="shrink-0 space-y-3 border-b border-[var(--border-soft)] p-4 sm:p-6">
+        <header className="shrink-0 space-y-3 border-b border-[var(--border-soft)] bg-[#f7f2ef] p-4 sm:p-6">
           <Button
             type="button"
             variant="secondary"
