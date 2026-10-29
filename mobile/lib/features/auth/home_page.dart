@@ -391,6 +391,7 @@ class _HomePageState extends State<HomePage> {
         completedCount: draft.inspections.length,
         totalCount: total,
         building: draft.building,
+        daysUntilDue: getPmCycleDaysUntilDue(cycle),
         actionLabel: 'Continue PM batch',
         onAction: widget.onOpenForm == null ? null : openDraft,
         onTap: widget.onOpenForm == null ? null : openDraft,

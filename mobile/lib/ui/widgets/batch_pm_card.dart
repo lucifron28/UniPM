@@ -18,6 +18,7 @@ class BatchPmCard extends StatelessWidget {
     this.building,
     this.assignmentDeadlineSummary,
     this.assignmentPeriodSummary,
+    this.daysUntilDue,
     this.onTap,
     this.actionLabel,
     this.onAction,
@@ -32,6 +33,7 @@ class BatchPmCard extends StatelessWidget {
   final String? building;
   final String? assignmentDeadlineSummary;
   final String? assignmentPeriodSummary;
+  final int? daysUntilDue;
   final VoidCallback? onTap;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -48,9 +50,46 @@ class BatchPmCard extends StatelessWidget {
     _ => StatusBadge.fromFormStatus(status),
   };
 
+  Widget _dueCountdownBadge(int days) {
+    final (background, border, foreground) = days < 0
+        ? (const Color(0xFFFEE2E2), const Color(0xFFFECACA), AppColors.error)
+        : days <= 7
+        ? (AppColors.dueBg, AppColors.dueBorder, AppColors.dueText)
+        : (
+            AppColors.acknowledgedBg,
+            AppColors.acknowledgedBorder,
+            AppColors.acknowledgedText,
+          );
+    final label = days < 0
+        ? 'Overdue by ${days.abs()} ${days.abs() == 1 ? 'day' : 'days'}'
+        : days == 0
+        ? 'Due today'
+        : '$days ${days == 1 ? 'day' : 'days'} left';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(9999),
+        border: Border.all(color: border),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: foreground,
+          letterSpacing: -0.2,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final formattedCycle = formatPmCycle(pmCycle);
+    final effectiveDaysUntilDue =
+        daysUntilDue ?? getPmCycleDaysUntilDue(pmCycle);
     final cycleLabel = formattedCycle == 'Not recorded'
         ? 'Cycle: $pmCycle'
         : 'PM cycle: $formattedCycle';
@@ -92,7 +131,16 @@ class BatchPmCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _statusBadge,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _statusBadge,
+                      if (effectiveDaysUntilDue != null) ...[
+                        const SizedBox(width: 6),
+                        _dueCountdownBadge(effectiveDaysUntilDue),
+                      ],
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
