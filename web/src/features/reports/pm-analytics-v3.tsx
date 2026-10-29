@@ -1,4 +1,4 @@
-import './nla-print.css'
+import { PrintDocument } from './print-document'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
@@ -5187,23 +5187,10 @@ export function PmAnalyticsV3Panel({
 
       {response && catalog && stage === 'results' && (
         <Card
-          className="nla-print-report record-panel space-y-5 p-4 shadow-none sm:p-5"
+          className="nla-screen-results record-panel space-y-5 p-4 shadow-none sm:p-5"
           aria-live="polite"
           aria-labelledby="pm-v3-results-title"
         >
-          <div className="nla-print-heading">
-            <p>
-              <strong>UniPM / Natural Language Analytics</strong>
-            </p>
-            <p>Question: {submittedQuestion || question}</p>
-            <p>Scope: {preview?.summary ?? 'See report scope below.'}</p>
-            <p>
-              Printed results page {response.page} of {response.totalPages}.{' '}
-              {formatNumber(response.population.sourceTotalCount)} matching
-              source records in the full scope. This printout contains the
-              currently displayed results page.
-            </p>
-          </div>
           <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border-l-4 border-[var(--primary)] bg-[#f7f2ef] p-4">
             <div>
               <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -5536,7 +5523,161 @@ export function PmAnalyticsV3Panel({
           </details>
         </Card>
       )}
+      {response && catalog && stage === 'results' && (
+        <NlaPrintDocument
+          response={response}
+          catalog={catalog}
+          question={submittedQuestion || question}
+          scope={preview?.summary}
+        />
+      )}
     </div>
+  )
+}
+
+function NlaPrintDocument({
+  response,
+  catalog,
+  question,
+  scope,
+}: {
+  response: ExecutionResponse
+  catalog: Catalog
+  question: string
+  scope?: string | undefined
+}) {
+  const inventory = response.plan.subject === 'assetInventory'
+  const columns = response.columns.filter(
+    (column) => !['scheduleId', 'assetId', 'inspectionId'].includes(column.id),
+  )
+  const rows =
+    response.mode === 'Records' ? response.records : response.aggregateRows
+  const measures = (response.plan.measures ?? [])
+    .map((id) => formatLabel(id, catalog))
+    .join(', ')
+  const grouping = (response.plan.groupBy ?? [])
+    .map((id) => formatLabel(id, catalog).toLowerCase())
+    .join(', ')
+  const title =
+    response.mode === 'Records'
+      ? inventory
+        ? 'Registered asset records'
+        : 'Preventive maintenance records'
+      : `${measures || 'Report results'}${grouping ? ` by ${grouping}` : ''}`
+  const hasRates = response.columns.some((column) => column.unit === 'percent')
+  const unavailableReasons = response.aggregateRows.flatMap((row) =>
+    Object.values(row.measures ?? {}).flatMap((measure) =>
+      !measure.isMeasurable && measure.unmeasurableReason
+        ? [measure.unmeasurableReason]
+        : [],
+    ),
+  )
+  return (
+    <PrintDocument
+      className={
+        columns.length > 5
+          ? 'nla-print-report print-document--wide'
+          : 'nla-print-report'
+      }
+      label="Printable analytics report"
+    >
+      <header className="nla-print-heading">
+        <p>
+          <strong>UniPM · General Services Department</strong>
+        </p>
+        <h1>{title}</h1>
+        <p>{scope || question}</p>
+        <p className="print-note">
+          Generated{' '}
+          {new Intl.DateTimeFormat('en-PH', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+            timeZone: 'Asia/Manila',
+          }).format(new Date(response.asOfUtc))}{' '}
+          · Manila time
+        </p>
+      </header>
+      {rows.length ? (
+        <table>
+          <thead>
+            <tr>
+              {columns.map((column) => (
+                <th key={column.id} scope="col">
+                  {column.label}
+                  {column.valueType === 'date-time' ? ' (Manila time)' : ''}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={index}>
+                {columns.map((column) => {
+                  const measure =
+                    'measures' in row ? row.measures?.[column.id] : undefined
+                  return (
+                    <td key={column.id}>
+                      {measure && !measure.isMeasurable
+                        ? 'Not measurable'
+                        : column.unit === 'percent' &&
+                            (measure ? measure.value : row.values[column.id]) !=
+                              null
+                          ? `${formatNumber((measure ? measure.value : row.values[column.id]) as number | string)}%`
+                          : formatValue(
+                              measure ? measure.value : row.values[column.id],
+                              column,
+                              catalog,
+                            )}
+                      {measure?.unit === 'percent' && measure.isMeasurable && (
+                        <span className="print-note">
+                          {' '}
+                          · {formatNumber(measure.numerator)} of{' '}
+                          {formatNumber(measure.denominator)}
+                        </span>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p>No records matched this report.</p>
+      )}
+      {!inventory && (
+        <p className="print-note">
+          Counts refer to scheduled asset cycles. An asset may appear in more
+          than one cycle.
+          {hasRates
+            ? ' Percentages use the stated numerator and denominator.'
+            : ''}
+        </p>
+      )}
+      {[...new Set(unavailableReasons)].map((reason) => (
+        <p className="print-note" key={reason}>
+          {reason}
+        </p>
+      ))}
+      {response.plan.top && (
+        <p className="print-note">
+          Selected{' '}
+          {response.plan.top.direction === 'Descending' ? 'top' : 'bottom'}{' '}
+          {response.plan.top.limit} groups. This is a ranked subset.
+        </p>
+      )}
+      {Number(response.totalPages) > 1 && (
+        <p className="print-note">
+          Result page {response.page} of {response.totalPages}. This document
+          contains the displayed page only, not all{' '}
+          {formatNumber(response.population.sourceTotalCount)} matching source
+          records.
+        </p>
+      )}
+      {response.chartUnavailableReason && (
+        <p className="print-note">{response.chartUnavailableReason}</p>
+      )}
+    </PrintDocument>
   )
 }
 
