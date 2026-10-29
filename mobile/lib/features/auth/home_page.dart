@@ -345,15 +345,6 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
     tasks.sort((left, right) {
-      final leftDueDate = getPmCycleDueDate(left.pmCycle);
-      final rightDueDate = getPmCycleDueDate(right.pmCycle);
-      if (leftDueDate == null && rightDueDate != null) return 1;
-      if (leftDueDate != null && rightDueDate == null) return -1;
-      if (leftDueDate != null && rightDueDate != null) {
-        final dueDateOrder = leftDueDate.compareTo(rightDueDate);
-        if (dueDateOrder != 0) return dueDateOrder;
-      }
-
       final statusOrder = _statusOrder(
         left.status,
       ).compareTo(_statusOrder(right.status));

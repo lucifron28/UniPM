@@ -52,17 +52,9 @@ class BatchPmCard extends StatelessWidget {
 
   Widget _dueCountdownBadge(int days) {
     final (background, border, foreground) = days < 0
-        ? (
-            const Color(0xFFFEE2E2),
-            const Color(0xFFFECACA),
-            AppColors.error,
-          )
+        ? (const Color(0xFFFEE2E2), const Color(0xFFFECACA), AppColors.error)
         : days <= 7
-        ? (
-            AppColors.dueBg,
-            AppColors.dueBorder,
-            AppColors.dueText,
-          )
+        ? (AppColors.dueBg, AppColors.dueBorder, AppColors.dueText)
         : (
             AppColors.acknowledgedBg,
             AppColors.acknowledgedBorder,

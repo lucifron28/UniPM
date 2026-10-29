@@ -44,9 +44,9 @@ int? getPmCycleDaysUntilDue(String? value, {DateTime? now}) {
   final dueDate = getPmCycleDueDate(value);
   if (dueDate == null) return null;
 
-  final manilaNow = (now ?? DateTime.now())
-      .toUtc()
-      .add(const Duration(hours: 8));
+  final manilaNow = (now ?? DateTime.now()).toUtc().add(
+    const Duration(hours: 8),
+  );
   final manilaToday = DateTime.utc(
     manilaNow.year,
     manilaNow.month,
