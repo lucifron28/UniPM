@@ -40,6 +40,21 @@ DateTime? getPmCycleDueDate(String? value) {
   return DateTime.utc(cycle.year, cycle.month + 1, 0);
 }
 
+int? getPmCycleDaysUntilDue(String? value, {DateTime? now}) {
+  final dueDate = getPmCycleDueDate(value);
+  if (dueDate == null) return null;
+
+  final manilaNow = (now ?? DateTime.now())
+      .toUtc()
+      .add(const Duration(hours: 8));
+  final manilaToday = DateTime.utc(
+    manilaNow.year,
+    manilaNow.month,
+    manilaNow.day,
+  );
+  return dueDate.difference(manilaToday).inDays;
+}
+
 String formatPmCycleDueDate(String? value) {
   final dueDate = getPmCycleDueDate(value);
   if (dueDate == null) return 'Not recorded';
