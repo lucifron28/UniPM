@@ -31,6 +31,7 @@ import { RegistryActiveFilters } from '@/features/shared/registry-active-filters
 import type { RegistryActiveFilter } from '@/features/shared/registry-active-filters'
 import { RegistryZoomControls } from '@/features/shared/registry-zoom'
 import { useRegistryZoom } from '@/features/shared/registry-zoom-state'
+import { AssetCreateDialog } from './asset-create-dialog'
 
 export type AssetSearch = {
   assetCategory?: Asset['assetCategory'] | undefined
@@ -113,6 +114,7 @@ export function AssetRegistry({
   ) => void
 }) {
   const currentUser = useCurrentUser()
+  const [createOpen, setCreateOpen] = useState(false)
   const recordZoom = useRegistryZoom()
   const categories = useAssetCategories()
   const pageSize = 25
@@ -361,6 +363,7 @@ export function AssetRegistry({
 
   return (
     <section aria-labelledby="assets-title" className="space-y-4">
+      {createOpen && <AssetCreateDialog onClose={() => setCreateOpen(false)} />}
       <PageHeading
         id="assets-title"
         eyebrow="Asset registry"
@@ -368,11 +371,9 @@ export function AssetRegistry({
         description="Find equipment by category, status, location, or asset code."
         actions={
           canCreate ? (
-            <Button asChild>
-              <Link to="/app/assets/new">
-                <Plus aria-hidden="true" className="mr-2 size-4" />
-                Add asset
-              </Link>
+            <Button type="button" onClick={() => setCreateOpen(true)}>
+              <Plus aria-hidden="true" className="mr-2 size-4" />
+              Add asset
             </Button>
           ) : undefined
         }

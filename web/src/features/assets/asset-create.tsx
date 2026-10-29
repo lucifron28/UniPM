@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
@@ -69,7 +69,17 @@ function cleanBackendErrorKey(rawKey: string): keyof CreateAssetValues | null {
   return null
 }
 
-export function AssetCreate() {
+export function AssetCreate({
+  embedded = false,
+  onCreated,
+  onCancel,
+  onBusyChange,
+}: {
+  embedded?: boolean
+  onCreated?: () => void
+  onCancel?: () => void
+  onBusyChange?: (busy: boolean) => void
+}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const categories = useAssetCategories()
@@ -196,10 +206,13 @@ export function AssetCreate() {
           queryKey: getGetScheduleRegistrySummaryQueryKey(),
         }),
       ])
-      void navigate({
-        to: '/app/assets/$assetId',
-        params: { assetId: asset.id },
-      })
+      if (onCreated) onCreated()
+      else {
+        void navigate({
+          to: '/app/assets/$assetId',
+          params: { assetId: asset.id },
+        })
+      }
     },
     onError: (error) => {
       if (error instanceof ZodError) {
@@ -274,6 +287,10 @@ export function AssetCreate() {
     },
   })
 
+  useEffect(() => {
+    onBusyChange?.(mutation.isPending)
+  }, [mutation.isPending, onBusyChange])
+
   if (currentUser.isPending)
     return <Card className="p-6">Checking access...</Card>
 
@@ -284,9 +301,15 @@ export function AssetCreate() {
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           Only GSD users can create assets in the current workflow.
         </p>
-        <Button asChild className="mt-5">
-          <Link to="/app/assets">Return to assets</Link>
-        </Button>
+        {onCancel ? (
+          <Button className="mt-5" onClick={onCancel}>
+            Close
+          </Button>
+        ) : (
+          <Button asChild className="mt-5">
+            <Link to="/app/assets">Return to assets</Link>
+          </Button>
+        )}
       </Card>
     )
   }
@@ -306,9 +329,15 @@ export function AssetCreate() {
           <Button type="button" onClick={() => void categories.refetch()}>
             Retry loading categories
           </Button>
-          <Button asChild variant="secondary">
-            <Link to="/app/assets">Return to assets</Link>
-          </Button>
+          {onCancel ? (
+            <Button variant="secondary" onClick={onCancel}>
+              Cancel
+            </Button>
+          ) : (
+            <Button asChild variant="secondary">
+              <Link to="/app/assets">Return to assets</Link>
+            </Button>
+          )}
         </div>
       </Card>
     )
@@ -316,23 +345,31 @@ export function AssetCreate() {
 
   return (
     <section
-      aria-labelledby="create-asset-title"
+      aria-labelledby={embedded ? undefined : 'create-asset-title'}
       className="max-w-3xl space-y-6"
     >
-      <div>
-        <Link
-          to="/app/assets"
-          className="text-sm font-semibold text-[var(--primary)] hover:underline"
-        >
-          Back to assets
-        </Link>
-        <PageHeading
-          id="create-asset-title"
-          title="Add asset"
-          description="Add an asset code, category, and department. Building and location are optional."
-        />
-      </div>
-      <Card className="content-card p-5 sm:p-6">
+      {!embedded && (
+        <div>
+          <Link
+            to="/app/assets"
+            className="text-sm font-semibold text-[var(--primary)] hover:underline"
+          >
+            Back to assets
+          </Link>
+          <PageHeading
+            id="create-asset-title"
+            title="Add asset"
+            description="Add an asset code, category, and department. Building and location are optional."
+          />
+        </div>
+      )}
+      <Card
+        className={
+          embedded
+            ? 'border-0 p-5 shadow-none sm:p-6'
+            : 'content-card p-5 sm:p-6'
+        }
+      >
         <form
           noValidate
           className="space-y-6"
@@ -508,9 +545,20 @@ export function AssetCreate() {
                     )}
                     {busy ? 'Creating asset...' : 'Create asset'}
                   </Button>
-                  <Button asChild variant="secondary">
-                    <Link to="/app/assets">Cancel</Link>
-                  </Button>
+                  {onCancel ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={onCancel}
+                    >
+                      Cancel
+                    </Button>
+                  ) : (
+                    <Button asChild variant="secondary">
+                      <Link to="/app/assets">Cancel</Link>
+                    </Button>
+                  )}
                 </div>
               )
             }}
