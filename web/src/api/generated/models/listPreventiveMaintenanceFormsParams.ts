@@ -12,6 +12,7 @@ export type ListPreventiveMaintenanceFormsParams = {
   pmCycle?: string
   search?: string
   supervisor?: string
+  attention?: string
   /**
    * @pattern ^-?(?:0|[1-9]\d*)$
    */

@@ -708,6 +708,22 @@ export function InspectionRegistry({
 
   return (
     <section aria-labelledby="inspections-title" className="space-y-4">
+      {search.isOperational === false &&
+        search.wmsReferralStatus === 'CorrectiveFollowUpPending' && (
+          <div className="space-y-2">
+            <Link
+              to="/app/dashboard"
+              search={{}}
+              className="inline-flex cursor-pointer items-center rounded-md border border-[var(--border-soft)] bg-white px-4 py-2 font-semibold text-[var(--primary)] hover:bg-[var(--surface-muted)]"
+            >
+              ← Back to dashboard
+            </Link>
+            <p className="text-sm font-semibold">
+              Needs attention · Non-operational findings awaiting a WMS PM
+              number · All periods
+            </p>
+          </div>
+        )}
       <PageHeading
         id="inspections-title"
         eyebrow="Source-record review"
