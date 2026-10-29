@@ -135,7 +135,7 @@ class BatchPmCard extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _statusBadge,
-                      if (effectiveDaysUntilDue != null) ...[
+                      if (!isCompleted && effectiveDaysUntilDue != null) ...[
                         const SizedBox(width: 6),
                         _dueCountdownBadge(effectiveDaysUntilDue),
                       ],
@@ -211,6 +211,17 @@ class BatchPmCard extends StatelessWidget {
                 ],
               ],
               const SizedBox(height: 14),
+              if (isCompleted) ...[
+                const Text(
+                  'Inspections complete',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.acknowledgedText,
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
               PmProgressIndicator(
                 completed: completedCount,
                 total: totalCount > 0 ? totalCount : completedCount,
