@@ -179,7 +179,7 @@ export function ScheduleBatchReassignmentDialog({
           </p>
         ) : (
           <>
-            <dl className="mt-5 grid gap-3 rounded-lg bg-[var(--surface-muted)] p-4 text-sm sm:grid-cols-2">
+            <dl className="mt-5 grid gap-3 rounded-lg border-l-4 border-[var(--primary)] bg-[#f7f2ef] p-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs font-semibold text-[var(--text-neutral)]">
                   Current Supervisor

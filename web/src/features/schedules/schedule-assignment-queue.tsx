@@ -793,7 +793,7 @@ function ScheduleBatchAssignmentDialog({
         if (event.target === event.currentTarget && !isSaving) onClose()
       }}
     >
-      <header className="sticky top-0 z-10 flex flex-col-reverse items-start gap-4 border-b border-[var(--border-soft)] bg-white p-5">
+      <header className="sticky top-0 z-10 flex flex-col-reverse items-start gap-4 border-b border-[var(--border-soft)] bg-[#f7f2ef] p-5">
         <div>
           <h2
             id="schedule-batch-assignment-dialog-title"

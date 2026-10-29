@@ -1,4 +1,11 @@
 import {
+  RecordField as DetailItem,
+  RecordHeader,
+  RecordMetadata,
+  RecordSection,
+  FormLifecycle,
+} from '@/features/shared/record-layout'
+import {
   useRef,
   useState,
   type FormEvent,
@@ -49,19 +56,6 @@ import type {
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm break-words text-[var(--text-primary)]">
-        {value || 'Not recorded'}
-      </dd>
-    </div>
-  )
-}
-
 function HandoffRow({
   formId,
   row,
@@ -108,7 +102,7 @@ function HandoffRow({
   }
 
   return (
-    <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
+    <article className="record-inspection-row">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">
@@ -366,7 +360,7 @@ function CorrectiveHandoff({
           reference; UniPM does not create or manage external WMS or RMRF work.
         </p>
       </div>
-      <Card className="grid gap-4 shadow-none sm:grid-cols-2 lg:grid-cols-4">
+      <Card className="record-panel grid gap-4 shadow-none sm:grid-cols-2 lg:grid-cols-4">
         <DetailItem
           label="UniPM file number"
           value={handoff.fileNumber ?? ''}
@@ -387,7 +381,7 @@ function CorrectiveHandoff({
         />
       </Card>
       {handoff.rows.length === 0 ? (
-        <Card className="shadow-none">
+        <Card className="record-panel shadow-none">
           <h3 className="font-semibold text-[var(--text-primary)]">
             No follow-up rows
           </h3>
@@ -441,7 +435,7 @@ function InspectionRow({
         : identity?.trim() || `Assigned ${role}`
 
   return (
-    <article className="rounded-lg border border-[var(--border-soft)] bg-white p-3">
+    <article className="record-inspection-row">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
         <div>
           <p className="text-xs text-[var(--text-neutral)]">
@@ -471,7 +465,7 @@ function InspectionRow({
       <p className="mt-2 text-sm text-[var(--text-secondary)]">
         {excerpt(row.remarks) || 'No finding was recorded.'}
       </p>
-      <details className="mt-2 border-t border-[var(--border-soft)] pt-2 text-sm">
+      <details className="record-metadata mt-3 text-sm">
         <summary className="cursor-pointer font-semibold text-[var(--primary)]">
           Row details
         </summary>
@@ -481,7 +475,7 @@ function InspectionRow({
             form is acknowledged.
           </p>
         )}
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="m-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <DetailItem
             label="Inspected by"
             value={row.skilledWorkerIdentity ?? 'Not recorded'}
@@ -554,7 +548,7 @@ function InspectionRow({
           <summary className="cursor-pointer font-semibold">
             Technical identifiers
           </summary>
-          <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <dl className="m-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <DetailItem label="Inspection ID" value={row.id} />
             <DetailItem label="Asset ID" value={row.assetId} />
             <DetailItem label="Schedule ID" value={row.scheduleId} />
@@ -1141,44 +1135,44 @@ export function FormDetail({
       .join(' · ')
 
   return (
-    <section
-      aria-labelledby="form-detail-title"
-      className="max-w-6xl space-y-6"
-    >
+    <section aria-labelledby="form-detail-title" className="record-page">
       {backLink}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Preventive-maintenance form
-          </p>
-          <h2
-            id="form-detail-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            {detailTitle}
-          </h2>
-        </div>
-        <Badge className={formStatusClass(record.status)}>
-          {formStatusLabel(record.status)}
-        </Badge>
-      </div>
-      <Card className="grid gap-5 shadow-none sm:grid-cols-2 lg:grid-cols-4">
-        <DetailItem
-          label="Asset category"
-          value={formatAssetCategory(record.assetCategory)}
-        />
-        <DetailItem label="Building" value={record.building ?? ''} />
-        <DetailItem label="Department" value={record.department ?? ''} />
-        <DetailItem label="Period" value={periodLabel} />
-        <DetailItem
-          label="Submitted"
-          value={formatFormDate(record.submittedAt)}
-        />
-        <DetailItem
-          label="Inspection rows"
-          value={String(record.inspections.length)}
-        />
-      </Card>
+      <RecordHeader
+        id="form-detail-title"
+        eyebrow="Preventive-maintenance form"
+        title={detailTitle}
+        description={
+          <>
+            {record.department ?? 'Department unavailable'} ·{' '}
+            {formatAssetCategory(record.assetCategory)} · {periodLabel}
+          </>
+        }
+        status={
+          <Badge className={formStatusClass(record.status)}>
+            {formStatusLabel(record.status)}
+          </Badge>
+        }
+      />
+      <FormLifecycle status={record.status} />
+      <RecordSection title="Form overview">
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <DetailItem
+            label="Asset category"
+            value={formatAssetCategory(record.assetCategory)}
+          />
+          <DetailItem label="Building" value={record.building ?? ''} />
+          <DetailItem label="Department" value={record.department ?? ''} />
+          <DetailItem label="Period" value={periodLabel} />
+          <DetailItem
+            label="Submitted"
+            value={formatFormDate(record.submittedAt)}
+          />
+          <DetailItem
+            label="Inspection rows"
+            value={String(record.inspections.length)}
+          />
+        </dl>
+      </RecordSection>
       {isReadOnlySupervisor || (readOnly && record.status === 'Submitted') ? (
         <Card className="shadow-none" role="status">
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -1208,7 +1202,7 @@ export function FormDetail({
           </p>
         </div>
         {record.inspections.length === 0 ? (
-          <Card className="shadow-none">
+          <Card className="record-panel shadow-none">
             No inspection rows are attached to this form.
           </Card>
         ) : (
@@ -1245,8 +1239,7 @@ export function FormDetail({
       {isGsd && record.status === 'Acknowledged' && (
         <CorrectiveHandoff query={handoff} />
       )}
-      <Card className="shadow-none">
-        <h2 className="font-semibold">Record information</h2>
+      <RecordMetadata title="Record information">
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DetailItem label="Form record ID" value={record.id} />
           <DetailItem
@@ -1258,7 +1251,7 @@ export function FormDetail({
             value={record.submittedByUserId ?? ''}
           />
         </dl>
-      </Card>
+      </RecordMetadata>
     </section>
   )
 }

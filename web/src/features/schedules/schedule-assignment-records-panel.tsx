@@ -43,7 +43,7 @@ export function ScheduleAssignmentRecordsPanel({
         </div>
       ) : (
         <>
-          <p className="mb-3 text-sm text-[var(--text-secondary)]">
+          <p className="mb-4 rounded-lg border-l-4 border-[var(--primary)] bg-[#f7f2ef] p-3 text-sm text-[var(--text-secondary)]">
             {total} schedules in this batch.
           </p>
           <table className="w-full text-left text-sm">

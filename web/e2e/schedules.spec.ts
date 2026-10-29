@@ -1065,9 +1065,10 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/pmCycle=2026-08/)
     const sectionHeadings = page.locator('main h1, main h2')
     await expect
-      .poll(async () => (await sectionHeadings.allTextContents()).slice(0, 4))
+      .poll(async () => (await sectionHeadings.allTextContents()).slice(0, 5))
       .toEqual([
         'Schedules',
+        'Schedule history',
         'Find schedules',
         'Schedule summary',
         'Schedule records',
