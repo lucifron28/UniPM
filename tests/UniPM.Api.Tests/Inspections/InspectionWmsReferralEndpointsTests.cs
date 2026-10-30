@@ -119,7 +119,6 @@ public sealed class InspectionWmsReferralEndpointsTests
     [Theory]
     [InlineData(AuthRoleCatalog.Admin)]
     [InlineData(AuthRoleCatalog.Inspector)]
-    [InlineData(AuthRoleCatalog.Supervisor)]
     public async Task Referral_is_forbidden_for_non_gsd_roles(string role)
     {
         await using var application = new TestApplicationFactory(role);
@@ -204,6 +203,40 @@ public sealed class InspectionWmsReferralEndpointsTests
         Assert.Equal(HttpStatusCode.BadRequest, invalidStatus.StatusCode);
     }
 
+    [Fact]
+    public async Task Attention_and_referral_respect_supervisor_assignment_and_stage()
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Supervisor);
+        using var client = application.CreateClient();
+        var assigned = await application.CreateScenarioAsync(supervisorId: TestAuthenticationHandler.UserId);
+        var other = await application.CreateScenarioAsync(supervisorId: Guid.NewGuid());
+        var submitted = await application.CreateScenarioAsync(formStatus: "Submitted", supervisorId: TestAuthenticationHandler.UserId);
+        await application.CreateScenarioAsync(formStatus: "Submitted", supervisorId: Guid.NewGuid());
+        await application.CreateScenarioAsync(formStatus: "Submitted", isOperational: true, supervisorId: TestAuthenticationHandler.UserId);
+        await application.CreateScenarioAsync(isOperational: true, supervisorId: TestAuthenticationHandler.UserId);
+        var attention = await client.GetFromJsonAsync<InspectionAttentionResponse>("/api/v1/inspections/attention");
+        Assert.NotNull(attention);
+        Assert.Equal(1, attention.AwaitingAcknowledgement);
+        Assert.Equal(1, attention.AwaitingReferral);
+        Assert.Equal(assigned.InspectionId, Assert.Single(attention.Items).Id);
+        var pendingForms = await client.GetFromJsonAsync<PreventiveMaintenanceFormPageResponse>("/api/v1/preventive-maintenance-forms?attention=awaitingAcknowledgement");
+        Assert.NotNull(pendingForms);
+        Assert.Equal(submitted.FormId, Assert.Single(pendingForms.Items).Id);
+        var denied = await client.PutAsJsonAsync($"/api/v1/inspections/{other.InspectionId}/wms-referral", new { externalPmNumber = "PM-1", expectedRevision = 0 });
+        Assert.Equal(HttpStatusCode.NotFound, denied.StatusCode);
+        var saved = await client.PutAsJsonAsync($"/api/v1/inspections/{assigned.InspectionId}/wms-referral", new { externalPmNumber = "PM-1", expectedRevision = 0 });
+        saved.EnsureSuccessStatusCode();
+        var read = await client.GetAsync($"/api/v1/preventive-maintenance-forms/{assigned.FormId}/corrective-handoff");
+        read.EnsureSuccessStatusCode();
+        var after = await client.GetFromJsonAsync<InspectionAttentionResponse>("/api/v1/inspections/attention?stage=referred");
+        Assert.NotNull(after);
+        Assert.Equal(0, after.AwaitingReferral);
+        Assert.Equal(1, after.Referred);
+        Assert.Equal("PM-1", Assert.Single(after.Items).ExternalPmNumber);
+        var state = await application.ReadWorkflowStateAsync(assigned);
+        Assert.Equal(1, state.AuditCount);
+    }
+
     private sealed class TestApplicationFactory : WebApplicationFactory<Program>
     {
         private readonly string[] roles;
@@ -253,7 +286,8 @@ public sealed class InspectionWmsReferralEndpointsTests
             bool includeAcknowledgement = true,
             bool isOperational = false,
             bool workCompleted = true,
-            bool linkForm = true)
+            bool linkForm = true,
+            Guid? supervisorId = null)
         {
             var now = DateTimeOffset.UtcNow;
             var asset = new Asset
@@ -270,6 +304,7 @@ public sealed class InspectionWmsReferralEndpointsTests
             {
                 Id = Guid.NewGuid(),
                 AssetId = asset.Id,
+                AssignedSupervisorUserId = supervisorId,
                 ScheduleDate = new DateTimeOffset(2026, 8, 31, 23, 59, 59, TimeSpan.FromHours(8)),
                 PmCycle = "2026-08",
                 PeriodType = "Quarter",

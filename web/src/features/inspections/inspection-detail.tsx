@@ -70,7 +70,7 @@ function DetailError({
   )
 }
 
-function InspectionPhotoEvidencePanel({
+export function InspectionPhotoEvidencePanel({
   inspectionId,
   hasPhotoEvidence,
 }: {
@@ -316,8 +316,9 @@ export function InspectionDetail({
   const yesNo = (value: boolean | null | undefined) =>
     value == null ? 'Not recorded' : value ? 'Yes' : 'No'
   const showWmsEntryGuide =
-    currentUser.data?.roles.includes('GSD') === true &&
-    record.correctiveFollowUpStatus !== 'NoReferralRequired'
+    currentUser.data?.roles.some(
+      (role) => role === 'GSD' || role === 'Supervisor',
+    ) === true && record.correctiveFollowUpStatus !== 'NoReferralRequired'
 
   return (
     <section aria-labelledby="inspection-detail-title" className="record-page">

@@ -133,6 +133,7 @@ export function useUpdateInspectionWmsReferralMutation(formId: string) {
     mutation: {
       onSuccess: async (_response, variables) => {
         await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['inspection-attention'] }),
           queryClient.invalidateQueries({
             queryKey: getGetInspectionWmsReferralQueryKey(variables.id),
           }),
@@ -168,6 +169,9 @@ export function useAcknowledgePreventiveMaintenanceFormMutation() {
   return useAcknowledgePreventiveMaintenanceForm({
     mutation: {
       onSuccess: (_response, variables) => {
+        void queryClient.invalidateQueries({
+          queryKey: ['inspection-attention'],
+        })
         void queryClient.invalidateQueries({
           queryKey: getGetPreventiveMaintenanceFormQueryKey(variables.id),
         })

@@ -4385,6 +4385,13 @@
             }
           },
           {
+            "name": "attention",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "schema": {
@@ -5951,6 +5958,43 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/attention": {
+      "get": {
+        "tags": ["Inspections"],
+        "summary": "Lists scoped non-operational findings across all PM periods",
+        "operationId": "GetInspectionAttention",
+        "parameters": [
+          {
+            "name": "stage",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionAttentionResponse"
                 }
               }
             }
@@ -11811,6 +11855,100 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
+          }
+        }
+      },
+      "InspectionAttentionResponse": {
+        "required": [
+          "awaitingAcknowledgement",
+          "awaitingReferral",
+          "referred",
+          "totalCount",
+          "page",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "awaitingAcknowledgement": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "awaitingReferral": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "referred": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionAttentionRow"
+            }
+          }
+        }
+      },
+      "InspectionAttentionRow": {
+        "required": [
+          "id",
+          "formId",
+          "assetCode",
+          "department",
+          "location",
+          "dateInspected",
+          "remarks",
+          "hasPhotoEvidence",
+          "formStatus",
+          "externalPmNumber"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "formId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "location": {
+            "type": ["null", "string"]
+          },
+          "dateInspected": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "remarks": {
+            "type": ["null", "string"]
+          },
+          "hasPhotoEvidence": {
+            "type": "boolean"
+          },
+          "formStatus": {
+            "type": "string"
+          },
+          "externalPmNumber": {
+            "type": ["null", "string"]
           }
         }
       }

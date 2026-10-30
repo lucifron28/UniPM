@@ -1,3 +1,4 @@
+import { InspectionAttention } from '@/features/inspections/inspection-attention'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
@@ -1218,6 +1219,7 @@ export function PmPeriodDashboard({
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader canAskNla={canAskNla} search={search} />
+        <InspectionAttention />
         <CyclesLoading />
       </section>
     )
@@ -1227,6 +1229,7 @@ export function PmPeriodDashboard({
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader canAskNla={canAskNla} search={search} />
+        <InspectionAttention />
         <QueryError
           message="PM period options could not be loaded."
           onRetry={() => void cyclesQuery.refetch()}
@@ -1239,6 +1242,7 @@ export function PmPeriodDashboard({
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader canAskNla={canAskNla} search={search} />
+        <InspectionAttention />
         <Card className="p-6 shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No PM periods are scheduled
@@ -1254,6 +1258,7 @@ export function PmPeriodDashboard({
   return (
     <section aria-labelledby="dashboard-title" className="space-y-4">
       <DashboardHeader canAskNla={canAskNla} search={search} />
+      <InspectionAttention />
 
       {showGeneratedReport ? (
         <>

@@ -11,6 +11,10 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-192: Compact dashboard attention navigation](test-runs/TEST-192-compact-attention-navigation.md): eight focused backend cases passed; desktop synthetic checks cover both role-specific links, preserved form filters, back navigation and zero counts. Replaces the dashboard layout from TEST-191.
+
+- [TEST-191: Finding attention and Supervisor referrals](test-runs/TEST-191-finding-attention-and-supervisor-referrals.md): eight focused backend cases passed; synthetic desktop checks cover form photos and PM-number entry for GSD and Supervisor. No deployed or physical-device verification claimed.
+
 - [TEST-186: Detail pages and print layouts](test-runs/TEST-186-detail-pages-and-print-layouts.md): 278 unit tests and 63 browser scenarios passed; desktop detail pages checked at 1440 and 1536 pixels, plus six synthetic PDF samples including multi-page tables. Live-backend and physical-printer verification remain outside this record.
 - [TEST-184: Production DeepSeek opt-in](test-runs/TEST-184-production-deepseek-opt-in.md): explicit production flags deployed after CI passed; the live fire-alarm inventory question returned a valid DeepSeek plan without executing a report.
 - [TEST-187: Guard and mobile countdown corrections](test-runs/TEST-187-nla-guard-and-mobile-corrections.md): 61 NLA checks and 20 mobile widget tests passed; three opt-in SQL numerical tests skipped.

@@ -38,6 +38,7 @@ import {
 } from '@/features/preventive-maintenance-forms/form-presentation'
 
 export type FormSearch = {
+  attention?: 'awaitingAcknowledgement' | undefined
   status?: ListPreventiveMaintenanceFormsParams['status'] | undefined
   assetCategory?:
     ListPreventiveMaintenanceFormsParams['assetCategory'] | undefined
@@ -320,6 +321,7 @@ function FormRegistryFilters({
   onRetryOptions: () => void
 }) {
   const [draft, setDraft] = useState<FormSearch>(() => ({
+    attention: search.attention,
     status: search.status,
     assetCategory: search.assetCategory,
     department: search.department,
@@ -363,6 +365,7 @@ function FormRegistryFilters({
     onSearchChange(
       {
         status: draft.status || undefined,
+        attention: search.attention,
         assetCategory: draft.assetCategory || undefined,
         department: draft.department?.trim() || undefined,
         pmCycle: draft.pmCycle || undefined,
@@ -547,7 +550,8 @@ function FormRegistryFilters({
             </Button>
           </div>
         </form>
-        {(search.status ||
+        {(search.attention ||
+          search.status ||
           search.assetCategory ||
           search.department ||
           search.pmCycle ||
@@ -559,6 +563,9 @@ function FormRegistryFilters({
           >
             Active filters:{' '}
             {[
+              search.attention
+                ? 'Unacknowledged non-operational findings'
+                : undefined,
               search.status
                 ? formStatusLabel(
                     search.status as PreventiveMaintenanceForm['status'],
@@ -621,6 +628,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   const pageSize = 10
   const filters = useMemo(
     () => ({
+      ...(search.attention ? { attention: search.attention } : {}),
       ...(search.status ? { status: search.status } : {}),
       ...(search.assetCategory ? { assetCategory: search.assetCategory } : {}),
       ...(search.department ? { department: search.department } : {}),
@@ -631,6 +639,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
       pageSize,
     }),
     [
+      search.attention,
       search.status,
       search.assetCategory,
       search.department,
@@ -745,6 +754,21 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
 
   return (
     <section aria-labelledby="forms-title" className="max-w-6xl space-y-4">
+      {search.attention && (
+        <div className="space-y-2">
+          <Link
+            to="/app/dashboard"
+            search={{}}
+            className="inline-flex cursor-pointer items-center rounded-md border border-[var(--border-soft)] bg-white px-4 py-2 font-semibold text-[var(--primary)] hover:bg-[var(--surface-muted)]"
+          >
+            ← Back to dashboard
+          </Link>
+          <p className="text-sm font-semibold">
+            Needs attention · Unacknowledged forms containing non-operational
+            findings · All periods
+          </p>
+        </div>
+      )}
       <PageHeading
         id="forms-title"
         eyebrow="Preventive maintenance"
@@ -757,6 +781,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
       />
       <FormRegistryFilters
         key={JSON.stringify([
+          search.attention,
           search.status,
           search.assetCategory,
           search.department,

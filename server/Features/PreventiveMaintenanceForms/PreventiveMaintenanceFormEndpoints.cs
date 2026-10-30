@@ -104,12 +104,15 @@ public static class PreventiveMaintenanceFormEndpoints
             string? pmCycle,
             string? search,
             string? supervisor,
+            string? attention,
             int? page,
             int? pageSize,
             ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
+            if (attention is not null && attention != "awaitingAcknowledgement")
+                return ApiErrors.Validation(new Dictionary<string, string[]> { ["attention"] = ["Unknown form attention filter."] });
             var pageNumber = page ?? 1;
             var size = pageSize ?? 25;
             var normalizedDepartment = string.IsNullOrWhiteSpace(department)
@@ -256,6 +259,10 @@ public static class PreventiveMaintenanceFormEndpoints
                     inspection.Schedule == null
                     || inspection.Schedule.AssignedSupervisorUserId == null));
             }
+
+            if (attention == "awaitingAcknowledgement")
+                query = query.Where(form => form.Status != PreventiveMaintenanceFormStatusCatalog.Acknowledged
+                    && form.Inspections.Any(inspection => !inspection.IsOperational));
 
             var totalCount = await query.CountAsync(cancellationToken);
             var forms = await query
@@ -650,12 +657,14 @@ public static class PreventiveMaintenanceFormEndpoints
 
         group.MapGet("/{id}/corrective-handoff", async (
             Guid id,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var form = await context.PreventiveMaintenanceForms
                 .AsNoTracking()
+                .WhereReadableTo(principal)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
             if (form is null)
             {

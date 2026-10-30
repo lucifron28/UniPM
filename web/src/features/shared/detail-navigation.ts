@@ -148,6 +148,7 @@ const inspectionSearchSchema = z
     )
   })
 const formSearchSchema = z.object({
+  attention: z.literal('awaitingAcknowledgement').optional(),
   status: z.enum(preventiveMaintenanceFormStatusCodes).optional(),
   assetCategory: z.enum(assetCategoryCodes).optional(),
   department: z.string().trim().max(256).optional(),
