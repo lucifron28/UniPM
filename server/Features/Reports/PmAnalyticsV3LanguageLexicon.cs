@@ -511,36 +511,48 @@ internal static class PmAnalyticsV3LanguageLexicon
 
     internal static bool HasAmbiguousPlaceValue(string question)
     {
-        // A date elsewhere in the question must not suppress an unqualified
-        // place filter. Remove a trailing date clause before looking for a
-        // place value, so "in North Block in May 2024" still asks which
-        // dimension North Block belongs to.
+        // Strip a trailing date and/or grouping clause, not the named place.
+        // A grouping anywhere else (for example "by department") must not
+        // make an independent "in North Block" filter disappear.
         var placeQuestion = Regex.Replace(
             question,
             $@"\s+\b(?:in|during|for|on|noong|ngayong|sa)\s+(?:the\s+)?(?:(?:pm\s+)?cycle\s+)?(?:(?:calendar\s+)?year\s+)?(?:month\s+of\s+)?(?:(?:{MonthPattern})\s+)?\d{{4}}(?:\s+(?:pm\s+)?cycles?)?\s*[,.!?]?$",
             string.Empty,
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
             RegexTimeout);
+        placeQuestion = Regex.Replace(
+            placeQuestion,
+            @"\s+\b(?:by|per|group(?:ed)?\s+by|ayon\s+sa)\s+(?:the\s+|mga\s+)?(?:departments?|departamento|kagawaran|buildings?|gusali|categor(?:y|ies)|kategorya|(?:pm\s+)?cycles?|siklo)\s*[,.!?]?$",
+            string.Empty,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            RegexTimeout);
 
+        // A place can be quoted, conventionally capitalized, or a lower-case
+        // compound with a recognizable place noun ("north block").
+        // Do not treat arbitrary lower-case phrases as proven place names.
         var place = Regex.Match(
             placeQuestion,
-            @"\b(?:in|at|within|sa)\s+(?<value>""[^""]{1,128}""|'[^']{1,128}'|(?:[A-Z][\p{L}\p{N}&'/-]*|[A-Z0-9]{2,})(?:\s+(?:[A-Z][\p{L}\p{N}&'/-]*|[A-Z0-9]{2,}))*)\s*[,.!?]?\s*$",
+            @"\b(?:in|at|within|sa)\s+(?:(?:the|ang)\s+)?(?<value>""[^""]{1,128}""|'[^']{1,128}'|(?:[A-Z][\p{L}\p{N}&'/-]*|[A-Z0-9]{2,})(?:\s+(?:[A-Z][\p{L}\p{N}&'/-]*|[A-Z0-9]{2,}))*|(?:[\p{L}][\p{L}\p{N}&'/-]*\s+){1,3}(?:block|annex|hall|campus|wing|room))\s*[,.!?]?\s*$",
             RegexOptions.CultureInvariant,
             RegexTimeout);
         if (!place.Success) return false;
 
+        var candidate = place.Groups["value"].Value.Trim().Trim('"', '\'');
         if (Regex.IsMatch(
-                place.Groups["value"].Value.Trim().Trim('"', '\''),
-                $@"^(?:{MonthPattern})$",
+                candidate,
+                $@"^(?:{MonthPattern}|\d{{4}})$",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
                 RegexTimeout))
         {
             return false;
         }
 
+        // Only an explicit field name *attached to this place* resolves the
+        // dimension. "PM", "cycle", "by department" or "building" elsewhere
+        // in the question does not qualify an independent place restriction.
         return !Regex.IsMatch(
-            placeQuestion,
-            @"\b(?:building|buildings|gusali|location|locations|lokasyon|department|departments|departamento|kagawaran|category|categories|cycle|cycles|pm)\b",
+            candidate,
+            @"^(?:(?:building|buildings|gusali|location|locations|lokasyon|department|departments|departamento|kagawaran)\s+.+|.+\s+(?:building|buildings|gusali|location|locations|lokasyon|department|departments|departamento|kagawaran))$",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
             RegexTimeout);
     }

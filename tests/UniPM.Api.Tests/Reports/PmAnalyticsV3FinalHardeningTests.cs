@@ -223,6 +223,11 @@ public sealed class PmAnalyticsV3FinalHardeningTests
     [Theory]
     [InlineData("NLA-HARDEN-SCOPE-004", "Count scheduled fire extinguishers in North Block in 2024")]
     [InlineData("NLA-HARDEN-SCOPE-005", "Count scheduled fire extinguishers at 'North Annex' in 2024")]
+    [InlineData("NLA-HARDEN-SCOPE-006", "How many completed PM inspections of fire extinguishers in North Block in 2025?")]
+    [InlineData("NLA-HARDEN-SCOPE-007", "Count missed fire extinguisher inspections by department in North Block in 2025")]
+    [InlineData("NLA-HARDEN-SCOPE-008", "Count scheduled fire extinguishers in the north block in 2024")]
+    [InlineData("NLA-HARDEN-SCOPE-009", "Count scheduled fire extinguishers in North Block by department in 2024")]
+    [InlineData("NLA-HARDEN-SCOPE-010", "Ilan ang nakaiskedyul na pamatay-sunog sa North Block ayon sa departamento noong 2024?")]
     public void Unqualified_named_places_are_clarified_even_when_a_date_is_present(string caseId, string question)
     {
         var result = PmAnalyticsV3RuleParser.Parse(question, NowUtc);
@@ -496,6 +501,33 @@ public sealed class PmAnalyticsV3FinalHardeningTests
         Assert.Equal(PmAnalyticsV3NumericOperator.GreaterThan, Assert.Single(strict.AggregateFilters).Operator);
         Assert.Equal(5, inclusive.AggregateFilters[0].Value);
         Assert.Equal(5, strict.AggregateFilters[0].Value);
+    }
+
+
+    [Fact]
+    public async Task DeepSeek_guard_keeps_unqualified_named_place_as_clarification_even_with_pm_and_grouping()
+    {
+        var proposal = PmAnalyticsV3RuleParser.Parse(
+            "Count missed fire extinguisher inspections by department in 2025",
+            NowUtc);
+        Assert.Equal("Valid", proposal.Status);
+        using var handler = new ModelHandler(proposal);
+        using var interpreter = CreateInterpreter(handler);
+
+        var result = await interpreter.InterpretAsync(
+            "Count missed fire extinguisher inspections by department in North Block in 2025",
+            CancellationToken.None,
+            PmAnalyticsV3Interpreter.DeepSeek);
+
+        Assert.Equal("NeedsClarification", result.Status);
+        Assert.Contains("Building", result.ClarificationFields);
+        Assert.Contains("Location", result.ClarificationFields);
+        Assert.NotNull(result.Plan);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], result.Plan.GroupBy);
+        Assert.Equal(["fire-extinguisher"], result.Plan.Categories);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2025), result.Plan.Period);
+        Assert.Empty(result.Plan.BaseFilters);
+        Assert.Equal(1, handler.Calls);
     }
 
     [Fact]
