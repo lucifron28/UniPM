@@ -379,7 +379,7 @@ public sealed class SqlServerPhotoSubmissionRaceTests
             await using var scope = Services.CreateAsyncScope();
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
             await using var context = await factory.CreateDbContextAsync();
-            await context.Database.MigrateAsync(targetMigration);
+            await context.Database.MigrateAsync();
 
             var now = DateTimeOffset.UtcNow;
             var user = new ApplicationUser
@@ -490,6 +490,11 @@ public sealed class SqlServerPhotoSubmissionRaceTests
             context.PreventiveMaintenanceForms.Add(form);
             context.InspectionRecords.Add(inspection);
             await context.SaveChangesAsync();
+            if (targetMigration is not null)
+            {
+                await context.Database.MigrateAsync(targetMigration);
+            }
+
             return new PhotoScenario(form.Id, inspection.Id, asset.Id, locationAttemptId);
         }
 
