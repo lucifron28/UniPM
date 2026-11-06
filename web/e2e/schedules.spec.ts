@@ -1187,28 +1187,28 @@ test.describe('Schedule workflows', () => {
     const assetPicker = page.getByRole('combobox', { name: 'Asset' })
     await assetPicker.fill('FE-001')
     const expectPickerToFit = async () => {
-      const geometry = await page.evaluate(() => {
-        const menu = document.querySelector('[role="listbox"]')?.parentElement
-        const workspace = document.querySelector('.app-workspace')
-        if (!menu || !workspace) return null
-        const menuBounds = menu.getBoundingClientRect()
-        const workspaceBounds = workspace.getBoundingClientRect()
-        return {
-          left: menuBounds.left,
-          right: menuBounds.right,
-          top: menuBounds.top,
-          bottom: menuBounds.bottom,
-          workspaceTop: workspaceBounds.top,
-          workspaceBottom: Math.min(workspaceBounds.bottom, window.innerHeight),
-          viewportWidth: window.innerWidth,
-        }
-      })
-      expect(geometry).not.toBeNull()
-      if (!geometry) throw new Error('Asset picker menu is not mounted')
-      expect(geometry.left).toBeGreaterThanOrEqual(0)
-      expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth)
-      expect(geometry.top).toBeGreaterThanOrEqual(geometry.workspaceTop)
-      expect(geometry.bottom).toBeLessThanOrEqual(geometry.workspaceBottom)
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const menu =
+                document.querySelector('[role="listbox"]')?.parentElement
+              const workspace = document.querySelector('.app-workspace')
+              if (!menu || !workspace) return null
+              const menuBounds = menu.getBoundingClientRect()
+              const workspaceBounds = workspace.getBoundingClientRect()
+              return {
+                withinViewport:
+                  menuBounds.left >= 0 && menuBounds.right <= window.innerWidth,
+                withinWorkspace:
+                  menuBounds.top >= workspaceBounds.top &&
+                  menuBounds.bottom <=
+                    Math.min(workspaceBounds.bottom, window.innerHeight),
+              }
+            }),
+          { message: 'Asset picker should fit after the viewport resize' },
+        )
+        .toEqual({ withinViewport: true, withinWorkspace: true })
     }
     await expect(page.getByRole('option', { name: /FE-001/ })).toBeVisible()
     await expectPickerToFit()
