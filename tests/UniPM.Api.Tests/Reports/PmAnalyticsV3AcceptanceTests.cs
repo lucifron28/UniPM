@@ -138,7 +138,7 @@ public sealed class PmAnalyticsV3AcceptanceTests
     }
 
     [Fact]
-    public async Task Scenario_3_Missing_period_returns_needs_clarification_with_period_and_retains_category()
+    public async Task Scenario_3_Which_asset_question_returns_records_and_clarifies_missing_period()
     {
         await using var application = new AcceptanceApplicationFactory(
             authenticated: true,
@@ -156,8 +156,12 @@ public sealed class PmAnalyticsV3AcceptanceTests
         Assert.Equal("NeedsClarification", interpretation.Status);
         Assert.Contains("Period", interpretation.ClarificationFields);
         Assert.NotNull(interpretation.Plan);
+        Assert.Equal(PmAnalyticsV3Mode.Records, interpretation.Plan.Mode);
         Assert.Contains("fire-extinguisher", interpretation.Plan.Categories);
-        Assert.Contains(PmAnalyticsV3Catalog.CompletedLateCount, interpretation.Plan.Measures);
+        Assert.Empty(interpretation.Plan.Measures);
+        Assert.Contains(interpretation.Plan.MatchingFilters, filter =>
+            filter.Field == PmAnalyticsV3Catalog.Timeliness
+            && filter.Values?.Contains("Late", StringComparer.Ordinal) == true);
     }
 
     [Fact]
@@ -336,6 +340,57 @@ public sealed class PmAnalyticsV3AcceptanceTests
     }
 
     [Fact]
+    public async Task Filipino_relative_year_uses_fixed_Manila_clock_and_unknown_equipment_returns_visible_clarification()
+    {
+        var clock = new FixedTimeProvider(new DateTimeOffset(2025, 12, 31, 16, 0, 0, TimeSpan.Zero));
+        await using var application = new AcceptanceApplicationFactory(
+            authenticated: true,
+            deepSeekEnabled: false,
+            apiKey: null,
+            roles: [AuthRoleCatalog.Gsd],
+            timeProvider: clock);
+        using var client = application.CreateClient();
+
+        using var validResponse = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/interpret",
+            new PmAnalyticsV3InterpretRequest("Ilan ang nakaiskedyul na pamatay-sunog ngayong taon?"));
+        Assert.Equal(HttpStatusCode.OK, validResponse.StatusCode);
+        var valid = await validResponse.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
+        Assert.NotNull(valid);
+        Assert.Equal("Valid", valid.Status);
+        Assert.Equal("DeterministicParser", valid.Interpreter);
+        Assert.Empty(valid.ClarificationFields);
+        var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(valid.Plan);
+        Assert.Equal(3, plan.SchemaVersion);
+        Assert.Equal(PmAnalyticsV3Catalog.Version, plan.CatalogVersion);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, plan.Subject);
+        Assert.Equal(PmAnalyticsV3Mode.Aggregate, plan.Mode);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026), plan.Period);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
+        Assert.Equal([PmAnalyticsV3Catalog.ScheduledCount], plan.Measures);
+        Assert.Empty(plan.GroupBy ?? []);
+        Assert.Empty(plan.BaseFilters);
+        Assert.Empty(plan.MatchingFilters);
+        Assert.Empty(plan.AggregateFilters);
+        Assert.Empty(plan.OrderBy);
+        Assert.Null(plan.Top);
+        Assert.Equal(PmAnalyticsV3Presentation.Summary, plan.Presentation);
+        Assert.Equal([PmAnalyticsV3Catalog.ScheduledCount], plan.Columns);
+
+        using var clarificationResponse = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/interpret",
+            new PmAnalyticsV3InterpretRequest("Count missed water fountains for the 2024 PM cycle"));
+        Assert.Equal(HttpStatusCode.OK, clarificationResponse.StatusCode);
+        var clarification = await clarificationResponse.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
+        Assert.NotNull(clarification);
+        Assert.Equal("NeedsClarification", clarification.Status);
+        Assert.Equal("DeterministicParser", clarification.Interpreter);
+        Assert.Contains("Categories", clarification.ClarificationFields);
+        Assert.Null(clarification.Plan);
+        Assert.Contains("supported category", clarification.Detail ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Scenario_14_Confirmed_preview_executes_against_query_service_and_returns_population_and_rows()
     {
         await using var application = new AcceptanceApplicationFactory(
@@ -467,7 +522,8 @@ public sealed class PmAnalyticsV3AcceptanceTests
         bool authenticated,
         bool deepSeekEnabled,
         string? apiKey,
-        string[] roles) : WebApplicationFactory<Program>
+        string[] roles,
+        TimeProvider? timeProvider = null) : WebApplicationFactory<Program>
     {
         private readonly string databaseName = $"PmAnalyticsV3Acceptance_{Guid.NewGuid():N}";
 
@@ -487,9 +543,16 @@ public sealed class PmAnalyticsV3AcceptanceTests
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton(timeProvider ?? TimeProvider.System);
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(databaseName));
             });
         }
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 }

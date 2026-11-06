@@ -50,7 +50,9 @@ public sealed class PmAnalyticsV3GuardCorrectionTests
         using var handler = new ModelHandler(proposal);
         using var interpreter = CreateInterpreter(handler);
         var response = await interpreter.InterpretAsync(question, CancellationToken.None, PmAnalyticsV3Interpreter.DeepSeek);
-        Assert.Equal("Valid", response.Status);
+        Assert.True(
+            response.Status == "Valid",
+            $"{response.Code}: {string.Join(", ", response.ClarificationFields)}. {response.Detail}");
         Assert.Equal("DeepSeek", response.Interpreter);
         Assert.NotNull(response.Plan);
         Assert.Equal(JsonSerializer.Serialize(proposal.Plan), JsonSerializer.Serialize(response.Plan));
@@ -72,10 +74,21 @@ public sealed class PmAnalyticsV3GuardCorrectionTests
         };
         using var handler = new ModelHandler(proposal);
         using var interpreter = CreateInterpreter(handler);
+        var thresholdQuestion = $"Return 2024 fire-extinguisher on-time compliance only where the percentage is 80 or {direction}.";
+        var thresholdMatches = PmAnalyticsV3QuestionParsing.FindThresholds(thresholdQuestion);
+        Assert.Single(thresholdMatches);
+        var expectedThresholds = PmAnalyticsV3RuleParser.ResolveThresholds(
+            thresholdQuestion,
+            [PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            out var unresolvedThreshold);
+        Assert.False(unresolvedThreshold);
+        Assert.Single(expectedThresholds);
         var response = await interpreter.InterpretAsync(
-            $"Return 2024 fire-extinguisher on-time compliance only where the percentage is 80 or {direction}.",
+            thresholdQuestion,
             CancellationToken.None, PmAnalyticsV3Interpreter.DeepSeek);
-        Assert.Equal("Valid", response.Status);
+        Assert.True(
+            response.Status == "Valid",
+            $"{response.Code}: {string.Join(", ", response.ClarificationFields)}. {response.Detail}");
         Assert.NotNull(response.Plan);
         var threshold = Assert.Single(response.Plan.AggregateFilters);
         Assert.Equal(op, threshold.Operator);
