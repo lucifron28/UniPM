@@ -146,7 +146,7 @@ internal static class PmAnalyticsV3LanguageLexicon
         RegexTimeout);
 
     private static readonly Regex RecordListIntent = new(
-        @"\bwhich\s+(?:assets?|equipment|units?|source\s+rows?)\b|^\s*which\s+(?:fire[\s-]+extinguishers?|extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|alarms?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking[\s-]+stations?)\b|\b(?:list|show|display)\s+(?:me\s+)?(?:the\s+)?(?:actual\s+)?(?:affected\s+)?(?:assets?|equipment|units?|records?|source\s+rows?|fire[\s-]+extinguishers?|extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|alarms?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking[\s-]+stations?)\b|\bshow\s+me\s+the\s+actual\s+records\b|\bindividual\s+assets?\b|\b(?:alin|aling)\b.{0,32}\b(?:mga\s+)?(?:asset|kagamitan|unit|record|fire|pamatay|alarma|emergency|ilaw|water|inuman)\b|\banu[- ]ano\b|\b(?:pakilista|ilista)\b|\bipakita\s+ang\s+(?:mga|aktuwal\s+na\s+mga?)\b",
+        @"\bwhich\s+(?:assets?|equipment|units?|source\s+rows?)\b|^\s*which\s+(?:fire[\s-]+extinguishers?|extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|alarms?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking[\s-]+stations?)\b|\b(?:list|show|display)\s+(?:me\s+)?(?:the\s+)?(?:actual\s+)?(?:affected\s+)?(?:assets?|equipment|units?|records?|source\s+rows?|fire[\s-]+extinguishers?|extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|alarms?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking[\s-]+stations?)\b(?!\s+(?:departments?|buildings?)\b)|\bshow\s+me\s+the\s+actual\s+records\b|\bindividual\s+assets?\b|\b(?:alin|aling)\b.{0,32}\b(?:mga\s+)?(?:asset|kagamitan|unit|record|fire|pamatay|alarma|emergency|ilaw|water|inuman)\b|\banu[- ]ano\b|\b(?:pakilista|ilista)\b|\bipakita\s+ang\s+(?:mga|aktuwal\s+na\s+mga?)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         RegexTimeout);
 
@@ -591,7 +591,8 @@ internal static class PmAnalyticsV3LanguageLexicon
     internal static IReadOnlyList<string> ResolvePmGrouping(string question)
     {
         const string prefix = @"(?:by|per|group(?:ed)?\s+by|for\s+each|for\s+all|and|,|ayon\s+sa|bawat|kada|across|among)\s+(?:the\s+|mga\s+)?";
-        const string direct = @"(?:show|list|display|ipakita|magpakita)\s+(?:(?:the|ang|mga|ng)\s+)?";
+        const string categoryNoun = @"fire[\s-]+extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking\s+stations?";
+        var direct = $@"(?:show|list|display|ipakita|magpakita)\s+(?:(?:the|ang|mga|ng)\s+)?(?:(?:{categoryNoun})\s+)?";
         const string ranked = @"(?:top|bottom|highest|lowest|(?<!at\s)most|(?<!at\s)least|rank(?:ed|ing)?|pinakamarami(?:ng)?|pinakakaunti|pinakamataas|pinakamababa)(?:\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|lima|sampu))?\s+";
         var leadingLimit = $@"\b(?:which|alin(?:g)?)\s+(?:{NumberPattern})\s+";
         const string department = @"departments?|department|departamento|kagawaran";

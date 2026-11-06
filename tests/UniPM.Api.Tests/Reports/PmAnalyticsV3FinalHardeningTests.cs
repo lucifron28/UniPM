@@ -276,6 +276,62 @@ public sealed class PmAnalyticsV3FinalHardeningTests
     }
 
     [Fact]
+    public void Leading_dimension_requests_resolve_building_and_department_groups()
+    {
+        var buildings = PmAnalyticsV3RuleParser.Parse(
+            "List buildings with more than five missed fire alarm inspections and at most 20 scheduled inspections for the 2025 PM cycle.",
+            NowUtc);
+        AssertCompleteAggregate(
+            "NLA-HARDEN-GROUP-001",
+            buildings,
+            ["fire-alarm"],
+            [PmAnalyticsV3Catalog.MissedCount, PmAnalyticsV3Catalog.ScheduledCount],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2025),
+            aggregateFilters:
+            [
+                new(PmAnalyticsV3Catalog.MissedCount, PmAnalyticsV3NumericOperator.GreaterThan, 5),
+                new(PmAnalyticsV3Catalog.ScheduledCount, PmAnalyticsV3NumericOperator.LessThanOrEqual, 20)
+            ],
+            groupBy: [PmAnalyticsV3Catalog.Building]);
+
+        var departments = PmAnalyticsV3RuleParser.Parse(
+            "Show departments below 90% on-time compliance for fire-extinguisher PM in 2025.",
+            NowUtc);
+        AssertCompleteAggregate(
+            "NLA-HARDEN-GROUP-002",
+            departments,
+            ["fire-extinguisher"],
+            [PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2025),
+            aggregateFilters:
+            [new(PmAnalyticsV3Catalog.OnTimeCompliancePercent, PmAnalyticsV3NumericOperator.LessThan, 90)],
+            groupBy: [PmAnalyticsV3Catalog.Department]);
+    }
+
+    [Fact]
+    public async Task Ambiguous_percentage_keeps_resolved_grouping_and_count_threshold()
+    {
+        const string question = "Show fire-extinguisher departments with at least 10 scheduled inspections and above 80% in 2025.";
+        var proposal = PmAnalyticsV3RuleParser.Parse(question, NowUtc);
+        Assert.Equal("NeedsClarification", proposal.Status);
+        Assert.Contains("Thresholds", proposal.ClarificationFields);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], proposal.Plan?.GroupBy);
+        Assert.Equal(
+            [new PmAnalyticsV3AggregateFilter(PmAnalyticsV3Catalog.ScheduledCount, PmAnalyticsV3NumericOperator.GreaterThanOrEqual, 10)],
+            proposal.Plan?.AggregateFilters);
+
+        using var handler = new ModelHandler(proposal);
+        using var interpreter = CreateInterpreter(handler);
+        var result = await interpreter.InterpretAsync(question, CancellationToken.None, PmAnalyticsV3Interpreter.DeepSeek);
+
+        Assert.Equal("NeedsClarification", result.Status);
+        Assert.Contains("Thresholds", result.ClarificationFields);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], result.Plan?.GroupBy);
+        Assert.Equal(proposal.Plan!.AggregateFilters, result.Plan?.AggregateFilters);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
     public void PM_inspection_year_defaults_to_cycle_but_explicit_completion_date_stays_unsupported()
     {
         const string cycleQuestion = "Which five departments had the most missed fire-extinguisher PM inspections in 2025?";

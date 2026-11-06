@@ -723,7 +723,7 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 {
                     fieldsToClarify.Add("Thresholds");
                     clarificationDetails.Add("Confirm which selected measure each numeric condition should filter.");
-                    plan = plan with { AggregateFilters = [] };
+                    plan = plan with { AggregateFilters = expectedThresholds };
                 }
                 else
                 {
