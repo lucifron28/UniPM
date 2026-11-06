@@ -2,7 +2,7 @@
 id: IMP-055
 type: implementation
 title: NLA pre-evaluation hardening baseline
-status: draft
+status: reviewed
 recordedAtUtc: 2026-11-06T10:42:32Z
 testedCommit: 53afe5708ca640b6fe7618589cbf3be1a1de6ae3
 sourceBranch: main
