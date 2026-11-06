@@ -255,9 +255,10 @@ public sealed class SqlServerDomainContractTests
 
         await using (var context = database.CreateContext())
         {
-            await context.Database.MigrateAsync(PreviousDeferralMigration);
+            await context.Database.MigrateAsync();
             context.AddRange(asset, schedule, form, inspection, acknowledgement);
             await context.SaveChangesAsync();
+            await context.Database.MigrateAsync(PreviousDeferralMigration);
             await context.Database.MigrateAsync("20261009182058_AddScheduleEnrollmentDeferrals");
             await context.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO [ScheduleEnrollmentDeferrals]
@@ -286,14 +287,14 @@ public sealed class SqlServerDomainContractTests
             command.CommandText = "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ScheduleEnrollmentDeferrals') AND name IN (N'ReviewedAt', N'ReviewedByUserId', N'ReviewNote');";
             Assert.Equal(0, Convert.ToInt32(await command.ExecuteScalarAsync()));
         }
-        await AssertOperationalRecordsPreservedAsync();
+        await AssertOperationalRecordsPreservedBySqlAsync();
         await AssertDeferralDataPreservedBySqlAsync();
 
         await using (var context = database.CreateContext())
         {
             await context.Database.MigrateAsync(PreviousDeferralMigration);
         }
-        await AssertOperationalRecordsPreservedAsync();
+        await AssertOperationalRecordsPreservedBySqlAsync();
         await using (var connection = new SqlConnection(database.ConnectionString))
         {
             await connection.OpenAsync();
@@ -315,7 +316,7 @@ public sealed class SqlServerDomainContractTests
             command.CommandText = "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ScheduleEnrollmentDeferrals') AND name IN (N'AssetId', N'PmCycle', N'NextEligiblePmCycle');";
             Assert.Equal(3, Convert.ToInt32(await command.ExecuteScalarAsync()));
         }
-        await AssertOperationalRecordsPreservedAsync();
+        await AssertOperationalRecordsPreservedBySqlAsync();
 
         await using (var context = database.CreateContext())
         {
@@ -374,6 +375,35 @@ public sealed class SqlServerDomainContractTests
             Assert.Equal(inspection.Id, (await verification.InspectionRecords.SingleAsync()).Id);
             Assert.Equal(form.Id, (await verification.PreventiveMaintenanceForms.SingleAsync()).Id);
             Assert.Equal(acknowledgement.Id, (await verification.PreventiveMaintenanceAcknowledgements.SingleAsync()).Id);
+        }
+
+        async Task AssertOperationalRecordsPreservedBySqlAsync()
+        {
+            await using var connection = new SqlConnection(database.ConnectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT COUNT(*) FROM [dbo].[Assets] WHERE [Id] = @assetId;
+                SELECT COUNT(*) FROM [dbo].[PreventiveMaintenanceSchedules] WHERE [Id] = @scheduleId;
+                SELECT COUNT(*) FROM [dbo].[InspectionRecords] WHERE [Id] = @inspectionId;
+                SELECT COUNT(*) FROM [dbo].[PreventiveMaintenanceForms] WHERE [Id] = @formId;
+                SELECT COUNT(*) FROM [dbo].[PreventiveMaintenanceAcknowledgements] WHERE [Id] = @acknowledgementId;
+                """;
+            command.Parameters.AddWithValue("@assetId", asset.Id);
+            command.Parameters.AddWithValue("@scheduleId", schedule.Id);
+            command.Parameters.AddWithValue("@inspectionId", inspection.Id);
+            command.Parameters.AddWithValue("@formId", form.Id);
+            command.Parameters.AddWithValue("@acknowledgementId", acknowledgement.Id);
+            await using var reader = await command.ExecuteReaderAsync();
+            var counts = new List<int>();
+            do
+            {
+                if (await reader.ReadAsync())
+                    counts.Add(reader.GetInt32(0));
+            }
+            while (await reader.NextResultAsync());
+
+            Assert.Equal([1, 1, 1, 1, 1], counts);
         }
 
         async Task AssertDeferralDataPreservedBySqlAsync()
