@@ -83,6 +83,132 @@ public sealed class PmAnalyticsV3SqlServerTests
     }
 
     [SqlServer2019Fact]
+    public async Task V3_grouped_deadline_metrics_thresholds_and_zero_denominators_use_sql_server_2019()
+    {
+        await using var database = await DisposableDatabase.CreateAsync(RequireConnection());
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseUniPmSqlServer(database.ConnectionString)
+            .Options;
+        var inspectorId = Guid.NewGuid();
+        await using (var context = new ApplicationDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            context.Users.Add(new ApplicationUser
+            {
+                Id = inspectorId,
+                UserName = $"nla-v3-sql-metrics-{inspectorId:N}@unipm.local",
+                NormalizedUserName = $"NLA-V3-SQL-METRICS-{inspectorId:N}@UNIPM.LOCAL",
+                Email = $"nla-v3-sql-metrics-{inspectorId:N}@unipm.local",
+                NormalizedEmail = $"NLA-V3-SQL-METRICS-{inspectorId:N}@UNIPM.LOCAL",
+                EmailConfirmed = true,
+                DisplayName = "Synthetic V3 SQL metrics inspector",
+                IsActive = true
+            });
+
+            AddMetricCycle(context, inspectorId, "SQL-V3-ALPHA-ONTIME", "SQL V3 ALPHA", "2025-02",
+                new DateTimeOffset(2025, 2, 15, 12, 0, 0, TimeSpan.FromHours(8)));
+            AddMetricCycle(context, inspectorId, "SQL-V3-ALPHA-LATE", "SQL V3 ALPHA", "2025-05",
+                new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.FromHours(8)));
+            AddMetricCycle(context, inspectorId, "SQL-V3-ALPHA-MISSED", "SQL V3 ALPHA", "2025-08", null);
+            AddMetricCycle(context, inspectorId, "SQL-V3-BETA-ONTIME-FEB", "SQL V3 BETA", "2025-02",
+                new DateTimeOffset(2025, 2, 15, 12, 0, 0, TimeSpan.FromHours(8)));
+            AddMetricCycle(context, inspectorId, "SQL-V3-BETA-ONTIME-MAY", "SQL V3 BETA", "2025-05",
+                new DateTimeOffset(2025, 5, 15, 12, 0, 0, TimeSpan.FromHours(8)));
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(150, await database.GetCompatibilityLevelAsync());
+        Assert.StartsWith("15.", await database.GetProductVersionAsync(), StringComparison.Ordinal);
+
+        var service = new PmAnalyticsV3QueryService(new SqlContextFactory(options), new FixedTimeProvider(AsOf));
+        async Task<PmAnalyticsV3ExecutionResponse> ExecuteAsync(PmAnalyticsV3ReportPlan plan)
+        {
+            var resolution = await service.NormalizeAndResolveAsync(plan, CancellationToken.None);
+            Assert.NotNull(resolution.Plan);
+            return await service.ExecuteAsync(resolution.Plan, 1, 25, CancellationToken.None);
+        }
+
+        PmAnalyticsV3ReportPlan AggregatePlan(
+            int year,
+            IReadOnlyList<string> measures,
+            IReadOnlyList<string> groupBy,
+            IReadOnlyList<PmAnalyticsV3AggregateFilter>? aggregateFilters = null)
+        {
+            var columns = groupBy.Concat(measures).Distinct(StringComparer.Ordinal).ToArray();
+            return new PmAnalyticsV3ReportPlan(
+                3,
+                PmAnalyticsV3Catalog.Version,
+                PmAnalyticsV3Catalog.SubjectPmExecution,
+                PmAnalyticsV3Mode.Aggregate,
+                new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, Year: year),
+                ["fire-extinguisher"],
+                measures,
+                groupBy,
+                [],
+                [],
+                aggregateFilters ?? [],
+                [],
+                null,
+                PmAnalyticsV3Presentation.Table,
+                columns);
+        }
+
+        var grouped = await ExecuteAsync(AggregatePlan(
+            2025,
+            [
+                PmAnalyticsV3Catalog.ScheduledCount,
+                PmAnalyticsV3Catalog.CompletedOnTimeCount,
+                PmAnalyticsV3Catalog.CompletedLateCount,
+                PmAnalyticsV3Catalog.MissedCount
+            ],
+            [PmAnalyticsV3Catalog.Department]));
+        Assert.Equal(5, grouped.Population.EligibleAssetCycleCount);
+        var alpha = grouped.AggregateRows.Single(row =>
+            Equals(row.Values[PmAnalyticsV3Catalog.Department], "SQL V3 ALPHA"));
+        Assert.Equal(3, alpha.Measures[PmAnalyticsV3Catalog.ScheduledCount].Value);
+        Assert.Equal(1, alpha.Measures[PmAnalyticsV3Catalog.CompletedOnTimeCount].Numerator);
+        Assert.Equal(1, alpha.Measures[PmAnalyticsV3Catalog.CompletedLateCount].Numerator);
+        Assert.Equal(1, alpha.Measures[PmAnalyticsV3Catalog.MissedCount].Numerator);
+
+        var compliance = await ExecuteAsync(AggregatePlan(
+            2025,
+            [PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            [PmAnalyticsV3Catalog.Department]));
+        var alphaCompliance = compliance.AggregateRows.Single(row =>
+            Equals(row.Values[PmAnalyticsV3Catalog.Department], "SQL V3 ALPHA")
+        ).Measures[PmAnalyticsV3Catalog.OnTimeCompliancePercent];
+        Assert.Equal(1, alphaCompliance.Numerator);
+        Assert.Equal(3, alphaCompliance.Denominator);
+        Assert.Equal(100m / 3m, alphaCompliance.Value);
+
+        var filtered = await ExecuteAsync(AggregatePlan(
+            2025,
+            [
+                PmAnalyticsV3Catalog.ScheduledCount,
+                PmAnalyticsV3Catalog.MissedCount,
+                PmAnalyticsV3Catalog.OnTimeCompliancePercent
+            ],
+            [PmAnalyticsV3Catalog.Department],
+            [
+                new(PmAnalyticsV3Catalog.ScheduledCount, PmAnalyticsV3NumericOperator.GreaterThanOrEqual, 3),
+                new(PmAnalyticsV3Catalog.MissedCount, PmAnalyticsV3NumericOperator.GreaterThanOrEqual, 1),
+                new(PmAnalyticsV3Catalog.OnTimeCompliancePercent, PmAnalyticsV3NumericOperator.LessThan, 80)
+            ]));
+        Assert.Equal("SQL V3 ALPHA", Assert.Single(filtered.AggregateRows).Values[PmAnalyticsV3Catalog.Department]);
+
+        var emptyPeriod = await ExecuteAsync(AggregatePlan(
+            2024,
+            [PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            []));
+        var unmeasurableCompliance = Assert.Single(emptyPeriod.AggregateRows)
+            .Measures[PmAnalyticsV3Catalog.OnTimeCompliancePercent];
+        Assert.Equal(0, unmeasurableCompliance.Numerator);
+        Assert.Equal(0, unmeasurableCompliance.Denominator);
+        Assert.Null(unmeasurableCompliance.Value);
+        Assert.False(unmeasurableCompliance.IsMeasurable);
+    }
+
+    [SqlServer2019Fact]
     public async Task Inventory_null_location_filter_counts_assets_without_schedule_joins_on_sql_server_2019()
     {
         var database = await DisposableDatabase.CreateAsync(RequireConnection());
@@ -287,6 +413,58 @@ public sealed class PmAnalyticsV3SqlServerTests
         context.Assets.Add(asset);
         context.PreventiveMaintenanceSchedules.Add(schedule);
         context.InspectionRecords.Add(inspection);
+    }
+
+    private static void AddMetricCycle(
+        ApplicationDbContext context,
+        Guid inspectorId,
+        string assetCode,
+        string department,
+        string cycle,
+        DateTimeOffset? completedAt)
+    {
+        var year = int.Parse(cycle[..4], System.Globalization.CultureInfo.InvariantCulture);
+        var month = int.Parse(cycle[5..], System.Globalization.CultureInfo.InvariantCulture);
+        var asset = new Asset
+        {
+            Id = Guid.NewGuid(),
+            AssetCode = assetCode,
+            AssetCategory = "fire-extinguisher",
+            Department = department,
+            Building = "SQL V3 TEST BUILDING",
+            Location = "SQL V3 TEST ROOM",
+            Status = AssetStatusCatalog.Active
+        };
+        var schedule = new PreventiveMaintenanceSchedule
+        {
+            Id = Guid.NewGuid(),
+            AssetId = asset.Id,
+            Asset = asset,
+            PmCycle = cycle,
+            ScheduleDate = new DateTimeOffset(year, month, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            PeriodType = "Quarter",
+            Status = completedAt is null ? ScheduleStatusCatalog.Due : ScheduleStatusCatalog.Completed
+        };
+        context.Assets.Add(asset);
+        context.PreventiveMaintenanceSchedules.Add(schedule);
+
+        if (completedAt is not { } completed)
+        {
+            return;
+        }
+
+        context.InspectionRecords.Add(new InspectionRecord
+        {
+            Id = Guid.NewGuid(),
+            ScheduleId = schedule.Id,
+            Schedule = schedule,
+            AssetId = asset.Id,
+            Asset = asset,
+            InspectorUserId = inspectorId,
+            DateInspected = completed,
+            CompletedAt = completed,
+            IsOperational = true
+        });
     }
 
     private static Asset CreateInventoryAsset(string code, string? location) => new()
