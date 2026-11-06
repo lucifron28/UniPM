@@ -11,7 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
-- [TEST-193: NLA V3 final-hardening verification](test-runs/TEST-193-nla-final-hardening.md): 95 focused interpretation checks and 746 backend tests passed; web unit, coverage, build, formatting, lint, browser, and contract checks passed locally. Fifty-four optional backend tests and two SQL-backed browser tests skipped without a SQL Server connection; exact-head GitHub CI is recorded separately when available.
+- [TEST-194: NLA V3 final-hardening exact-head CI](test-runs/TEST-194-nla-final-hardening-ci.md): backend CI, both push and pull-request web CI runs, and the Notion sync passed on `4338481e4012d1a2a30b8dea88109171e3d906e0`.
+- [TEST-193: NLA V3 final-hardening verification](test-runs/TEST-193-nla-final-hardening.md): 95 focused interpretation checks and 746 backend tests passed; web unit, coverage, build, formatting, lint, browser, and contract checks passed locally. Fifty-four optional backend tests and two SQL-backed browser tests skipped without a SQL Server connection; exact-head CI is recorded in TEST-194.
 - [IMP-056: NLA V3 multilingual interpretation hardening](implementation/IMP-056-nla-multilingual-interpretation-hardening.md): shared bounded lexicon and model guard for English, Filipino, and Taglish; candidate phrase ledger keeps public evidence and researcher hypotheses separate from GSD approval.
 - [IMP-055: NLA pre-evaluation hardening baseline](implementation/IMP-055-nla-final-hardening-baseline.md): source-grounded baseline and confirmed interpretation gaps at `53afe5708ca640b6fe7618589cbf3be1a1de6ae3`.
 - [NLA V3 final-hardening developer matrix](../evaluation/pm-analytics-v3-final-hardening-dev/README.md): 95 deterministic developer-authored cases, not held-out evaluation or an accuracy score.
@@ -58,7 +59,8 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
-| TEST-193 | test-run | NLA V3 final-hardening verification | executed | locally-executed | `6449cbf2bd5d385a30a1b92c1e2c56112edf85bb` | [record](test-runs/TEST-193-nla-final-hardening.md) | 95 focused and 746/800 full backend passed; browser passed 64/66 with two SQL skips using two workers; exact-head GitHub CI pending. |
+| TEST-194 | test-run | NLA V3 final-hardening exact-head CI | executed | ci-executed | `4338481e4012d1a2a30b8dea88109171e3d906e0` | [record](test-runs/TEST-194-nla-final-hardening-ci.md) | Backend, push and PR web CI, and Notion sync passed on PR #116. |
+| TEST-193 | test-run | NLA V3 final-hardening verification | executed | locally-executed | `6449cbf2bd5d385a30a1b92c1e2c56112edf85bb` | [record](test-runs/TEST-193-nla-final-hardening.md) | 95 focused and 746/800 full backend passed; browser passed 64/66 with two SQL skips using two workers. Exact-head CI is in TEST-194. |
 | IMP-056 | implementation | NLA V3 multilingual interpretation hardening | reviewed | source-inspected | `6449cbf2bd5d385a30a1b92c1e2c56112edf85bb` | [record](implementation/IMP-056-nla-multilingual-interpretation-hardening.md) | Shared bounded language lexicon and semantic guard; no new report formulas or schema. |
 | IMP-055 | implementation | NLA pre-evaluation hardening baseline | reviewed | source-inspected | `53afe5708ca640b6fe7618589cbf3be1a1de6ae3` | [record](implementation/IMP-055-nla-final-hardening-baseline.md) | Source-grounded pre-change conditions and confirmed interpretation gaps. |
 | TEST-172 | test-run | Schedule batch side panels | executed | locally-executed | `fde2bbc` | [record](test-runs/TEST-172-schedule-batch-panels.md) | 25 schedule workflow tests passed after one existing-expectation correction; type check passed. Browser visual verification unavailable. |
