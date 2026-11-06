@@ -11,8 +11,9 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
-- [TEST-194: NLA V3 final-hardening exact-head CI](test-runs/TEST-194-nla-final-hardening-ci.md): backend CI, both push and pull-request web CI runs, and the Notion sync passed on `4338481e4012d1a2a30b8dea88109171e3d906e0`.
+- [TEST-196: NLA V3 DeepSeek live interpretation comparison](test-runs/TEST-196-nla-v3-deepseek-live-diagnostic.md): 20 real DeepSeek calls on the pre-fix PR head, full typed results and usage, five CI regressions corrected, backend 759 passed/55 skipped and web E2E 64 passed/2 skipped on `66f89f3`; no post-fix provider repeat or independent accuracy claim.
 - [TEST-195: NLA final-hardening SQL Server 2019 backend verification](test-runs/TEST-195-nla-sqlserver2019-full-backend.md): full backend suite passed with SQL Server 2019 tests enabled, 800 passed, 1 external-provider smoke test skipped, 0 failed on `2f347d9`.
+- [TEST-194: NLA V3 final-hardening exact-head CI](test-runs/TEST-194-nla-final-hardening-ci.md): backend CI, both push and pull-request web CI runs, and the Notion sync passed on `4338481e4012d1a2a30b8dea88109171e3d906e0`.
 - [TEST-193: NLA V3 final-hardening verification](test-runs/TEST-193-nla-final-hardening.md): 95 focused interpretation checks and 746 backend tests passed; web unit, coverage, build, formatting, lint, browser, and contract checks passed locally. Fifty-four optional backend tests and two SQL-backed browser tests skipped without a SQL Server connection; exact-head CI is recorded in TEST-194.
 - [IMP-056: NLA V3 multilingual interpretation hardening](implementation/IMP-056-nla-multilingual-interpretation-hardening.md): shared bounded lexicon and model guard for English, Filipino, and Taglish; candidate phrase ledger keeps public evidence and researcher hypotheses separate from GSD approval.
 - [IMP-055: NLA pre-evaluation hardening baseline](implementation/IMP-055-nla-final-hardening-baseline.md): source-grounded baseline and confirmed interpretation gaps at `53afe5708ca640b6fe7618589cbf3be1a1de6ae3`.
@@ -60,6 +61,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-196 | test-run | NLA V3 DeepSeek live interpretation comparison | executed | real-provider-executed | `df2e84ece8865623cb6fa6b368777ce9ae8fd64e` | [record](test-runs/TEST-196-nla-v3-deepseek-live-diagnostic.md) | 20 calls, 0 provider errors; CI regressions corrected; backend 759 passed/55 skipped and web E2E 64 passed/2 skipped on `66f89f3`; no post-fix provider repeat. |
 | TEST-195 | test-run | NLA final-hardening SQL Server 2019 backend verification | executed | locally-executed | `2f347d99dd805159f5e72e0aa39e76b5974ab878` | [record](test-runs/TEST-195-nla-sqlserver2019-full-backend.md) | 800 passed, one external-provider smoke test skipped, zero failed across 801 backend tests on local SQL Server 2019. |
 | TEST-194 | test-run | NLA V3 final-hardening exact-head CI | executed | ci-executed | `4338481e4012d1a2a30b8dea88109171e3d906e0` | [record](test-runs/TEST-194-nla-final-hardening-ci.md) | Backend, push and PR web CI, and Notion sync passed on PR #116. |
 | TEST-193 | test-run | NLA V3 final-hardening verification | executed | locally-executed | `6449cbf2bd5d385a30a1b92c1e2c56112edf85bb` | [record](test-runs/TEST-193-nla-final-hardening.md) | 95 focused and 746/800 full backend passed; browser passed 64/66 with two SQL skips using two workers. Exact-head CI is in TEST-194. |

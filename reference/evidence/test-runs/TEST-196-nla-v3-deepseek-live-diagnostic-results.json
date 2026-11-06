@@ -1,0 +1,4324 @@
+{
+  "schemaVersion": 1,
+  "sourceSha": "df2e84ece8865623cb6fa6b368777ce9ae8fd64e",
+  "startedAtUtc": "2026-11-06T15:36:56.3729185+00:00",
+  "completedAtUtc": "2026-11-06T15:37:25.3139396+00:00",
+  "provider": "DeepSeek",
+  "modelId": "deepseek-flash",
+  "generationSettings": "temperature=0; thinking=disabled; JSON output; max output tokens=1024",
+  "physicalRequestLimit": 20,
+  "physicalRequestsSent": 20,
+  "physicalRequestBudgetReached": false,
+  "requestedCases": 20,
+  "executedCases": 20,
+  "successfulInterpreterResponses": 20,
+  "providerErrors": 0,
+  "cases": [
+    {
+      "caseId": "LIVE-001",
+      "language": "English",
+      "family": "named-place",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Clarify whether North Block is a building or general location; preserve missed count, department grouping, and 2025.",
+      "question": "Count missed fire-extinguisher inspections by department in North Block in 2025.",
+      "deterministicLatencyMilliseconds": 51.24,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "missedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "missedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building",
+          "Location"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Please identify whether the place name refers to a building or a general location.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1233.07,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "missedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "missedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building",
+          "Location"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "Does this place name refer to a building or a general location?",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "missedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [
+            {
+              "field": "building",
+              "operator": "Equal",
+              "values": [
+                "North Block"
+              ]
+            }
+          ],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "missedCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1166.2,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4312,
+            "completionTokens": 158,
+            "cachedPromptTokens": 0,
+            "cacheMissPromptTokens": 4312,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.0007416,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "missedCount"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [
+                {
+                  "field": "building",
+                  "operator": "Equal",
+                  "values": [
+                    "North Block"
+                  ]
+                }
+              ],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "missedCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.baseFilters.length",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-002",
+      "language": "Filipino",
+      "family": "named-place",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Clarify whether North Block is a building or general location; preserve scheduled count, department grouping, and 2024.",
+      "question": "Ilan ang nakaiskedyul na pamatay-sunog sa North Block ayon sa departamento noong 2024?",
+      "deterministicLatencyMilliseconds": 4.56,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2024,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building",
+          "Location"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Please identify whether the place name refers to a building or a general location.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1393.61,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2024,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building",
+          "Location"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "Does this place name refer to a building or a general location?",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2024,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [
+            {
+              "field": "building",
+              "operator": "Equal",
+              "values": [
+                "North Block"
+              ]
+            }
+          ],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1386.44,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4324,
+            "completionTokens": 158,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 228,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000141288,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2024,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "scheduledCount"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [
+                {
+                  "field": "building",
+                  "operator": "Equal",
+                  "values": [
+                    "North Block"
+                  ]
+                }
+              ],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "scheduledCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.baseFilters.length",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-003",
+      "language": "Taglish",
+      "family": "named-place",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Clarify whether North Block is a building or general location; preserve completed count, department grouping, and 2025.",
+      "question": "Show completed PM inspections ng fire extinguisher sa North Block by department noong 2025.",
+      "deterministicLatencyMilliseconds": 35.51,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building",
+          "Location"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Please identify whether the place name refers to a building or a general location.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1525.21,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building",
+          "Location"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "Does this place name refer to a building or a general location?",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [
+            {
+              "field": "building",
+              "operator": "Equal",
+              "values": [
+                "North Block"
+              ]
+            }
+          ],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1519.14,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4314,
+            "completionTokens": 156,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 218,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000138588,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "completedCount"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [
+                {
+                  "field": "building",
+                  "operator": "Equal",
+                  "values": [
+                    "North Block"
+                  ]
+                }
+              ],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "completedCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.baseFilters.length",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-004",
+      "language": "English",
+      "family": "named-place",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Scheduled fire-extinguisher count for building North Block in 2025.",
+      "question": "How many scheduled fire extinguishers for building North Block in 2025?",
+      "deterministicLatencyMilliseconds": 205,
+      "deterministic": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [
+            {
+              "field": "building",
+              "operator": "Equal",
+              "values": [
+                "NORTH BLOCK"
+              ]
+            }
+          ],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1319.66,
+      "deepSeek": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [
+            {
+              "field": "building",
+              "operator": "Equal",
+              "values": [
+                "NORTH BLOCK"
+              ]
+            }
+          ],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [
+            {
+              "field": "building",
+              "operator": "Equal",
+              "values": [
+                "North Block"
+              ]
+            }
+          ],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1287.86,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4310,
+            "completionTokens": 154,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 214,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000136788,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "scheduledCount"
+              ],
+              "groupBy": [],
+              "baseFilters": [
+                {
+                  "field": "building",
+                  "operator": "Equal",
+                  "values": [
+                    "North Block"
+                  ]
+                }
+              ],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Summary",
+              "columns": [
+                "scheduledCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [
+        "plan.baseFilters[0].values[0]"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-005",
+      "language": "Taglish",
+      "family": "named-place",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Completed fire-extinguisher count for department Research Office in 2025.",
+      "question": "Count completed fire-extinguisher inspections for department Research Office noong 2025.",
+      "deterministicLatencyMilliseconds": 4.49,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Department"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Add the missing report detail to your question before generating the report.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1366.33,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Department"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [
+            {
+              "field": "department",
+              "operator": "Equal",
+              "values": [
+                "Research Office"
+              ]
+            }
+          ],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1359.64,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4312,
+            "completionTokens": 152,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 216,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000135888,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "completedCount"
+              ],
+              "groupBy": [],
+              "baseFilters": [
+                {
+                  "field": "department",
+                  "operator": "Equal",
+                  "values": [
+                    "Research Office"
+                  ]
+                }
+              ],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Summary",
+              "columns": [
+                "completedCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.baseFilters.length",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-006",
+      "language": "English",
+      "family": "ranking",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Top five departments ranked by missed fire-extinguisher inspections in 2025.",
+      "question": "Which five departments had the most missed fire-extinguisher PM inspections in 2025?",
+      "deterministicLatencyMilliseconds": 1.72,
+      "deterministic": {
+        "status": "Unsupported",
+        "plan": null,
+        "clarificationFields": [],
+        "code": "UnsupportedTimeBasis",
+        "detail": "V3 periods use scheduled PM cycles. Completion-date periods are not supported.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1650.24,
+      "deepSeek": {
+        "status": "Unsupported",
+        "plan": null,
+        "clarificationFields": [],
+        "code": "UnsupportedTimeBasis",
+        "detail": "V3 periods use scheduled PM cycles. Completion-date periods are not supported.",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "missedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "missedCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "missedCount",
+            "limit": 5,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "missedCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1635.43,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4313,
+            "completionTokens": 168,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 217,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000145638,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "missedCount"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [
+                {
+                  "field": "missedCount",
+                  "direction": "Descending"
+                }
+              ],
+              "top": {
+                "measure": "missedCount",
+                "limit": 5,
+                "direction": "Descending"
+              },
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "missedCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [
+        "code",
+        "plan",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-007",
+      "language": "Filipino",
+      "family": "ranking",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Top five buildings ranked by non-operational fire-alarm inspection findings in 2025.",
+      "question": "Aling limang gusali ang may pinakamaraming non-operational fire alarm findings noong 2025?",
+      "deterministicLatencyMilliseconds": 5.7,
+      "deterministic": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [
+            "nonOperationalCount"
+          ],
+          "groupBy": [
+            "building"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "nonOperationalCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "nonOperationalCount",
+            "limit": 5,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "building",
+            "nonOperationalCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1237.85,
+      "deepSeek": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [
+            "nonOperationalCount"
+          ],
+          "groupBy": [
+            "building"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "nonOperationalCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "nonOperationalCount",
+            "limit": 5,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "building",
+            "nonOperationalCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [
+            "nonOperationalCount"
+          ],
+          "groupBy": [
+            "building"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "nonOperationalCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "nonOperationalCount",
+            "limit": 5,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "building",
+            "nonOperationalCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1233.58,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4320,
+            "completionTokens": 171,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 224,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000148488,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-alarm"
+              ],
+              "measures": [
+                "nonOperationalCount"
+              ],
+              "groupBy": [
+                "building"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [
+                {
+                  "field": "nonOperationalCount",
+                  "direction": "Descending"
+                }
+              ],
+              "top": {
+                "measure": "nonOperationalCount",
+                "limit": 5,
+                "direction": "Descending"
+              },
+              "presentation": "Table",
+              "columns": [
+                "building",
+                "nonOperationalCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-008",
+      "language": "Taglish",
+      "family": "ranking",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Top three departments ranked by completed-late fire-extinguisher inspections in 2025.",
+      "question": "Top 3 departments by completed-late fire-extinguisher inspections sa 2025 PM cycle.",
+      "deterministicLatencyMilliseconds": 3.59,
+      "deterministic": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedLateCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "completedLateCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "completedLateCount",
+            "limit": 3,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "completedLateCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1273.9,
+      "deepSeek": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedLateCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "completedLateCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "completedLateCount",
+            "limit": 3,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "completedLateCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "completedLateCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "completedLateCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "completedLateCount",
+            "limit": 3,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "completedLateCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1269,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4315,
+            "completionTokens": 168,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 219,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000145938,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "completedLateCount"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [
+                {
+                  "field": "completedLateCount",
+                  "direction": "Descending"
+                }
+              ],
+              "top": {
+                "measure": "completedLateCount",
+                "limit": 3,
+                "direction": "Descending"
+              },
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "completedLateCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-009",
+      "language": "Taglish",
+      "family": "ranking",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Do not choose a ranking measure between scheduled and completed; preserve department grouping and both measures.",
+      "question": "Compare scheduled and completed fire-extinguisher inspections by department noong 2025 and show the highest.",
+      "deterministicLatencyMilliseconds": 7.39,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "completedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount",
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Top"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Add the missing report detail to your question before generating the report.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1189.74,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "completedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount",
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [
+          "Top"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "Specify which selected measure determines the ranking and the grouped field to rank.",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "completedCount"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [
+            {
+              "field": "scheduledCount",
+              "direction": "Descending"
+            }
+          ],
+          "top": {
+            "measure": "scheduledCount",
+            "limit": 1,
+            "direction": "Descending"
+          },
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount",
+            "completedCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1186.19,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4316,
+            "completionTokens": 174,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 220,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000149688,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "scheduledCount",
+                "completedCount"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [
+                {
+                  "field": "scheduledCount",
+                  "direction": "Descending"
+                }
+              ],
+              "top": {
+                "measure": "scheduledCount",
+                "limit": 1,
+                "direction": "Descending"
+              },
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "scheduledCount",
+                "completedCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.orderBy.length",
+        "plan.top",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-010",
+      "language": "English",
+      "family": "thresholds",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Departments below 80% on-time compliance and with at least 10 scheduled fire-extinguisher inspections in 2025.",
+      "question": "Show departments below 80% on-time compliance with at least 10 scheduled fire-extinguisher inspections in 2025.",
+      "deterministicLatencyMilliseconds": 14.92,
+      "deterministic": {
+        "status": "Unsupported",
+        "plan": null,
+        "clarificationFields": [],
+        "code": "UnsupportedTimeBasis",
+        "detail": "V3 periods use scheduled PM cycles. Completion-date periods are not supported.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1349.78,
+      "deepSeek": {
+        "status": "Unsupported",
+        "plan": null,
+        "clarificationFields": [],
+        "code": "UnsupportedTimeBasis",
+        "detail": "V3 periods use scheduled PM cycles. Completion-date periods are not supported.",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "LessThan",
+              "value": 80
+            },
+            {
+              "measure": "scheduledCount",
+              "operator": "GreaterThanOrEqual",
+              "value": 10
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1329.19,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4320,
+            "completionTokens": 189,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 224,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000159288,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "scheduledCount",
+                "onTimeCompliancePercent"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [
+                {
+                  "measure": "onTimeCompliancePercent",
+                  "operator": "LessThan",
+                  "value": 80
+                },
+                {
+                  "measure": "scheduledCount",
+                  "operator": "GreaterThanOrEqual",
+                  "value": 10
+                }
+              ],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "scheduledCount",
+                "onTimeCompliancePercent"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [
+        "code",
+        "plan",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-011",
+      "language": "Filipino",
+      "family": "thresholds",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Fire-extinguisher grouped results with scheduled count greater than 12 and on-time compliance at least 75% in 2025.",
+      "question": "Ipakita ang department na higit sa 12 scheduled na fire extinguisher inspections at hindi bababa sa 75% ang on-time compliance noong 2025.",
+      "deterministicLatencyMilliseconds": 4.62,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "GreaterThanOrEqual",
+              "value": 75
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [
+          "Department"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Add the missing report detail to your question before generating the report.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1405.91,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "GreaterThanOrEqual",
+              "value": 75
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [
+          "Thresholds",
+          "Department"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "Confirm each threshold\u0027s selected measure, unit, and comparison from the question.",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "scheduledCount",
+              "operator": "GreaterThan",
+              "value": 12
+            },
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "GreaterThanOrEqual",
+              "value": 75
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1400.86,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4330,
+            "completionTokens": 189,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 234,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000160788,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "scheduledCount",
+                "onTimeCompliancePercent"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [
+                {
+                  "measure": "scheduledCount",
+                  "operator": "GreaterThan",
+                  "value": 12
+                },
+                {
+                  "measure": "onTimeCompliancePercent",
+                  "operator": "GreaterThanOrEqual",
+                  "value": 75
+                }
+              ],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "scheduledCount",
+                "onTimeCompliancePercent"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "clarificationFields.length",
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.aggregateFilters.length",
+        "plan.columns.length",
+        "plan.groupBy.length",
+        "plan.presentation",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-012",
+      "language": "English",
+      "family": "thresholds",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Buildings with more than five missed fire-alarm inspections and at most 20 scheduled inspections in the 2025 PM cycle.",
+      "question": "List buildings with more than five missed fire alarm inspections and at most 20 scheduled inspections for the 2025 PM cycle.",
+      "deterministicLatencyMilliseconds": 5.09,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [
+            "missedCount",
+            "scheduledCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "missedCount",
+              "operator": "GreaterThan",
+              "value": 5
+            },
+            {
+              "measure": "scheduledCount",
+              "operator": "LessThanOrEqual",
+              "value": 20
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "missedCount",
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Add the missing report detail to your question before generating the report.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1764.85,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [
+            "missedCount",
+            "scheduledCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "missedCount",
+              "operator": "GreaterThan",
+              "value": 5
+            },
+            {
+              "measure": "scheduledCount",
+              "operator": "LessThanOrEqual",
+              "value": 20
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "missedCount",
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [
+          "Building"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [
+            "missedCount",
+            "scheduledCount"
+          ],
+          "groupBy": [
+            "building"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "missedCount",
+              "operator": "GreaterThan",
+              "value": 5
+            },
+            {
+              "measure": "scheduledCount",
+              "operator": "LessThanOrEqual",
+              "value": 20
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "building",
+            "missedCount",
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1758.95,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4320,
+            "completionTokens": 182,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 224,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000155088,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-alarm"
+              ],
+              "measures": [
+                "missedCount",
+                "scheduledCount"
+              ],
+              "groupBy": [
+                "building"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [
+                {
+                  "measure": "missedCount",
+                  "operator": "GreaterThan",
+                  "value": 5
+                },
+                {
+                  "measure": "scheduledCount",
+                  "operator": "LessThanOrEqual",
+                  "value": 20
+                }
+              ],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "building",
+                "missedCount",
+                "scheduledCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.columns.length",
+        "plan.groupBy.length",
+        "plan.presentation",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-013",
+      "language": "Filipino",
+      "family": "thresholds",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Departments below 90% on-time compliance for fire-extinguisher PM in 2025.",
+      "question": "Magpakita ng departments na mas mababa sa 90% ang on-time compliance sa fire extinguisher PM noong 2025.",
+      "deterministicLatencyMilliseconds": 3.88,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "LessThan",
+              "value": 90
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [
+          "Department"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Add the missing report detail to your question before generating the report.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1389.99,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "LessThan",
+              "value": 90
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [
+          "Department"
+        ],
+        "code": "QuestionConstraintNeedsClarification",
+        "detail": "",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "LessThan",
+              "value": 90
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1385.57,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4324,
+            "completionTokens": 164,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 228,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000144888,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "onTimeCompliancePercent"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [
+                {
+                  "measure": "onTimeCompliancePercent",
+                  "operator": "LessThan",
+                  "value": 90
+                }
+              ],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "onTimeCompliancePercent"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "code"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan.columns.length",
+        "plan.groupBy.length",
+        "plan.presentation",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-014",
+      "language": "English",
+      "family": "ambiguity",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Clarify whether compliance rate means on-time compliance or completion progress.",
+      "question": "Show the compliance rate for fire-extinguisher PM by department in 2025.",
+      "deterministicLatencyMilliseconds": 4.09,
+      "deterministic": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1043.67,
+      "deepSeek": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1041.4,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4312,
+            "completionTokens": 147,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 216,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000132888,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "onTimeCompliancePercent"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "onTimeCompliancePercent"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-015",
+      "language": "Taglish",
+      "family": "ambiguity",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Clarify which percentage measure the 80% threshold applies to.",
+      "question": "Show fire-extinguisher departments with at least 10 scheduled inspections and above 80% in 2025.",
+      "deterministicLatencyMilliseconds": 2.65,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "scheduledCount",
+              "operator": "GreaterThanOrEqual",
+              "value": 10
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [
+          "Department",
+          "Thresholds"
+        ],
+        "code": "RequiredScopeMissing",
+        "detail": "Add the missing report detail to your question before generating the report.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1716.32,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "scheduledCount"
+          ]
+        },
+        "clarificationFields": [
+          "Measures",
+          "Thresholds",
+          "Department"
+        ],
+        "code": "PercentageMeasureAmbiguous",
+        "detail": "Does \u0027above 80%\u0027 mean on-time compliance (onTimeCompliancePercent) or completion progress (progressPercent)? The plan currently assumes on-time compliance. Confirm each threshold\u0027s selected measure, unit, and comparison from the question. Confirm which selected measure each numeric condition should filter.",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ],
+          "groupBy": [
+            "department"
+          ],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [
+            {
+              "measure": "scheduledCount",
+              "operator": "GreaterThanOrEqual",
+              "value": 10
+            },
+            {
+              "measure": "onTimeCompliancePercent",
+              "operator": "GreaterThan",
+              "value": 80
+            }
+          ],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "department",
+            "scheduledCount",
+            "onTimeCompliancePercent"
+          ]
+        },
+        "clarificationFields": [
+          "Measures"
+        ],
+        "code": "PercentageMeasureAmbiguous",
+        "detail": "Does \u0027above 80%\u0027 mean on-time compliance (onTimeCompliancePercent) or completion progress (progressPercent)? The plan currently assumes on-time compliance."
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1711.16,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4318,
+            "completionTokens": 231,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 222,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000184188,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "NeedsClarification",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [
+                "scheduledCount",
+                "onTimeCompliancePercent"
+              ],
+              "groupBy": [
+                "department"
+              ],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [
+                {
+                  "measure": "scheduledCount",
+                  "operator": "GreaterThanOrEqual",
+                  "value": 10
+                },
+                {
+                  "measure": "onTimeCompliancePercent",
+                  "operator": "GreaterThan",
+                  "value": 80
+                }
+              ],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "department",
+                "scheduledCount",
+                "onTimeCompliancePercent"
+              ]
+            },
+            "clarificationFields": [
+              "Measures"
+            ],
+            "code": "PercentageMeasureAmbiguous",
+            "detail": "Does \u0027above 80%\u0027 mean on-time compliance (onTimeCompliancePercent) or completion progress (progressPercent)? The plan currently assumes on-time compliance."
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "clarificationFields.length",
+        "code",
+        "plan.aggregateFilters.length"
+      ],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "plan.aggregateFilters.length",
+        "plan.columns.length",
+        "plan.groupBy.length",
+        "plan.measures.length",
+        "plan.presentation"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-016",
+      "language": "Filipino",
+      "family": "ambiguity",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Preserve the disjunction between late and missed records or explain the flat-filter limitation; never return only one branch.",
+      "question": "Ipakita ang fire-extinguisher inspection records na late o missed noong 2025.",
+      "deterministicLatencyMilliseconds": 1.5,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": null,
+        "clarificationFields": [
+          "Filters",
+          "Measures"
+        ],
+        "code": "BooleanFilterNeedsClarification",
+        "detail": "The report cannot infer whether \u0027or\u0027 means separate results or a combined filter. Ask one question at a time or clarify which result you want.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1704.52,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": null,
+        "clarificationFields": [
+          "Filters",
+          "Measures"
+        ],
+        "code": "BooleanFilterNeedsClarification",
+        "detail": "The report cannot infer whether \u0027or\u0027 means separate results or a combined filter. Ask one question at a time or clarify which result you want.",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [
+            {
+              "field": "timeliness",
+              "operator": "In",
+              "values": [
+                "Late",
+                "Missed"
+              ]
+            }
+          ],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "scheduleId",
+            "assetId",
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "condition",
+            "timeliness"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1702.95,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4315,
+            "completionTokens": 179,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 219,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000152538,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Records",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [],
+              "groupBy": [],
+              "baseFilters": [],
+              "matchingFilters": [
+                {
+                  "field": "timeliness",
+                  "operator": "In",
+                  "values": [
+                    "Late",
+                    "Missed"
+                  ]
+                }
+              ],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "scheduleId",
+                "assetId",
+                "assetCode",
+                "assetCategory",
+                "department",
+                "building",
+                "pmCycle",
+                "deadline",
+                "completedAt",
+                "condition",
+                "timeliness"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [
+        "clarificationFields.length",
+        "code",
+        "plan",
+        "status"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-017",
+      "language": "English",
+      "family": "ambiguity",
+      "expectedStatus": "NeedsClarification",
+      "expectedMeaning": "Clarify whether December 2025 refers to the scheduled PM cycle or actual inspection date.",
+      "question": "Which fire extinguishers were inspected during December 2025?",
+      "deterministicLatencyMilliseconds": 0.08,
+      "deterministic": {
+        "status": "NeedsClarification",
+        "plan": null,
+        "clarificationFields": [
+          "Period"
+        ],
+        "code": "PeriodBasisNeedsClarification",
+        "detail": "Does December 2025 mean the scheduled PM cycle or the date the inspection happened? V3 supports scheduled PM-cycle periods. Filtering by actual inspection date is not currently supported.",
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1326.53,
+      "deepSeek": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": null,
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "scheduleId",
+            "assetId",
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "condition",
+            "timeliness"
+          ]
+        },
+        "clarificationFields": [
+          "Period"
+        ],
+        "code": "PeriodBasisNeedsClarification",
+        "detail": "Does December 2025 mean the scheduled PM cycle or the date the inspection happened? V3 supports scheduled PM-cycle periods. Filtering by actual inspection date is not currently supported.",
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "NeedsClarification",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": null,
+          "categories": [
+            "fire-extinguisher"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "scheduleId",
+            "assetId",
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "condition",
+            "timeliness"
+          ]
+        },
+        "clarificationFields": [
+          "Period"
+        ],
+        "code": "PeriodBasisNeedsClarification",
+        "detail": "Does December 2025 mean the scheduled PM cycle or the date the inspection actually happened? V3 supports scheduled PM-cycle periods; actual inspection-date filtering is not supported."
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1323.32,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4307,
+            "completionTokens": 176,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 211,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000149538,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "NeedsClarification",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Records",
+              "period": null,
+              "categories": [
+                "fire-extinguisher"
+              ],
+              "measures": [],
+              "groupBy": [],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "scheduleId",
+                "assetId",
+                "assetCode",
+                "assetCategory",
+                "department",
+                "building",
+                "pmCycle",
+                "deadline",
+                "completedAt",
+                "condition",
+                "timeliness"
+              ]
+            },
+            "clarificationFields": [
+              "Period"
+            ],
+            "code": "PeriodBasisNeedsClarification",
+            "detail": "Does December 2025 mean the scheduled PM cycle or the date the inspection actually happened? V3 supports scheduled PM-cycle periods; actual inspection-date filtering is not supported."
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "plan"
+      ],
+      "guardAdjustments": [],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-018",
+      "language": "English",
+      "family": "records-vs-counts",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "List emergency-light records with a non-operational finding in the December 2025 PM cycle.",
+      "question": "List emergency lights with a non-operational finding in the December 2025 PM cycle.",
+      "deterministicLatencyMilliseconds": 8.91,
+      "deterministic": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Month",
+            "year": 2025,
+            "month": 12,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "emergency-light"
+          ],
+          "measures": [
+            "nonOperationalCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "nonOperationalCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1203.24,
+      "deepSeek": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Month",
+            "year": 2025,
+            "month": 12,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "emergency-light"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [
+            {
+              "field": "condition",
+              "operator": "Equal",
+              "values": [
+                "NonOperational"
+              ]
+            }
+          ],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "scheduleId",
+            "assetId",
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "location",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "scheduleStatus",
+            "formStatus",
+            "condition",
+            "timeliness",
+            "firstSupervisorAssignedAt",
+            "firstInspectorAssignedAt",
+            "inspectorAssignmentDueAt",
+            "assignmentPeriodStatus",
+            "usedLegacyDateFallback"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Month",
+            "year": 2025,
+            "month": 12,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "emergency-light"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [
+            {
+              "field": "condition",
+              "operator": "Equal",
+              "values": [
+                "NonOperational"
+              ]
+            }
+          ],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "scheduleId",
+            "assetId",
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "condition",
+            "timeliness"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1199.3,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4313,
+            "completionTokens": 176,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 217,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000150438,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Records",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Month",
+                "year": 2025,
+                "month": 12,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "emergency-light"
+              ],
+              "measures": [],
+              "groupBy": [],
+              "baseFilters": [],
+              "matchingFilters": [
+                {
+                  "field": "condition",
+                  "operator": "Equal",
+                  "values": [
+                    "NonOperational"
+                  ]
+                }
+              ],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "scheduleId",
+                "assetId",
+                "assetCode",
+                "assetCategory",
+                "department",
+                "building",
+                "pmCycle",
+                "deadline",
+                "completedAt",
+                "condition",
+                "timeliness"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "plan.columns.length",
+        "plan.matchingFilters.length",
+        "plan.measures.length",
+        "plan.mode",
+        "plan.presentation"
+      ],
+      "guardAdjustments": [
+        "plan.columns.length"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-019",
+      "language": "Filipino",
+      "family": "records-vs-counts",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "Count emergency lights with a recorded non-operational finding in the June 2025 PM cycle.",
+      "question": "Ilan ang emergency light na may hindi gumagana na finding sa PM cycle ng Hunyo 2025?",
+      "deterministicLatencyMilliseconds": 2.76,
+      "deterministic": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Month",
+            "year": 2025,
+            "month": 6,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "emergency-light"
+          ],
+          "measures": [
+            "nonOperationalCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "nonOperationalCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1400.88,
+      "deepSeek": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Month",
+            "year": 2025,
+            "month": 6,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "emergency-light"
+          ],
+          "measures": [
+            "nonOperationalCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "nonOperationalCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Aggregate",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Month",
+            "year": 2025,
+            "month": 6,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "emergency-light"
+          ],
+          "measures": [
+            "nonOperationalCount"
+          ],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Summary",
+          "columns": [
+            "nonOperationalCount"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1396.16,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4317,
+            "completionTokens": 140,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 221,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000129438,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Aggregate",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Month",
+                "year": 2025,
+                "month": 6,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "emergency-light"
+              ],
+              "measures": [
+                "nonOperationalCount"
+              ],
+              "groupBy": [],
+              "baseFilters": [],
+              "matchingFilters": [],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Summary",
+              "columns": [
+                "nonOperationalCount"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [],
+      "guardAdjustments": [],
+      "notExecuted": false,
+      "wasExecuted": true
+    },
+    {
+      "caseId": "LIVE-020",
+      "language": "Taglish",
+      "family": "records-vs-counts",
+      "expectedStatus": "Valid",
+      "expectedMeaning": "List fire-alarm records completed late in the 2025 PM cycle.",
+      "question": "Which fire alarm systems were completed late sa 2025 PM cycle?",
+      "deterministicLatencyMilliseconds": 7.51,
+      "deterministic": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [
+            {
+              "field": "condition",
+              "operator": "In",
+              "values": [
+                "Operational",
+                "NonOperational"
+              ]
+            },
+            {
+              "field": "timeliness",
+              "operator": "Equal",
+              "values": [
+                "Late"
+              ]
+            }
+          ],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "condition",
+            "timeliness"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeterministicParser"
+      },
+      "deepSeekLatencyMilliseconds": 1466.71,
+      "deepSeek": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [
+            {
+              "field": "condition",
+              "operator": "In",
+              "values": [
+                "Operational",
+                "NonOperational"
+              ]
+            },
+            {
+              "field": "timeliness",
+              "operator": "Equal",
+              "values": [
+                "Late"
+              ]
+            }
+          ],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "scheduleId",
+            "assetId",
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "location",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "scheduleStatus",
+            "formStatus",
+            "condition",
+            "timeliness",
+            "firstSupervisorAssignedAt",
+            "firstInspectorAssignedAt",
+            "inspectorAssignmentDueAt",
+            "assignmentPeriodStatus",
+            "usedLegacyDateFallback"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null,
+        "interpreter": "DeepSeek"
+      },
+      "modelProposal": {
+        "status": "Valid",
+        "plan": {
+          "schemaVersion": 3,
+          "catalogVersion": 2,
+          "subject": "pmExecution",
+          "mode": "Records",
+          "period": {
+            "basis": "pmCycle",
+            "kind": "Year",
+            "year": 2025,
+            "month": null,
+            "quarter": null,
+            "startCycle": null,
+            "endCycle": null
+          },
+          "categories": [
+            "fire-alarm"
+          ],
+          "measures": [],
+          "groupBy": [],
+          "baseFilters": [],
+          "matchingFilters": [
+            {
+              "field": "timeliness",
+              "operator": "Equal",
+              "values": [
+                "Late"
+              ]
+            }
+          ],
+          "aggregateFilters": [],
+          "orderBy": [],
+          "top": null,
+          "presentation": "Table",
+          "columns": [
+            "scheduleId",
+            "assetId",
+            "assetCode",
+            "assetCategory",
+            "department",
+            "building",
+            "pmCycle",
+            "deadline",
+            "completedAt",
+            "condition",
+            "timeliness"
+          ]
+        },
+        "clarificationFields": [],
+        "code": null,
+        "detail": null
+      },
+      "deepSeekErrorCode": null,
+      "attempts": [
+        {
+          "requestSent": true,
+          "httpStatusCode": 200,
+          "latencyMilliseconds": 1460.2,
+          "safeErrorCode": null,
+          "usage": {
+            "promptTokens": 4309,
+            "completionTokens": 175,
+            "cachedPromptTokens": 4096,
+            "cacheMissPromptTokens": 213,
+            "reasoningTokens": null,
+            "estimatedCostUsd": 0.000149238,
+            "costBasis": "off-peak rates with provider cache attribution"
+          },
+          "modelProposal": {
+            "status": "Valid",
+            "plan": {
+              "schemaVersion": 3,
+              "catalogVersion": 2,
+              "subject": "pmExecution",
+              "mode": "Records",
+              "period": {
+                "basis": "pmCycle",
+                "kind": "Year",
+                "year": 2025,
+                "month": null,
+                "quarter": null,
+                "startCycle": null,
+                "endCycle": null
+              },
+              "categories": [
+                "fire-alarm"
+              ],
+              "measures": [],
+              "groupBy": [],
+              "baseFilters": [],
+              "matchingFilters": [
+                {
+                  "field": "timeliness",
+                  "operator": "Equal",
+                  "values": [
+                    "Late"
+                  ]
+                }
+              ],
+              "aggregateFilters": [],
+              "orderBy": [],
+              "top": null,
+              "presentation": "Table",
+              "columns": [
+                "scheduleId",
+                "assetId",
+                "assetCode",
+                "assetCategory",
+                "department",
+                "building",
+                "pmCycle",
+                "deadline",
+                "completedAt",
+                "condition",
+                "timeliness"
+              ]
+            },
+            "clarificationFields": [],
+            "code": null,
+            "detail": null
+          },
+          "reportedModelId": "deepseek-flash"
+        }
+      ],
+      "semanticDifferencesFromDeterministic": [
+        "plan.columns.length"
+      ],
+      "guardAdjustments": [
+        "plan.columns.length",
+        "plan.matchingFilters.length"
+      ],
+      "notExecuted": false,
+      "wasExecuted": true
+    }
+  ],
+  "estimatedCostUsd": 0.003552222,
+  "costUsageComplete": true
+}
