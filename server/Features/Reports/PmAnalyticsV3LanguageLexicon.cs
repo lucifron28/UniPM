@@ -146,7 +146,7 @@ internal static class PmAnalyticsV3LanguageLexicon
         RegexTimeout);
 
     private static readonly Regex RecordListIntent = new(
-        @"\bwhich\s+(?:assets?|equipment|units?|source\s+rows?)\b|^\s*which\s+(?:fire[\s-]+extinguishers?|extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|alarms?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking[\s-]+stations?)\b|\b(?:list|show|display)\s+(?:me\s+)?(?:the\s+)?(?:actual\s+)?(?:affected\s+)?(?:assets?|equipment|units?|records?|source\s+rows?)\b|\bshow\s+me\s+the\s+actual\s+records\b|\bindividual\s+assets?\b|\b(?:alin|aling)\b.{0,32}\b(?:mga\s+)?(?:asset|kagamitan|unit|record|fire|pamatay|alarma|emergency|ilaw|water|inuman)\b|\banu[- ]ano\b|\b(?:pakilista|ilista)\b|\bipakita\s+ang\s+(?:mga|aktuwal\s+na\s+mga?)\b",
+        @"\bwhich\s+(?:assets?|equipment|units?|source\s+rows?)\b|^\s*which\s+(?:fire[\s-]+extinguishers?|extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|alarms?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking[\s-]+stations?)\b|\b(?:list|show|display)\s+(?:me\s+)?(?:the\s+)?(?:actual\s+)?(?:affected\s+)?(?:assets?|equipment|units?|records?|source\s+rows?|fire[\s-]+extinguishers?|extinguishers?|fire[\s-]+alarms?(?:\s+systems?)?|alarms?|emergency[\s-]+lights?|water\s+drinking\s+stations?|drinking[\s-]+stations?)\b|\bshow\s+me\s+the\s+actual\s+records\b|\bindividual\s+assets?\b|\b(?:alin|aling)\b.{0,32}\b(?:mga\s+)?(?:asset|kagamitan|unit|record|fire|pamatay|alarma|emergency|ilaw|water|inuman)\b|\banu[- ]ano\b|\b(?:pakilista|ilista)\b|\bipakita\s+ang\s+(?:mga|aktuwal\s+na\s+mga?)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         RegexTimeout);
 
@@ -591,15 +591,16 @@ internal static class PmAnalyticsV3LanguageLexicon
     internal static IReadOnlyList<string> ResolvePmGrouping(string question)
     {
         const string prefix = @"(?:by|per|group(?:ed)?\s+by|for\s+each|for\s+all|and|,|ayon\s+sa|bawat|kada|across|among)\s+(?:the\s+|mga\s+)?";
+        const string direct = @"(?:show|list|display|ipakita|magpakita)\s+(?:(?:the|ang|mga|ng)\s+)?";
         const string ranked = @"(?:top|bottom|highest|lowest|(?<!at\s)most|(?<!at\s)least|rank(?:ed|ing)?|pinakamarami(?:ng)?|pinakakaunti|pinakamataas|pinakamababa)(?:\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|lima|sampu))?\s+";
         var leadingLimit = $@"\b(?:which|alin(?:g)?)\s+(?:{NumberPattern})\s+";
         const string department = @"departments?|department|departamento|kagawaran";
         const string building = @"buildings?|building|gusali";
         const string category = @"categor(?:y|ies)|kategorya";
         var result = new List<string>();
-        if (Regex.IsMatch(question, $@"\b(?:{prefix}|{ranked})(?:{department})\b|\bwhich\s+(?:{department})\b|{leadingLimit}(?:{department})\b|\balin(?:g)?\s+(?:ang\s+)?(?:mga\s+)?(?:departamento|kagawaran)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout))
+        if (Regex.IsMatch(question, $@"\b(?:{prefix}|{ranked}|{direct})(?:{department})\b|\bwhich\s+(?:{department})\b|{leadingLimit}(?:{department})\b|\balin(?:g)?\s+(?:ang\s+)?(?:mga\s+)?(?:departamento|kagawaran)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout))
             result.Add(PmAnalyticsV3Catalog.Department);
-        if (Regex.IsMatch(question, $@"\b(?:{prefix}|{ranked})(?:{building})\b|\bwhich\s+(?:{building})\b|{leadingLimit}(?:{building})\b|\balin(?:g)?\s+(?:ang\s+)?(?:mga\s+)?gusali\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout))
+        if (Regex.IsMatch(question, $@"\b(?:{prefix}|{ranked}|{direct})(?:{building})\b|\bwhich\s+(?:{building})\b|{leadingLimit}(?:{building})\b|\balin(?:g)?\s+(?:ang\s+)?(?:mga\s+)?gusali\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout))
             result.Add(PmAnalyticsV3Catalog.Building);
         if (Regex.IsMatch(question, $@"\b(?:{prefix}|{ranked})(?:{category})\b|{leadingLimit}(?:{category})\b|\balin(?:g)?\s+(?:ang\s+)?(?:mga\s+)?(?:{category})\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, RegexTimeout))
             result.Add(PmAnalyticsV3Catalog.AssetCategory);

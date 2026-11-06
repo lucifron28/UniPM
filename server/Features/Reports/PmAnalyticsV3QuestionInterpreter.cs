@@ -23,14 +23,14 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
     internal static readonly Regex InspectionDateMonthRegex = new($@"\b(?:inspected|inspection|inspections|na[- ]inspect(?:ed)?|nainspeks(?:yon|iyon)|inspeksyon|inspeksiyon)(?:\s+date)?\s+(?:in|during|on|noong|sa)\s+(?<month>{PmAnalyticsV3LanguageLexicon.MonthPattern})\.?\s*,?\s*(?<year>\d{{4}})\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RegexTimeout);
     internal static readonly Regex QuarterRegex = new(@"\b(?:q(?<number>[1-4])|(?<ordinal>first|second|third|fourth)\s+quarter|(?<ordinal>unang|ikalawang|ikatlo|ikaapat)\s+quarter)\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RegexTimeout);
     internal static readonly Regex ThresholdRegex = new(
-        $@"(?<![\p{{L}}\p{{N}}])(?:(?<operator>below|under|less\s+than|fewer\s+than|at\s+most|no\s+more\s+than|no\s+greater\s+than|above|over|greater\s+than|more\s+than|at\s+least|no\s+less\s+than|mas\s+mababa\s+sa|mas\s+mataas\s+sa|hindi\s+bababa\s+sa|lampas(?:\s+sa)?|mahigit\s+sa)\s+)?(?<value>{PmAnalyticsV3LanguageLexicon.NumberPattern})(?![\p{{L}}\p{{N}}])\s*(?<percent>%|\bpercent(?:age)?\b|\bporsiyento\b|\bporsyento\b)?(?:\s+(?:or|o)\s+(?<inclusive>higher|lower|greater|less|mas\s+mataas|mas\s+mababa|higit(?:\s+pa)?|mas\s+kaunti))?",
+        $@"(?<![\p{{L}}\p{{N}}])(?:(?<operator>below|under|less\s+than|fewer\s+than|at\s+most|no\s+more\s+than|no\s+greater\s+than|above|over|greater\s+than|more\s+than|at\s+least|no\s+less\s+than|mas\s+mababa\s+sa|mas\s+mataas\s+sa|hindi\s+bababa\s+sa|lampas(?:\s+sa)?|mahigit\s+sa|higit\s+sa)\s+)?(?<value>{PmAnalyticsV3LanguageLexicon.NumberPattern})(?![\p{{L}}\p{{N}}])\s*(?<percent>%|\bpercent(?:age)?\b|\bporsiyento\b|\bporsyento\b)?(?:\s+(?:or|o)\s+(?<inclusive>higher|lower|greater|less|mas\s+mataas|mas\s+mababa|higit(?:\s+pa)?|mas\s+kaunti))?",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         RegexTimeout);
     internal static readonly Regex InclusiveThresholdRegex = new(
         $@"(?<![\p{{L}}\p{{N}}])(?<value>(?:{PmAnalyticsV3LanguageLexicon.NumberPattern}))\s*(?<percent>%|\bpercent(?:age)?\b|\bporsiyento\b|\bporsyento\b)?\s+(?:or|o)\s+(?<inclusive>higher|lower|greater|less|mas\s+mataas|mas\s+mababa|higit(?:\s+pa)?|mas\s+kaunti)\b",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         RegexTimeout);
-    internal static readonly Regex UnsupportedCompletionDateRegex = new(@"\b(?:inspection|inspections|completion|completed)\s+(?:date|in|during|on)\s+\d{4}\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RegexTimeout);
+    internal static readonly Regex UnsupportedCompletionDateRegex = new(@"\b(?:inspection|inspections|completion)\s+date\s+(?:in|during|on)\s+\d{4}\b|\b(?:inspected|completed|completion)\s+(?:in|during|on)\s+\d{4}\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RegexTimeout);
     private readonly DeepSeekNaturalLanguageAnalyticsModelClient _modelClient;
 
     public PmAnalyticsV3QuestionInterpreter(
@@ -1950,7 +1950,7 @@ internal static class PmAnalyticsV3RuleParser
             TimeSpan.FromMilliseconds(100));
         var namedValueMatches = Regex.Matches(
             question,
-            $@"(?i:\b(?:{fieldPattern})\b)\s*(?::|=)?\s+(?:(?:named|called|is|of|ng)\s+)?(?<value>[A-Z][\p{{L}}\p{{N}}&'/-]*(?:\s+[A-Z][\p{{L}}\p{{N}}&'/-]*){{0,3}})(?=\s+(?:in|during|for|with|by|and|or|on|at|as|category|cycle|pm)\b|[,;.!?]|$)",
+            $@"(?i:\b(?:{fieldPattern})\b)\s*(?::|=)?\s+(?:(?:named|called|is|of|ng)\s+)?(?<value>[A-Z][\p{{L}}\p{{N}}&'/-]*(?:\s+[A-Z][\p{{L}}\p{{N}}&'/-]*){{0,3}})(?=\s+(?:in|during|for|with|by|and|or|on|at|as|category|cycle|pm|noong|ngayong|sa)\b|[,;.!?]|$)",
             RegexOptions.CultureInvariant,
             TimeSpan.FromMilliseconds(100));
         if (quotedMatches.Count > 1 || fieldMentions.Count > 1 || namedValueMatches.Count > 1)
@@ -2033,7 +2033,7 @@ internal static class PmAnalyticsV3RuleParser
             {
                 "below" or "under" or "less than" or "fewer than" or "mas mababa sa" => PmAnalyticsV3NumericOperator.LessThan,
                 "at most" or "no more than" or "no greater than" => PmAnalyticsV3NumericOperator.LessThanOrEqual,
-                "above" or "over" or "greater than" or "more than" or "lampas" or "lampas sa" or "mahigit sa" or "mas mataas sa" => PmAnalyticsV3NumericOperator.GreaterThan,
+                "above" or "over" or "greater than" or "more than" or "lampas" or "lampas sa" or "mahigit sa" or "higit sa" or "mas mataas sa" => PmAnalyticsV3NumericOperator.GreaterThan,
                 "at least" or "no less than" or "hindi bababa sa" => PmAnalyticsV3NumericOperator.GreaterThanOrEqual,
                 _ when inclusiveText is "higher" or "greater" or "mas mataas" or "higit" or "higit pa"
                     => PmAnalyticsV3NumericOperator.GreaterThanOrEqual,

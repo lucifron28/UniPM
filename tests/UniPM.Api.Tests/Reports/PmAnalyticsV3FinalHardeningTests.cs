@@ -4,7 +4,10 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Reports;
+using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
 
@@ -88,6 +91,7 @@ public sealed class PmAnalyticsV3FinalHardeningTests
         yield return ["NLA-HARDEN-THR-008", "mas mababa sa 80 porsiyento ng pagsunod sa iskedyul", PmAnalyticsV3NumericOperator.LessThan, 80m, PmAnalyticsV3Catalog.OnTimeCompliancePercent];
         yield return ["NLA-HARDEN-THR-009", "80 porsyento o higit pa na pagsunod sa iskedyul", PmAnalyticsV3NumericOperator.GreaterThanOrEqual, 80m, PmAnalyticsV3Catalog.OnTimeCompliancePercent];
         yield return ["NLA-HARDEN-THR-010", "80 o mas mababa na pagsunod sa iskedyul", PmAnalyticsV3NumericOperator.LessThanOrEqual, 80m, PmAnalyticsV3Catalog.OnTimeCompliancePercent];
+        yield return ["NLA-HARDEN-THR-011", "higit sa 12 scheduled inspections", PmAnalyticsV3NumericOperator.GreaterThan, 12m, PmAnalyticsV3Catalog.ScheduledCount];
     }
 
     public static IEnumerable<object[]> UnsafeAndUnsupportedCases()
@@ -218,6 +222,98 @@ public sealed class PmAnalyticsV3FinalHardeningTests
             new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2024),
             baseFilters: [new(field, PmAnalyticsV3FilterOperator.Equal, [value])]);
         Assert.Equal(field, Assert.Single(plan.BaseFilters).Field);
+    }
+
+    [Fact]
+    public async Task Taglish_named_department_stops_before_the_Filipino_year_cue()
+    {
+        const string question = "Count completed fire-extinguisher inspections for department Research Office noong 2025";
+        var proposal = PmAnalyticsV3RuleParser.Parse(question, NowUtc);
+        AssertCompleteAggregate(
+            "NLA-HARDEN-SCOPE-011",
+            proposal,
+            ["fire-extinguisher"],
+            [PmAnalyticsV3Catalog.CompletedCount],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2025),
+            baseFilters: [new(PmAnalyticsV3Catalog.Department, PmAnalyticsV3FilterOperator.Equal, ["Research Office"])]);
+
+        using var handler = new ModelHandler(proposal);
+        using var interpreter = CreateInterpreter(handler, seedSyntheticAsset: true);
+        var result = await interpreter.InterpretAsync(question, CancellationToken.None, PmAnalyticsV3Interpreter.DeepSeek);
+
+        Assert.Equal("Valid", result.Status);
+        Assert.Equal("DeepSeek", result.Interpreter);
+        Assert.Equal(["RESEARCH OFFICE"], Assert.Single(result.Plan!.BaseFilters).Values);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public async Task Filipino_grouping_thresholds_and_year_preserve_the_full_plan()
+    {
+        const string question = "Ipakita ang department na higit sa 12 scheduled na fire extinguisher inspections at hindi bababa sa 75% ang on-time compliance noong 2025.";
+        var proposal = PmAnalyticsV3RuleParser.Parse(question, NowUtc);
+        AssertCompleteAggregate(
+            "NLA-HARDEN-THR-012",
+            proposal,
+            ["fire-extinguisher"],
+            [PmAnalyticsV3Catalog.ScheduledCount, PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2025),
+            aggregateFilters:
+            [
+                new(PmAnalyticsV3Catalog.ScheduledCount, PmAnalyticsV3NumericOperator.GreaterThan, 12),
+                new(PmAnalyticsV3Catalog.OnTimeCompliancePercent, PmAnalyticsV3NumericOperator.GreaterThanOrEqual, 75)
+            ],
+            groupBy: [PmAnalyticsV3Catalog.Department]);
+
+        using var handler = new ModelHandler(proposal);
+        using var interpreter = CreateInterpreter(handler);
+        var result = await interpreter.InterpretAsync(question, CancellationToken.None, PmAnalyticsV3Interpreter.DeepSeek);
+
+        Assert.Equal("Valid", result.Status);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], result.Plan?.GroupBy);
+        AssertAggregateFilters(proposal.Plan!.AggregateFilters, result.Plan!.AggregateFilters);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public void PM_inspection_year_defaults_to_cycle_but_explicit_completion_date_stays_unsupported()
+    {
+        const string cycleQuestion = "Which five departments had the most missed fire-extinguisher PM inspections in 2025?";
+        var cycle = PmAnalyticsV3RuleParser.Parse(cycleQuestion, NowUtc);
+        Assert.Equal("Valid", cycle.Status);
+        var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(cycle.Plan);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
+        Assert.Equal([PmAnalyticsV3Catalog.MissedCount], plan.Measures);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2025), plan.Period);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.GroupBy);
+        Assert.Equal(new PmAnalyticsV3Top(PmAnalyticsV3Catalog.MissedCount, 5, PmAnalyticsV3SortDirection.Descending), plan.Top);
+        Assert.Equal(new PmAnalyticsV3OrderBy(PmAnalyticsV3Catalog.MissedCount, PmAnalyticsV3SortDirection.Descending), Assert.Single(plan.OrderBy));
+
+        var explicitCompletionDate = PmAnalyticsV3RuleParser.Parse(
+            "Which five departments had the most missed fire-extinguisher PM inspections by completion date in 2025?",
+            NowUtc);
+        Assert.Equal("Unsupported", explicitCompletionDate.Status);
+        Assert.Equal("UnsupportedTimeBasis", explicitCompletionDate.Code);
+    }
+
+    [Fact]
+    public void List_category_questions_return_records_while_count_questions_return_aggregates()
+    {
+        const string listQuestion = "List emergency lights with a non-operational finding in the December 2025 PM cycle.";
+        var list = PmAnalyticsV3RuleParser.Parse(listQuestion, NowUtc);
+        Assert.Equal("Valid", list.Status);
+        Assert.Equal(PmAnalyticsV3Mode.Records, list.Plan?.Mode);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Month, 2025, 12), list.Plan?.Period);
+        var condition = Assert.Single(list.Plan!.MatchingFilters);
+        Assert.Equal(PmAnalyticsV3Catalog.Condition, condition.Field);
+        Assert.Equal(["NonOperational"], condition.Values);
+
+        var count = PmAnalyticsV3RuleParser.Parse(
+            "Count emergency lights with a non-operational finding in the December 2025 PM cycle.",
+            NowUtc);
+        Assert.Equal("Valid", count.Status);
+        Assert.Equal(PmAnalyticsV3Mode.Aggregate, count.Plan?.Mode);
+        Assert.Equal([PmAnalyticsV3Catalog.NonOperationalCount], count.Plan?.Measures);
     }
 
     [Theory]
@@ -723,10 +819,28 @@ public sealed class PmAnalyticsV3FinalHardeningTests
         Assert.Equal(expected.Columns, actual.Columns);
     }
 
-    private static PmAnalyticsV3QuestionInterpreter CreateInterpreter(HttpMessageHandler handler)
+    private static PmAnalyticsV3QuestionInterpreter CreateInterpreter(HttpMessageHandler handler, bool seedSyntheticAsset = false)
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase($"nla-final-hardening-{Guid.NewGuid():N}").Options;
+        if (seedSyntheticAsset)
+        {
+            using var seed = new ApplicationDbContext(options);
+            seed.Assets.Add(new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = "NLA-HARDEN-TEST-001",
+                AssetCategory = AssetCategoryCatalog.FireExtinguisher,
+                Building = "North Block",
+                Department = "Research Office",
+                Location = "North Block Room 1",
+                Status = AssetStatusCatalog.Active,
+                CreatedAt = NowUtc,
+                UpdatedAt = NowUtc
+            });
+            seed.SaveChanges();
+        }
+
         var query = new PmAnalyticsV3QueryService(new ContextFactory(options), new FixedTimeProvider(NowUtc));
         return new PmAnalyticsV3QuestionInterpreter(
             new OptionsMonitor(),
