@@ -687,6 +687,115 @@ test('runs a V3 report through source-record review at a narrow viewport', async
   expect(pageWidth).toBeLessThanOrEqual(390)
 })
 
+test('guides a Filipino PM question through an ambiguous building choice', async ({
+  page,
+}) => {
+  const guidedCatalog = {
+    ...structuredClone(catalog),
+    measures: [
+      ...structuredClone(catalog.measures),
+      {
+        id: 'scheduledCount',
+        label: 'Scheduled',
+        valueType: 'integer',
+        unit: 'asset-cycles',
+        grain: 'one eligible persisted schedule for one asset and PM cycle',
+        population: 'eligible population',
+        definition: 'Count eligible persisted asset-cycle rows.',
+      },
+    ],
+    dimensions: [
+      {
+        id: 'building',
+        label: 'Building',
+        valueType: 'string',
+        nullSemantics: 'No building is recorded.',
+        grain: 'current asset',
+        definition: 'Current building stored on the linked asset.',
+      },
+      {
+        id: 'location',
+        label: 'Location',
+        valueType: 'string',
+        nullSemantics: 'No location is recorded.',
+        grain: 'current asset',
+        definition: 'Current location stored on the linked asset.',
+      },
+    ],
+    filterFields: ['building', 'location'].map((id) => ({
+      id,
+      label: id === 'building' ? 'Building' : 'Location',
+      isBaseFilter: true,
+      valueType: 'string',
+      maximumLength: 120,
+      allowedValues: [],
+      operators: ['Equal', 'In', 'IsNull'],
+    })),
+  }
+  const guidedPlan = {
+    ...structuredClone(plan),
+    measures: ['scheduledCount'],
+    columns: ['scheduledCount'],
+  }
+
+  await page.route('**/api/v1/auth/refresh', (route) =>
+    route.fulfill({ json: session }),
+  )
+  await page.route('**/api/v1/auth/me', (route) =>
+    route.fulfill({ json: session.user }),
+  )
+  await page.route('**/api/v1/analytics/pm/v3/catalog**', (route) =>
+    route.fulfill({ json: guidedCatalog }),
+  )
+  await page.route('**/api/v1/analytics/pm/v3/catalog/values**', (route) =>
+    route.fulfill({
+      json: { field: 'building', values: ['North Block'], hasMore: false },
+    }),
+  )
+  let submittedQuestion: string | null = null
+  await page.route('**/api/v1/analytics/pm/v3/interpret', async (route) => {
+    submittedQuestion = route.request().postDataJSON().question
+    await route.fulfill({
+      json: {
+        status: 'NeedsClarification',
+        plan: guidedPlan,
+        clarificationFields: ['Building', 'Location'],
+        code: 'AmbiguousPlaceNeedsClarification',
+        detail: 'Choose whether North Block names a building or a location.',
+        interpreter: 'DeterministicParser',
+      },
+    })
+  })
+
+  await page.goto('/app/analytics')
+  const question =
+    'Ilan ang nakaiskedyul na pamatay-sunog sa North Block noong 2024?'
+  await page.getByRole('textbox', { name: 'Question' }).fill(question)
+  await page.getByRole('button', { name: 'Generate report' }).click()
+
+  await expect(
+    page.getByRole('heading', { name: 'Clarify the report scope' }),
+  ).toBeVisible()
+  await expect(page.getByText('Question 1 of 2')).toBeVisible()
+  await expect(page.getByLabel('Building', { exact: true })).toBeVisible()
+  expect(submittedQuestion).toBe(question)
+
+  await page.getByLabel('Building', { exact: true }).fill('North')
+  await expect(
+    page.locator('#pm-v3-building-catalog-values option[value="North Block"]'),
+  ).toBeAttached()
+  await page.getByLabel('Building', { exact: true }).fill('North Block')
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('button', { name: 'Use selected building' }).click()
+  await expect(page.getByText('Question 2 of 2')).toBeVisible()
+  await page
+    .getByLabel('Include all location values')
+    .click({ noWaitAfter: true })
+  await expect(
+    page.getByRole('button', { name: 'Preview report', exact: true }),
+  ).toBeEnabled()
+})
+
 test('runs a registered asset inventory report without a PM period', async ({
   page,
 }) => {

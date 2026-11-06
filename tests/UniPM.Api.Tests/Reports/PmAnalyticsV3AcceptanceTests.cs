@@ -391,6 +391,44 @@ public sealed class PmAnalyticsV3AcceptanceTests
     }
 
     [Fact]
+    public async Task Filipino_named_place_returns_a_safe_partial_plan_for_guided_field_selection()
+    {
+        var clock = new FixedTimeProvider(new DateTimeOffset(2025, 12, 31, 16, 0, 0, TimeSpan.Zero));
+        await using var application = new AcceptanceApplicationFactory(
+            authenticated: true,
+            deepSeekEnabled: false,
+            apiKey: null,
+            roles: [AuthRoleCatalog.Gsd],
+            timeProvider: clock);
+        using var client = application.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/interpret",
+            new PmAnalyticsV3InterpretRequest("Ilan ang nakaiskedyul na pamatay-sunog sa North Block noong 2024?"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var interpretation = await response.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
+        Assert.NotNull(interpretation);
+        Assert.Equal("NeedsClarification", interpretation.Status);
+        Assert.Equal("DeterministicParser", interpretation.Interpreter);
+        Assert.Contains("Building", interpretation.ClarificationFields);
+        Assert.Contains("Location", interpretation.ClarificationFields);
+
+        var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(interpretation.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, plan.Subject);
+        Assert.Equal(PmAnalyticsV3Mode.Aggregate, plan.Mode);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2024), plan.Period);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
+        Assert.Equal([PmAnalyticsV3Catalog.ScheduledCount], plan.Measures);
+        Assert.Empty(plan.BaseFilters);
+        Assert.Empty(plan.MatchingFilters);
+        Assert.Empty(plan.AggregateFilters);
+        Assert.Empty(plan.OrderBy);
+        Assert.Null(plan.Top);
+        Assert.Equal([PmAnalyticsV3Catalog.ScheduledCount], plan.Columns);
+    }
+
+    [Fact]
     public async Task Scenario_14_Confirmed_preview_executes_against_query_service_and_returns_population_and_rows()
     {
         await using var application = new AcceptanceApplicationFactory(
