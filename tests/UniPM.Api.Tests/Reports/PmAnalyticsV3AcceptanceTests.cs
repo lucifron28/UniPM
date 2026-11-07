@@ -348,8 +348,19 @@ public sealed class PmAnalyticsV3AcceptanceTests
         Assert.True(interpretation.Status == "NeedsClarification", JsonSerializer.Serialize(interpretation));
         Assert.Contains("Thresholds", interpretation.ClarificationFields);
         var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(interpretation.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, plan.Subject);
+        Assert.Equal(PmAnalyticsV3Mode.Aggregate, plan.Mode);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026), plan.Period);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
         Assert.Equal(PmAnalyticsV3Catalog.ScheduledCount, Assert.Single(plan.Measures));
+        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.GroupBy);
+        Assert.Empty(plan.BaseFilters);
+        Assert.Empty(plan.MatchingFilters);
         Assert.Empty(plan.AggregateFilters);
+        Assert.Empty(plan.OrderBy);
+        Assert.Null(plan.Top);
+        Assert.Equal(PmAnalyticsV3Presentation.Table, plan.Presentation);
+        Assert.Equal([PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.ScheduledCount], plan.Columns);
     }
 
     [Fact]
