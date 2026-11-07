@@ -11,6 +11,7 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-199: NLA V3 explicit completed-measure preservation and device-context guard](test-runs/TEST-199-nla-silent-completed-measure-loss.md): confirmed and fixed silent metric replacement; 19 focused cases and exact-head backend/web CI passed, with mocked DeepSeek only.
 - [TEST-197: NLA V3 flexibility follow-up local paired verification](test-runs/TEST-197-nla-v3-flexibility-follow-up-local.md): 164 focused NLA tests passed; the 29-case defect-driven expansion moved from 5/29 on the frozen source to 29/29, with complete safe-plan assertions and no live provider calls.
 - [TEST-198: NLA V3 flexibility follow-up exact-code-head CI](test-runs/TEST-198-nla-flexibility-exact-head-ci.md): Backend CI passed 788 tests/55 skipped and Web CI passed 278 unit tests plus 64 E2E tests/2 skipped on `6064fa1`.
 - [EXP-008: NLA V3 flexibility follow-up paired regression experiment](experiments/EXP-008-nla-v3-flexibility-follow-up.md): separates the authored-after-failure expansion from the unchanged developer matrix and records interpretation-only limits.
@@ -67,6 +68,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-199 | test-run | NLA V3 explicit completed-measure preservation and device-context guard | executed | ci-executed | 630dc2581d1b468b48476e2438b2bc7a3eadd229 | [record](test-runs/TEST-199-nla-silent-completed-measure-loss.md) | 19 focused cases; backend 806 passed/55 skipped; web 278 passed and E2E 64 passed/2 skipped; mocked model only. |
 | TEST-197 | test-run | NLA V3 flexibility follow-up local paired verification | executed | locally-executed | 6064fa17e78a88de82dff20748521ef414d101a2 | [record](test-runs/TEST-197-nla-v3-flexibility-follow-up-local.md) | 164 focused cases passed; 29-case expansion improved from 5/29 to 29/29 on the frozen-source comparison; complete safe-plan assertions, no live provider or report calculation. |
 | TEST-198 | test-run | NLA V3 flexibility follow-up exact-code-head CI | executed | ci-executed | 6064fa17e78a88de82dff20748521ef414d101a2 | [record](test-runs/TEST-198-nla-flexibility-exact-head-ci.md) | Backend CI: 788 passed/55 skipped; Web CI: 278 unit/coverage tests passed and E2E 64 passed/2 skipped. |
 | IMP-057 | implementation | NLA V3 numeric and bounded semantic flexibility follow-up | reviewed | source-inspected | 6064fa17e78a88de82dff20748521ef414d101a2 | [record](implementation/IMP-057-nla-v3-flexibility-evidence-follow-up.md) | Complete numeric-token validation, bounded model-guard paraphrases, and sentence-final threshold punctuation; no SQL, formula, schema, or web source changes. |
