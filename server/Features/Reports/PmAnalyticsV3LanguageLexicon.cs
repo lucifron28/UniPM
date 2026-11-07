@@ -17,7 +17,12 @@ internal static class PmAnalyticsV3LanguageLexicon
         @"january|jan|enero|ene|february|feb|pebrero|peb|march|mar|marso|april|apr|abril|abr|may|mayo|june|jun|hunyo|hun|july|jul|hulyo|hul|august|aug|agosto|ago|september|sept|sep|setyembre|set|october|oct|oktubre|okt|november|nov|nobyembre|nob|december|dec|disyembre|dis";
 
     internal const string NumberPattern =
-        @"\d{1,3}(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|isa|dalawa|dalawang|tatlo|tatlong|apat|lima|limang|anim|pito|walo|siyam|sampu|sampung|dalawampu";
+        @"-?\d+(?:[,\s_/\\]+\d+)*(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|isa|dalawa|dalawang|tatlo|tatlong|apat|lima|limang|anim|pito|walo|siyam|sampu|sampung|dalawampu";
+
+    private static readonly Regex StrictNumericPattern = new(
+        @"^-?(?:\d+|\d{1,3}(?:,\s?\d{3})+|\d{1,3}(?: \d{3})+)(?:\.\d+)?$",
+        RegexOptions.CultureInvariant,
+        RegexTimeout);
 
     private static readonly Regex MonthRegex = new(
         $@"(?<![\p{{L}}\p{{N}}])(?<month>{MonthPattern})(?![\p{{L}}\p{{N}}])",
@@ -112,7 +117,7 @@ internal static class PmAnalyticsV3LanguageLexicon
         new(PmAnalyticsV3Catalog.ScheduledCount, @"\b(?:nakaiskedyul|naka[- ]iskedyul|may\s+(?:pm\s+)?schedule|may\s+iskedyul|nakaplanong\s+inspeksyon)\b"),
         new(PmAnalyticsV3Catalog.CompletedLateCount, @"\bcompleted[ -]late\b|\blate\s+(?:inspections?|findings?)\b|\blate(?:\s+(?!(?:and|or|not|no|without|except|excluding)\b)[\p{L}\p{N}-]+){1,4}\s+inspections?\b"),
         new(PmAnalyticsV3Catalog.CompletedLateCount, @"\b(?:late\s+na\s+natapos|natapos\s+nang?\s+late|na[- ]inspect(?:ed)?\s+nang?\s+lampas\s+sa\s+(?:deadline|takdang\s+oras)|na[- ]inspect(?:ed)?\s+after\s+(?:the\s+)?(?:deadline|due\s+date))\b"),
-        new(PmAnalyticsV3Catalog.CompletedOnTimeCount, @"\bcompleted\s+on\s+time\b|\bon-time\s+count\b"),
+        new(PmAnalyticsV3Catalog.CompletedOnTimeCount, @"\bcompleted\s+on\s+time\b|\bon-time\s+count\b|\b(?:finished|completed)(?:\s+na)?\s+before\s+(?:the\s+)?(?:pm\s+)?deadline\b|\bwrapped\s+up\s+within\s+(?:the\s+)?scheduled\s+cycle\b|\bdone\s+on\s+time\b|\bnatapos\s+(?:(?:bago\s+(?:ang\s+)?(?:pm\s+)?|before\s+(?:the\s+)?(?:pm\s+)?)deadline|sa\s+(?:takdang\s+)?oras|on\s+time)\b"),
         new(PmAnalyticsV3Catalog.NonOperationalCount, @"\bnon[ -]operational\b"),
         new(PmAnalyticsV3Catalog.NonOperationalCount, @"\bhindi\s+(?:gumagana|operational)\b.{0,24}\b(?:sa\s+)?(?:inspection|inspeksyon|inspeksiyon|finding|finding\s+sa\s+inspection)\b|\b(?:inspection|inspeksyon|inspeksiyon)\b.{0,24}\bhindi\s+(?:gumagana|operational)\b"),
         new(PmAnalyticsV3Catalog.AssignmentOverdueCount, @"\boverdue\s+inspector\s+assignment\s+counts?\b|\binspector\s+assignment\s+(?:is\s+)?overdue\b"),
@@ -289,8 +294,14 @@ internal static class PmAnalyticsV3LanguageLexicon
     internal static IReadOnlyList<PmAnalyticsV3LanguageMatch> FindMeasureMentions(string question)
     {
         var matches = new List<PmAnalyticsV3LanguageMatch>();
+        var deviceNotWorkingContext = HasDeviceNotWorkingContext(question);
         foreach (var alias in MeasureAliases)
         {
+            if (deviceNotWorkingContext && alias.Id == PmAnalyticsV3Catalog.NonOperationalCount)
+            {
+                continue;
+            }
+
             foreach (Match match in Regex.Matches(
                          question,
                          alias.Pattern,
@@ -321,16 +332,22 @@ internal static class PmAnalyticsV3LanguageLexicon
         var completedCountMentions = mentions
             .Where(match => match.Id == PmAnalyticsV3Catalog.CompletedCount)
             .ToArray();
+        var specificCompletedMentions = mentions
+            .Where(match => match.Id is PmAnalyticsV3Catalog.CompletedLateCount
+                or PmAnalyticsV3Catalog.CompletedOnTimeCount
+                or PmAnalyticsV3Catalog.AssignmentCompletedWithinCount
+                or PmAnalyticsV3Catalog.AssignmentCompletedLateCount)
+            .ToArray();
         var progressMentions = mentions
             .Where(match => match.Id == PmAnalyticsV3Catalog.ProgressPercent)
             .ToArray();
         var hasStandaloneCompletedCount = completedCountMentions.Any(completed =>
             !progressMentions.Any(progress => progress.Index <= completed.Index
-                && progress.Index + progress.Length >= completed.Index + completed.Length));
-        var hasSpecificCompletedMeasure = mentions.Any(match => match.Id is PmAnalyticsV3Catalog.CompletedLateCount
-            or PmAnalyticsV3Catalog.CompletedOnTimeCount
-            or PmAnalyticsV3Catalog.AssignmentCompletedWithinCount
-            or PmAnalyticsV3Catalog.AssignmentCompletedLateCount);
+                && progress.Index + progress.Length >= completed.Index + completed.Length)
+            && !specificCompletedMentions.Any(specific => Overlaps(completed, specific)));
+        var preservesExplicitCompletedComparison = hasStandaloneCompletedCount
+            && specificCompletedMentions.Any(specific => specific.Id == PmAnalyticsV3Catalog.CompletedOnTimeCount
+                && IsExplicitCompletedComparison(question, completedCountMentions, specific));
 
         return mentions
             .GroupBy(match => match.Id, StringComparer.Ordinal)
@@ -338,10 +355,51 @@ internal static class PmAnalyticsV3LanguageLexicon
             .OrderBy(match => match.Index)
             .Select(match => match.Id)
             .Where(id => id != PmAnalyticsV3Catalog.CompletedCount
-                || !hasSpecificCompletedMeasure && hasStandaloneCompletedCount)
+                || hasStandaloneCompletedCount
+                    && (specificCompletedMentions.Length == 0 || preservesExplicitCompletedComparison))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+
+        static bool Overlaps(PmAnalyticsV3LanguageMatch left, PmAnalyticsV3LanguageMatch right) =>
+            left.Index < right.Index + right.Length && right.Index < left.Index + left.Length;
+
+        static bool IsExplicitCompletedComparison(
+            string source,
+            IReadOnlyList<PmAnalyticsV3LanguageMatch> completedMentions,
+            PmAnalyticsV3LanguageMatch onTimeMention)
+        {
+            if (Regex.IsMatch(
+                    source,
+                    @"\b(?:compare|compared|comparing|comparison|versus|vs\.?|against|ihambing|ikumpara|paghambingin|kumpara)\b",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                    RegexTimeout))
+            {
+                return true;
+            }
+
+            return completedMentions.Any(completed =>
+            {
+                var start = Math.Min(completed.Index + completed.Length, onTimeMention.Index + onTimeMention.Length);
+                var end = Math.Max(completed.Index, onTimeMention.Index);
+                if (start >= end)
+                {
+                    return false;
+                }
+
+                return Regex.IsMatch(
+                    source[start..end],
+                    @"\b(?:and|or|versus|vs\.?|at|o|pati|kasama)\b",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                    RegexTimeout);
+            });
+        }
     }
+
+    internal static bool HasDeviceNotWorkingContext(string question) => Regex.IsMatch(
+        question,
+        @"(?:\b(?:mobile\s+)?apps?\b|\bapplications?\b|\bsoftware\b|\b(?:qr|barcode)\s+scanner\b|\bscanner\b|\bqr\s+code\b|\bphones?\b|\btablets?\b).{0,40}\b(?:not\s+working|hindi\s+gumagana)\b|\b(?:not\s+working|hindi\s+gumagana)\b.{0,40}(?:\b(?:mobile\s+)?apps?\b|\bapplications?\b|\bsoftware\b|\b(?:qr|barcode)\s+scanner\b|\bscanner\b|\bqr\s+code\b|\bphones?\b|\btablets?\b)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+        RegexTimeout);
 
     internal static IReadOnlyList<int> FindMonths(string question)
     {
@@ -377,9 +435,13 @@ internal static class PmAnalyticsV3LanguageLexicon
 
     internal static bool TryParseNumber(string value, out int number)
     {
-        if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out number))
+        if (TryParseNumericValue(value, out var numericValue)
+            && numericValue >= 0
+            && numericValue <= int.MaxValue
+            && numericValue == decimal.Truncate(numericValue))
         {
-            return number is >= 0 and <= 999;
+            number = decimal.ToInt32(numericValue);
+            return true;
         }
 
         number = value.Trim().ToLowerInvariant() switch
@@ -407,6 +469,23 @@ internal static class PmAnalyticsV3LanguageLexicon
             _ => -1
         };
         return number >= 0;
+    }
+
+    internal static bool TryParseNumericValue(string value, out decimal number)
+    {
+        number = 0;
+        if (!StrictNumericPattern.IsMatch(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Replace(",", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+        return decimal.TryParse(
+            normalized,
+            NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+            CultureInfo.InvariantCulture,
+            out number);
     }
 
     internal static bool HasRankingIntent(string question) => Regex.IsMatch(
