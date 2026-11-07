@@ -17,7 +17,12 @@ internal static class PmAnalyticsV3LanguageLexicon
         @"january|jan|enero|ene|february|feb|pebrero|peb|march|mar|marso|april|apr|abril|abr|may|mayo|june|jun|hunyo|hun|july|jul|hulyo|hul|august|aug|agosto|ago|september|sept|sep|setyembre|set|october|oct|oktubre|okt|november|nov|nobyembre|nob|december|dec|disyembre|dis";
 
     internal const string NumberPattern =
-        @"\d{1,3}(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|isa|dalawa|dalawang|tatlo|tatlong|apat|lima|limang|anim|pito|walo|siyam|sampu|sampung|dalawampu";
+        @"-?\d+(?:(?:,\s?| )\d+)*(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|isa|dalawa|dalawang|tatlo|tatlong|apat|lima|limang|anim|pito|walo|siyam|sampu|sampung|dalawampu";
+
+    private static readonly Regex StrictNumericPattern = new(
+        @"^-?(?:\d+|\d{1,3}(?:,\s?\d{3})+|\d{1,3}(?: \d{3})+)(?:\.\d+)?$",
+        RegexOptions.CultureInvariant,
+        RegexTimeout);
 
     private static readonly Regex MonthRegex = new(
         $@"(?<![\p{{L}}\p{{N}}])(?<month>{MonthPattern})(?![\p{{L}}\p{{N}}])",
@@ -377,9 +382,13 @@ internal static class PmAnalyticsV3LanguageLexicon
 
     internal static bool TryParseNumber(string value, out int number)
     {
-        if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out number))
+        if (TryParseNumericValue(value, out var numericValue)
+            && numericValue >= 0
+            && numericValue <= int.MaxValue
+            && numericValue == decimal.Truncate(numericValue))
         {
-            return number is >= 0 and <= 999;
+            number = decimal.ToInt32(numericValue);
+            return true;
         }
 
         number = value.Trim().ToLowerInvariant() switch
@@ -407,6 +416,23 @@ internal static class PmAnalyticsV3LanguageLexicon
             _ => -1
         };
         return number >= 0;
+    }
+
+    internal static bool TryParseNumericValue(string value, out decimal number)
+    {
+        number = 0;
+        if (!StrictNumericPattern.IsMatch(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Replace(",", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal);
+        return decimal.TryParse(
+            normalized,
+            NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+            CultureInfo.InvariantCulture,
+            out number);
     }
 
     internal static bool HasRankingIntent(string question) => Regex.IsMatch(
