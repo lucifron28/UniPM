@@ -378,7 +378,7 @@ public sealed class PmAnalyticsV3GuardCorrectionTests
     }
 
     [Fact]
-    public async Task Fake_model_guard_clarifies_when_a_bounded_outcome_is_compounded_with_another_measure()
+    public async Task Fake_model_guard_preserves_an_explicit_bounded_outcome_comparison_with_another_measure()
     {
         var proposal = PmAnalyticsV3RuleParser.Parse(
             "Count completed on-time fire-extinguisher inspections by department in 2026",
@@ -392,10 +392,9 @@ public sealed class PmAnalyticsV3GuardCorrectionTests
             CancellationToken.None,
             PmAnalyticsV3Interpreter.DeepSeek);
 
-        Assert.True(response.Status == "NeedsClarification", JsonSerializer.Serialize(response));
-        Assert.Contains("Measures", response.ClarificationFields);
+        Assert.True(response.Status == "Valid", JsonSerializer.Serialize(response));
         var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(response.Plan);
-        Assert.Empty(plan.Measures);
+        Assert.Equal([PmAnalyticsV3Catalog.ScheduledCount, PmAnalyticsV3Catalog.CompletedOnTimeCount], plan.Measures);
         Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, plan.Subject);
         Assert.Equal(PmAnalyticsV3Mode.Aggregate, plan.Mode);
         Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026), plan.Period);
@@ -407,7 +406,9 @@ public sealed class PmAnalyticsV3GuardCorrectionTests
         Assert.Empty(plan.OrderBy);
         Assert.Null(plan.Top);
         Assert.Equal(PmAnalyticsV3Presentation.Table, plan.Presentation);
-        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.Columns);
+        Assert.Equal(
+            [PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.ScheduledCount, PmAnalyticsV3Catalog.CompletedOnTimeCount],
+            plan.Columns);
         Assert.Equal(1, handler.Calls);
     }
 
