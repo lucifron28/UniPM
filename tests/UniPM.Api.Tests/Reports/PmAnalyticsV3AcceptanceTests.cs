@@ -364,6 +364,43 @@ public sealed class PmAnalyticsV3AcceptanceTests
     }
 
     [Fact]
+    public async Task Deterministic_endpoint_preserves_threshold_before_sentence_period()
+    {
+        await using var application = new AcceptanceApplicationFactory(
+            authenticated: true,
+            deepSeekEnabled: false,
+            apiKey: null,
+            roles: [AuthRoleCatalog.Gsd]);
+        using var client = application.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/interpret",
+            new PmAnalyticsV3InterpretRequest(
+                "Show scheduled fire-extinguisher inspections by department in 2026 with at least 1."));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var interpretation = await response.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
+        Assert.NotNull(interpretation);
+        Assert.True(interpretation.Status == "Valid", JsonSerializer.Serialize(interpretation));
+        var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(interpretation.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, plan.Subject);
+        Assert.Equal(PmAnalyticsV3Mode.Aggregate, plan.Mode);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026), plan.Period);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
+        Assert.Equal([PmAnalyticsV3Catalog.ScheduledCount], plan.Measures);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.GroupBy);
+        Assert.Empty(plan.BaseFilters);
+        Assert.Empty(plan.MatchingFilters);
+        var threshold = Assert.Single(plan.AggregateFilters);
+        Assert.Equal(PmAnalyticsV3Catalog.ScheduledCount, threshold.Measure);
+        Assert.Equal(PmAnalyticsV3NumericOperator.GreaterThanOrEqual, threshold.Operator);
+        Assert.Equal(1m, threshold.Value);
+        Assert.Empty(plan.OrderBy);
+        Assert.Null(plan.Top);
+        Assert.Equal(PmAnalyticsV3Presentation.Table, plan.Presentation);
+        Assert.Equal([PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.ScheduledCount], plan.Columns);
+    }
+
+    [Fact]
     public async Task Deterministic_endpoint_rejects_rank_limits_above_twenty_after_parsing_grouped_number()
     {
         await using var application = new AcceptanceApplicationFactory(
