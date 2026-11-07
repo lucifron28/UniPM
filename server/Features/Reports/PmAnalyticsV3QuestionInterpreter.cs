@@ -875,13 +875,16 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
     {
         var resolved = new HashSet<string>(StringComparer.Ordinal);
         Add(PmAnalyticsV3Catalog.CompletedOnTimeCount,
-            @"\b(?:finished|completed)(?:\s+na)?\s+before\s+(?:the\s+)?(?:pm\s+)?deadline\b|\bwrapped\s+up\s+within\s+(?:the\s+)?scheduled\s+cycle\b|\bdone\s+on\s+time\b|\bnatapos\s+sa\s+oras\b|\bnatapos\s+bago\s+(?:ang\s+)?deadline\b");
+            @"\b(?:finished|completed)(?:\s+na)?\s+before\s+(?:the\s+)?(?:pm\s+)?deadline\b|\bwrapped\s+up\s+within\s+(?:the\s+)?scheduled\s+cycle\b|\bdone\s+on\s+time\b|\bnatapos\s+(?:(?:bago\s+(?:ang\s+)?(?:pm\s+)?|before\s+(?:the\s+)?(?:pm\s+)?)deadline|sa\s+(?:takdang\s+)?oras|on\s+time)\b");
         Add(PmAnalyticsV3Catalog.MissedCount,
             @"\bnever\s+completed\s+by\s+(?:the\s+)?(?:pm\s+)?deadline\b|\bstill\s+overdue\s+and\s+unfinished\b|\bhindi\s+pa\s+tapos\s+(?:matapos|pagkatapos)\s+(?:ang\s+)?deadline\b");
         Add(PmAnalyticsV3Catalog.CompletedLateCount,
             @"\bfinished\s+after\s+(?:the\s+)?due\s+date\b|\bna[- ]late\s+pero\s+natapos\b");
-        Add(PmAnalyticsV3Catalog.NonOperationalCount,
-            @"\b(?:inspection|inspections|finding|findings)\b.{0,40}\b(?:found\s+)?not\s+working\b|\bnot\s+working\b.{0,40}\b(?:inspection|finding)\b|\b(?:inspection|inspeksyon|inspeksiyon|finding)\b.{0,32}\bhindi\s+gumagana\b|\bhindi\s+gumagana\b.{0,32}\b(?:inspection|inspeksyon|inspeksiyon|finding)\b");
+        if (!PmAnalyticsV3LanguageLexicon.HasDeviceNotWorkingContext(question))
+        {
+            Add(PmAnalyticsV3Catalog.NonOperationalCount,
+                @"\b(?:inspection|inspections|finding|findings)\b.{0,40}\b(?:found\s+)?not\s+working\b|\bnot\s+working\b.{0,40}\b(?:inspection|finding)\b|\b(?:inspection|inspeksyon|inspeksiyon|finding)\b.{0,32}\bhindi\s+gumagana\b|\bhindi\s+gumagana\b.{0,32}\b(?:inspection|inspeksyon|inspeksiyon|finding)\b");
+        }
 
         conflictingParaphrases = resolved.Count > 1;
         return resolved.Count == 1 ? resolved.Single() : null;

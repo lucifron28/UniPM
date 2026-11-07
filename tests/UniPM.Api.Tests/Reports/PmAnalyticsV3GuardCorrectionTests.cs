@@ -411,6 +411,125 @@ public sealed class PmAnalyticsV3GuardCorrectionTests
         Assert.Equal(1, handler.Calls);
     }
 
+    [Theory]
+    [InlineData("Compare completed fire-extinguisher inspections with those finished before the PM deadline by department in 2026.")]
+    [InlineData("Compare completed fire-extinguisher inspections versus those finished before the PM deadline by department in 2026.")]
+    [InlineData("Count completed fire-extinguisher inspections and inspections finished before the PM deadline by department in 2026.")]
+    [InlineData("Ihambing ang mga inspeksyon ng pamatay-sunog na natapos sa mga natapos bago ang PM deadline ayon sa departamento noong 2026.")]
+    [InlineData("Ilang inspeksyon ng pamatay-sunog ang natapos at natapos bago ang PM deadline ayon sa departamento noong 2026?")]
+    [InlineData("I-compare ang completed fire-extinguisher inspections sa mga natapos before the PM deadline by department in 2026.")]
+    [InlineData("Count completed fire-extinguisher inspections at inspections na finished before the PM deadline by department in 2026.")]
+    public void Deterministic_parser_preserves_explicit_completed_and_on_time_comparison(string question)
+    {
+        var response = PmAnalyticsV3RuleParser.Parse(
+            question,
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.True(response.Status == "Valid", $"{response.Code}: {string.Join(", ", response.ClarificationFields)} {JsonSerializer.Serialize(response)}");
+        var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(response.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, plan.Subject);
+        Assert.Equal(PmAnalyticsV3Mode.Aggregate, plan.Mode);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026), plan.Period);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
+        Assert.Equal(
+            [PmAnalyticsV3Catalog.CompletedCount, PmAnalyticsV3Catalog.CompletedOnTimeCount],
+            plan.Measures);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.GroupBy);
+        Assert.Empty(plan.BaseFilters);
+        Assert.Empty(plan.MatchingFilters);
+        Assert.Empty(plan.AggregateFilters);
+        Assert.Empty(plan.OrderBy);
+        Assert.Null(plan.Top);
+        Assert.Equal(PmAnalyticsV3Presentation.Table, plan.Presentation);
+        Assert.Equal(
+            [PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.CompletedCount, PmAnalyticsV3Catalog.CompletedOnTimeCount],
+            plan.Columns);
+    }
+
+    [Theory]
+    [InlineData("Compare completed fire-extinguisher inspections with those finished before the PM deadline by department in 2026.")]
+    [InlineData("Compare completed fire-extinguisher inspections versus those finished before the PM deadline by department in 2026.")]
+    [InlineData("Count completed fire-extinguisher inspections and inspections finished before the PM deadline by department in 2026.")]
+    [InlineData("Ihambing ang mga inspeksyon ng pamatay-sunog na natapos sa mga natapos bago ang PM deadline ayon sa departamento noong 2026.")]
+    [InlineData("Ilang inspeksyon ng pamatay-sunog ang natapos at natapos bago ang PM deadline ayon sa departamento noong 2026?")]
+    [InlineData("I-compare ang completed fire-extinguisher inspections sa mga natapos before the PM deadline by department in 2026.")]
+    [InlineData("Count completed fire-extinguisher inspections at inspections na finished before the PM deadline by department in 2026.")]
+    public async Task Fake_model_guard_preserves_explicit_completed_and_on_time_comparison(string question)
+    {
+        var proposal = PmAnalyticsV3RuleParser.Parse(
+            "Count completed fire-extinguisher inspections by department in 2026",
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        Assert.Equal("Valid", proposal.Status);
+        proposal = proposal with
+        {
+            Plan = proposal.Plan! with
+            {
+                Measures = [PmAnalyticsV3Catalog.CompletedCount, PmAnalyticsV3Catalog.CompletedOnTimeCount],
+                Columns =
+                [
+                    PmAnalyticsV3Catalog.Department,
+                    PmAnalyticsV3Catalog.CompletedCount,
+                    PmAnalyticsV3Catalog.CompletedOnTimeCount
+                ]
+            }
+        };
+        using var handler = new ModelHandler(proposal);
+        using var interpreter = CreateInterpreter(handler);
+
+        var response = await interpreter.InterpretAsync(
+            question,
+            CancellationToken.None,
+            PmAnalyticsV3Interpreter.DeepSeek);
+
+        Assert.True(response.Status == "Valid", $"{response.Code}: {string.Join(", ", response.ClarificationFields)} {JsonSerializer.Serialize(response)}");
+        var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(response.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, plan.Subject);
+        Assert.Equal(PmAnalyticsV3Mode.Aggregate, plan.Mode);
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026), plan.Period);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
+        Assert.Equal(
+            [PmAnalyticsV3Catalog.CompletedCount, PmAnalyticsV3Catalog.CompletedOnTimeCount],
+            plan.Measures);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.GroupBy);
+        Assert.Empty(plan.BaseFilters);
+        Assert.Empty(plan.MatchingFilters);
+        Assert.Empty(plan.AggregateFilters);
+        Assert.Empty(plan.OrderBy);
+        Assert.Null(plan.Top);
+        Assert.Equal(PmAnalyticsV3Presentation.Table, plan.Presentation);
+        Assert.Equal(
+            [PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.CompletedCount, PmAnalyticsV3Catalog.CompletedOnTimeCount],
+            plan.Columns);
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Theory]
+    [InlineData("Count fire-extinguisher inspection findings when the mobile app is not working by department in 2026.")]
+    [InlineData("Count fire-extinguisher inspection findings when the QR scanner is not working by department in 2026.")]
+    [InlineData("Ilang inspeksyon ng pamatay-sunog ang naitala habang hindi gumagana ang mobile app by department in 2026?")]
+    [InlineData("Ilang inspeksyon ng pamatay-sunog ang naitala habang hindi gumagana ang QR scanner by department in 2026?")]
+    public async Task Fake_model_guard_does_not_treat_app_or_scanner_failure_as_equipment_finding(string question)
+    {
+        var proposal = PmAnalyticsV3RuleParser.Parse(
+            "Count non-operational fire-extinguisher inspection findings by department in 2026",
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        Assert.Equal("Valid", proposal.Status);
+        using var handler = new ModelHandler(proposal);
+        using var interpreter = CreateInterpreter(handler);
+
+        var response = await interpreter.InterpretAsync(question, CancellationToken.None, PmAnalyticsV3Interpreter.DeepSeek);
+
+        Assert.True(response.Status == "NeedsClarification", JsonSerializer.Serialize(response));
+        Assert.Contains("Measures", response.ClarificationFields);
+        var plan = Assert.IsType<PmAnalyticsV3ReportPlan>(response.Plan);
+        Assert.Empty(plan.Measures);
+        Assert.DoesNotContain(PmAnalyticsV3Catalog.NonOperationalCount, plan.Measures);
+        Assert.Equal(["fire-extinguisher"], plan.Categories);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.GroupBy);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], plan.Columns);
+        Assert.Equal(1, handler.Calls);
+    }
+
     [Fact]
     public async Task Invalid_grouping_is_discarded_and_returns_recoverable_fields()
     {
