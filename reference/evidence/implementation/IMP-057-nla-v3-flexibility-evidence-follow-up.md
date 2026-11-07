@@ -3,8 +3,8 @@ id: IMP-057
 type: implementation
 title: NLA V3 numeric and bounded semantic flexibility follow-up
 status: reviewed
-recordedAtUtc: 2026-11-07T02:55:43Z
-sourceCommit: 74cedcbcd7f3a3a5bd3d9aca20c4fe15ea932daf
+recordedAtUtc: 2026-11-07T03:21:27Z
+sourceCommit: 6064fa17e78a88de82dff20748521ef414d101a2
 sourceBranch: feature/nla-flexibility-evidence-hardening
 evidenceLevel: source-inspected
 ---
@@ -14,8 +14,9 @@ evidenceLevel: source-inspected
 ## Baseline and boundary
 
 The follow-up starts at the untouched PR #116 frozen source
-ef0feecee2b7f2092cd97086b8da2296c6f30e64. The implementation commit is
-74cedcbcd7f3a3a5bd3d9aca20c4fe15ea932daf on
+ef0feecee2b7f2092cd97086b8da2296c6f30e64. Implementation began at
+74cedcbcd7f3a3a5bd3d9aca20c4fe15ea932daf and the verified correction is
+6064fa17e78a88de82dff20748521ef414d101a2 on
 feature/nla-flexibility-evidence-hardening.
 
 It changes only the V3 language lexicon, question interpreter, and backend
@@ -43,6 +44,11 @@ same complete value and the existing 1–20 limit. Invalid values produce a
 safe clarification or the existing unsupported ranking response rather than
 a partial valid plan.
 
+The final punctuation audit found that the malformed-token boundary could also
+discard a valid threshold immediately before a sentence-final period. The
+narrow regex correction preserves that ordinary punctuation, with a complete
+typed-plan endpoint regression.
+
 The model-result guard now preserves a bounded set of explicitly supported
 outcome paraphrases: finished before the PM deadline, wrapped up within the
 scheduled cycle, done on time, selected Filipino on-time wording, never
@@ -64,6 +70,7 @@ column after it has been cleared.
 |---|---|
 | Full integer/group parsing; malformed, mixed-separator, negative, fractional, overflow handling | NUM-01–10 and NUM-12–14 in TEST-197; deterministic endpoint and canned guard tests |
 | Full rank-limit token consumption and existing top cap | NUM-11 in TEST-197; deterministic endpoint |
+| Sentence-final punctuation preserves a valid threshold | NUM-15 in TEST-197; deterministic endpoint |
 | Bounded model outcome mappings and conflict policy | LANG-01–09 and SAFE-01–03 in TEST-197; fake local model handler |
 | Existing language/canonical plan behavior remains stable | unchanged developer matrix; 108/108 on baseline and candidate |
 

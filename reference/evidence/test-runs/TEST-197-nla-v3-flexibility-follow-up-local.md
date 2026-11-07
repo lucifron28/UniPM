@@ -3,8 +3,8 @@ id: TEST-197
 type: test-run
 title: NLA V3 flexibility follow-up local paired verification
 status: executed
-recordedAtUtc: 2026-11-07T02:55:43Z
-testedCommit: d59b4a3c3d893d244b0d1ca7f40a5551ceb3397e
+recordedAtUtc: 2026-11-07T03:21:27Z
+testedCommit: 6064fa17e78a88de82dff20748521ef414d101a2
 sourceBranch: feature/nla-flexibility-evidence-hardening
 evidenceLevel: locally-executed
 ---
@@ -16,9 +16,9 @@ evidenceLevel: locally-executed
 - Frozen baseline: ef0feecee2b7f2092cd97086b8da2296c6f30e64, branch
   feature/nla-final-hardening.
 - Candidate implementation: 74cedcbcd7f3a3a5bd3d9aca20c4fe15ea932daf;
-  complete-plan test commit: d59b4a3c3d893d244b0d1ca7f40a5551ceb3397e.
+  numeric-token test commit: d59b4a3c3d893d244b0d1ca7f40a5551ceb3397e;
+  sentence-period correction and test: 6064fa17e78a88de82dff20748521ef414d101a2.
   Branch: feature/nla-flexibility-evidence-hardening.
-  feature/nla-flexibility-evidence-hardening.
 - OS: Windows 11, build 10.0.26200.
 - .NET SDK: 10.0.300; runtime 10.0.8.
 - Provider: disabled for endpoint tests; fake handler only for guard tests.
@@ -27,27 +27,31 @@ evidenceLevel: locally-executed
 
 ## Commands and results
 
-The candidate's focused NLA regression command on the exact tested commit:
+The candidate's focused NLA regression command on the exact tested source/test
+commit 6064fa17e78a88de82dff20748521ef414d101a2:
 
     dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj --no-restore --filter 'FullyQualifiedName~PmAnalyticsV3FinalHardeningTests|FullyQualifiedName~PmAnalyticsV3GuardCorrectionTests|FullyQualifiedName~PmAnalyticsV3AcceptanceTests'
 
-Result on the complete-plan test commit: 163 passed, 0 failed, 0 skipped;
-22-second test duration. The exact existing focused matrix reported 108 passed,
-0 failed, 0 skipped on both ef0fee and the candidate. The final paired
-regression expansion reported ef0fee: 4 passed, 24 failed, 0 skipped; candidate:
-28 passed, 0 failed, 0 skipped. Baseline and candidate expansion durations
-were 8 and 11 seconds.
+Result: 164 passed, 0 failed, 0 skipped; 16-second test duration. The exact
+existing focused matrix reported 108 passed, 0 failed, 0 skipped on both ef0fee
+and the candidate. The final paired 29-case regression expansion reported
+ef0fee: 5 passed, 24 failed, 0 skipped; candidate: 29 passed, 0 failed, 0
+skipped. Baseline and candidate expansion durations were 9 and 10 seconds.
 
-The 28 expansion tests comprise four grouped/ungrouped thousand forms, nine
+The 29 expansion tests comprise four grouped/ungrouped thousand forms, nine
 invalid threshold operands including mixed separators, one grouped
 ranking-limit control, two fake-guard threshold cases, three on-time
 paraphrases, four missed/late distinctions, two ambiguous repair controls,
-two contextual non-operational paraphrases, and one compound-outcome
-clarification. The initial attempt at the three mixed-separator additions
-failed 3/9 numeric cases; the focused token-capture correction then passed the
-same nine-case target, and the complete 163-case filter and 28-case expansion
-passed on the final source/test commit. The nine invalid-threshold cases assert
-the complete safe plan as well as status and clarification fields.
+two contextual non-operational paraphrases, one compound-outcome
+clarification, and one sentence-final-period threshold control. The initial
+attempt at the three mixed-separator additions failed 3/9 numeric cases; the
+focused token-capture correction then passed the same nine-case target. The
+sentence-period test first reproduced a dropped threshold on the
+pre-correction candidate; removing only the end-punctuation rejection fixed
+it. The corrected test passed alone, and the complete focused filter and
+29-case expansion passed on the final source/test commit. The nine
+invalid-threshold cases assert the complete safe plan as well as status and
+clarification fields.
 
 The baseline command and candidate run logs/TRX files are retained as ignored
 local artifacts:
@@ -72,6 +76,10 @@ local artifacts:
 - tests/UniPM.Api.Tests/TestResults/d59b4a3-complete-invalid-plan.trx
 - tests/UniPM.Api.Tests/TestResults/d59b4a3-regression-expansion.trx
 - tests/UniPM.Api.Tests/TestResults/d59b4a3-v3-focused-regression-suite.trx
+- artifacts/nla-flexibility-evidence/frozen-baseline-regression-expansion-v5.log
+- artifacts/nla-flexibility-evidence/candidate-regression-expansion-v5.log
+- artifacts/nla-flexibility-evidence/final-corrected-focused-suite-v5.log
+- tests/UniPM.Api.Tests/TestResults/final-corrected-focused-suite-v5.trx
 
 No raw provider request/response, GSD question, private data, or secret is
 recorded. Per-query latency, CPU, memory, and provider costs were not measured.

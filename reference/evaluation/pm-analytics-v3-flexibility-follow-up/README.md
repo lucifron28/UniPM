@@ -3,8 +3,8 @@ id: NLA-V3-FLEXIBILITY-FOLLOW-UP
 type: evaluation
 title: NLA V3 flexibility follow-up development evidence
 status: executed
-recordedAtUtc: 2026-11-07T02:55:43Z
-sourceCommit: d59b4a3c3d893d244b0d1ca7f40a5551ceb3397e
+recordedAtUtc: 2026-11-07T03:21:27Z
+sourceCommit: 6064fa17e78a88de82dff20748521ef414d101a2
 sourceBranch: feature/nla-flexibility-evidence-hardening
 evidenceLevel: locally-executed
 ---
@@ -15,16 +15,17 @@ evidenceLevel: locally-executed
 
 This is a parser and typed-plan follow-up to the development-only hardening on
 PR #116. The untouched baseline is frozen at
-ef0feecee2b7f2092cd97086b8da2296c6f30e64. Candidate implementation commit is
-74cedcbcd7f3a3a5bd3d9aca20c4fe15ea932daf (implementation) and
-d59b4a3c3d893d244b0d1ca7f40a5551ceb3397e (complete-plan test assertions) on
+ef0feecee2b7f2092cd97086b8da2296c6f30e64. Candidate implementation began at
+74cedcbcd7f3a3a5bd3d9aca20c4fe15ea932daf, with numeric-test assertions at
+d59b4a3c3d893d244b0d1ca7f40a5551ceb3397e and a sentence-period correction/test
+at 6064fa17e78a88de82dff20748521ef414d101a2 on
 feature/nla-flexibility-evidence-hardening. It is a follow-up branch, not a
 new freeze. PR #116 was not changed, merged, or deployed.
 
 No GSD Head question or answer, institutional record, saved provider response,
 or frozen historical evaluation was accessed or changed. No paid or live model
 call was made. Developer-authored tests and canned model proposals are the only
-new inputs. The 28-case defect-driven expansion is kept separate from the
+new inputs. The 29-case defect-driven expansion is kept separate from the
 existing developer matrix because those cases were authored after reproducing
 the defects.
 
@@ -37,22 +38,22 @@ changes below do not change its questions, rubric, or historical results.
 
 ## Paired results
 
-The defect-driven regression expansion contains 28 fixed test cases. Its
+The defect-driven regression expansion contains 29 fixed test cases. Its
 complete candidate expectations assert the typed plan contract (subject, mode,
 period, categories, measures, scope, filters, thresholds, order, top, display
 and columns) or the complete safe clarification/unsupported disposition. The
 same test files were run against the frozen source in a detached scratch
 worktree and against the candidate. The frozen source remained unchanged.
 
-| Measure | Frozen source ef0fee | Candidate code 74cedcb, tests d59b4a3 |
+| Measure | Frozen source ef0fee | Candidate source and tests 6064fa1 |
 |---|---:|---:|
-| Regression-expansion cases passing | 4/28 | 28/28 |
-| Regression-expansion cases failing | 24/28 | 0/28 |
+| Regression-expansion cases passing | 5/29 | 29/29 |
+| Regression-expansion cases failing | 24/29 | 0/29 |
 | Existing focused NLA cases passing | 108/108 | 108/108 |
-| Broader focused NLA cases passing | not run for this exact filter | 163/163 |
+| Broader focused NLA cases passing | not run for this exact filter | 164/164 |
 | Skipped cases in each reported run | 0 | 0 |
 
-There was no candidate semantic regression in the fixed 28-case expansion.
+There was no candidate semantic regression in the fixed 29-case expansion.
 This is a small, developer-authored test result, not an accuracy estimate.
 
 ### Case-by-case defect comparison
@@ -82,6 +83,7 @@ they do not capture raw production-provider output.
 | NUM-12 | Same request with at least 1,,000 | Same safe clarification plan as NUM-05 | Valid with >= 1 | Safe clarification; no partial numeric filter |
 | NUM-13 | Same request with at least 1_000 | Same safe clarification plan as NUM-05 | Valid with >= 1 | Safe clarification; no partial numeric filter |
 | NUM-14 | Same request with at least 1/000 | Same safe clarification plan as NUM-05 | Valid with >= 1 | Safe clarification; no partial numeric filter |
+| NUM-15 | Show scheduled fire-extinguisher inspections by department in 2026 with at least 1. | Valid aggregate; 2026 PM cycle; fire-extinguisher; scheduledCount; department; scheduledCount >= 1; table columns department/scheduledCount | Same full plan; sentence period does not affect threshold | Same full typed plan after punctuation-boundary correction |
 | GUARD-01 | Show scheduled fire-extinguisher inspections by department with at least 1,000 in 2026; canned proposal includes threshold 1000 | Valid plan identical to NUM-01 | NeedsClarification with partial >= 1 threshold | Full typed plan retains >= 1000 |
 | GUARD-02 | Same question with malformed 1,00; canned proposal includes partial threshold 1 | NeedsClarification, fields Thresholds; no aggregate filter; complete safe partial scope | Valid with >= 1 | Safe clarification; no aggregate filter |
 | LANG-01 | Count fire-extinguisher inspections finished before the PM deadline by department in 2026. | Valid aggregate, completedOnTimeCount, 2026, fire-extinguisher, department, table columns department/completedOnTimeCount; no filters/order/top | Clarified Measures with empty measure list | Full expected plan |
@@ -114,7 +116,7 @@ fixtures. No fixed synthetic report dataset was needed or consulted.
 ## Reproduction and rubric
 
 The original matrix's fixed plan expectations and parser tests are unchanged.
-The new 28-case expansion was created after a confirmed endpoint/fake-guard
+The 29-case expansion was created after confirmed endpoint/fake-guard
 reproduction and is explicitly a regression expansion, not a prospective or
 held-out score. Its test cases encode the intended status, clarification set,
 and full plan before the paired baseline/candidate assertion runs.
@@ -129,18 +131,21 @@ passed 9/9. The frozen-source paired rerun still returns Valid with >= 1 for
 each of the three new controls.
 
 Local environment: Windows 11 (10.0.26200), .NET SDK 10.0.300, runtime
-10.0.8. The focused NLA run on the exact source/test commit d59b4a3 was:
+10.0.8. The focused NLA run on the exact source/test commit
+6064fa17e78a88de82dff20748521ef414d101a2 was:
 
     dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj --no-restore --filter 'FullyQualifiedName~PmAnalyticsV3FinalHardeningTests|FullyQualifiedName~PmAnalyticsV3GuardCorrectionTests|FullyQualifiedName~PmAnalyticsV3AcceptanceTests'
 
-Result: 163 passed, 0 failed, 0 skipped (22 seconds test duration). The exact
+Result: 164 passed, 0 failed, 0 skipped (16 seconds test duration). The exact
 existing-matrix command separately passed 108 passed, 0 failed, 0 skipped on
 the frozen source and candidate. The paired expansion reported the frozen
-source: 24 failed, 4 passed, 0 skipped (8 seconds); candidate: 28 passed, 0
-failed, 0 skipped (11 seconds). The nine-case malformed numeric endpoint test
-passed 9/9 after correction. These are test-run durations, not per-query
-latency or production performance measurements. The exact source/test commit
-also passed the 28-case expansion in 11 seconds.
+source: 24 failed, 5 passed, 0 skipped (9 seconds); candidate: 29 passed, 0
+failed, 0 skipped (10 seconds). The nine-case malformed numeric endpoint test
+passed 9/9 after correction. A sentence-final-period threshold case first
+failed against the candidate, then passed after removing the punctuation-end
+rejection; it passed on both frozen source and corrected candidate in the
+paired run. These are test-run durations, not per-query latency or production
+performance measurements.
 
 Fourteen fake-handler model proposals were used in semantic guard tests. Each
 test asserts a single local handler call. These are deterministic canned
@@ -169,14 +174,15 @@ not an application-wide or per-user budget, concurrency limit, or rate limiter.
 This follow-up does not alter these bounds. Code changes contain no SQL,
 business calculation, database schema, or web application changes, so optional
 SQL Server 2019 numerical tests were not run. Local web E2E was not run; the
-exact branch Web CI is recorded separately.
+exact-code-head backend and web CI runs are recorded in
+[TEST-198](../../evidence/test-runs/TEST-198-nla-flexibility-exact-head-ci.md).
 
 ## Manuscript-ready summary
 
 | State | Statement supported by this evidence |
 |---|---|
 | Implemented | Complete grouped integer tokens are parsed and range-checked; malformed, negative, fractional-integer, and overflow operands clarify. A bounded guard mapping preserves explicit catalog-supported on-time, missed/late, and contextual non-operational paraphrases. A hard conflicting or compounded measure still clarifies. |
-| Experimentally evaluated | Existing 108-case focused parser/API matrix passed on both baseline and candidate. A separate 28-case regression expansion improved from 4/28 to 28/28 against the frozen source. Fake proposals and isolated in-memory API tests only; no live provider, report execution, or GSD data. |
+| Experimentally evaluated | Existing 108-case focused parser/API matrix passed on both baseline and candidate. A separate 29-case regression expansion improved from 5/29 to 29/29 against the frozen source. Fake proposals and isolated in-memory API tests only; no live provider, report execution, or GSD data. |
 | Proposed | The linked capability inventory groups 40 operational questions into existing-contract, new-approved-contract, external-data, and unsafe classes. It does not implement new measures or formulas. |
 | Threats to validity | Expectations and queries are developer-authored, test-only, and not independently adjudicated by GSD or held out. Tests cover interpretation, not result calculation, report truth, production latency, real user language, or field acceptance. No post-fix live model evidence exists. |
 
