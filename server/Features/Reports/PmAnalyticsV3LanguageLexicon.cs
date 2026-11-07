@@ -17,7 +17,7 @@ internal static class PmAnalyticsV3LanguageLexicon
         @"january|jan|enero|ene|february|feb|pebrero|peb|march|mar|marso|april|apr|abril|abr|may|mayo|june|jun|hunyo|hun|july|jul|hulyo|hul|august|aug|agosto|ago|september|sept|sep|setyembre|set|october|oct|oktubre|okt|november|nov|nobyembre|nob|december|dec|disyembre|dis";
 
     internal const string NumberPattern =
-        @"-?\d+(?:(?:,\s?| )\d+)*(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|isa|dalawa|dalawang|tatlo|tatlong|apat|lima|limang|anim|pito|walo|siyam|sampu|sampung|dalawampu";
+        @"-?\d+(?:[,\s_/\\]+\d+)*(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|isa|dalawa|dalawang|tatlo|tatlong|apat|lima|limang|anim|pito|walo|siyam|sampu|sampung|dalawampu";
 
     private static readonly Regex StrictNumericPattern = new(
         @"^-?(?:\d+|\d{1,3}(?:,\s?\d{3})+|\d{1,3}(?: \d{3})+)(?:\.\d+)?$",
