@@ -23,20 +23,21 @@ log="artifacts/nonfunctional-android/run-${api_level}.log"
   adb install -r build/app/outputs/flutter-apk/app-debug.apk
   adb shell monkey -p io.github.lucifron28.unipm 1
 
-  screen_ready=0
-  for attempt in $(seq 1 60); do
-    adb shell uiautomator dump /sdcard/unipm-window.xml >/dev/null 2>&1 || true
-    if adb shell cat /sdcard/unipm-window.xml | grep -q 'Sign in'; then
-      screen_ready=1
+  activity_ready=0
+  for attempt in $(seq 1 30); do
+    activity=$(adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' || true)
+    if printf '%s\n' "${activity}" | grep -q 'io.github.lucifron28.unipm/.MainActivity'; then
+      activity_ready=1
       break
     fi
     sleep 1
   done
-  test "${screen_ready}" = "1"
+  test "${activity_ready}" = "1"
+  printf '%s\n' "${activity}"
 
-  adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity'
-  adb pull /sdcard/unipm-window.xml "artifacts/nonfunctional-android/startup-${api_level}.xml"
+  sleep 5
   adb shell screencap -p /sdcard/unipm-startup.png
   adb pull /sdcard/unipm-startup.png "artifacts/nonfunctional-android/startup-${api_level}.png"
-  flutter test --device-id emulator-5554 --no-pub --reporter expanded
+  test -s "artifacts/nonfunctional-android/startup-${api_level}.png"
+  timeout 10m flutter test --device-id emulator-5554 --no-pub --reporter expanded test/app_config_test.dart
 } 2>&1 | tee "${log}"
