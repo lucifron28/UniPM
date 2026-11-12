@@ -22,8 +22,8 @@ log="artifacts/nonfunctional-android/run-${api_level}.log"
   echo "density_dpi=$(timeout 30s adb shell getprop qemu.sf.lcd_density)"
   echo "Building the debug APK"
   timeout 15m flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/
-  echo "Installing the APK with bounded non-streaming ADB"
-  timeout 3m adb install --no-streaming -r build/app/outputs/flutter-apk/app-debug.apk
+  echo "Installing the APK with bounded ADB timeout"
+  timeout 8m adb install -r build/app/outputs/flutter-apk/app-debug.apk
   echo "Launching MainActivity"
   launch_output=$(timeout 120s adb shell am start -W -n io.github.lucifron28.unipm/.MainActivity)
   printf '%s\n' "${launch_output}"
