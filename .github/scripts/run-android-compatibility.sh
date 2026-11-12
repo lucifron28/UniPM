@@ -18,7 +18,7 @@ log="artifacts/nonfunctional-android/run-${api_level}.log"
   echo "device_release=$(adb shell getprop ro.build.version.release)"
   echo "device_api=$(adb shell getprop ro.build.version.sdk)"
   echo "screen_size=$(adb shell wm size)"
-  echo "density_dpi=$(adb shell getprop ro.sf.lcd_density)"
+  echo "density_dpi=$(adb shell getprop qemu.sf.lcd_density)"
   flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/
   adb install -r build/app/outputs/flutter-apk/app-debug.apk
   launch_output=$(timeout 90s adb shell am start -W -n io.github.lucifron28.unipm/.MainActivity)
