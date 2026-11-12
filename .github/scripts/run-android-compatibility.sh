@@ -15,25 +15,15 @@ log="artifacts/nonfunctional-android/run-${api_level}.log"
   echo "api_level=${api_level}"
   echo "profile=${profile}"
   echo "screen_class=${screen_class}"
-  adb shell getprop ro.build.version.release
-  adb shell getprop ro.build.version.sdk
-  adb shell wm size
-  adb shell wm density
+  echo "device_release=$(adb shell getprop ro.build.version.release)"
+  echo "device_api=$(adb shell getprop ro.build.version.sdk)"
+  echo "screen_size=$(adb shell wm size)"
+  echo "density_dpi=$(adb shell getprop ro.sf.lcd_density)"
   flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/
   adb install -r build/app/outputs/flutter-apk/app-debug.apk
-  adb shell monkey -p io.github.lucifron28.unipm 1
-
-  activity_ready=0
-  for attempt in $(seq 1 30); do
-    activity=$(adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' || true)
-    if printf '%s\n' "${activity}" | grep -q 'io.github.lucifron28.unipm/.MainActivity'; then
-      activity_ready=1
-      break
-    fi
-    sleep 1
-  done
-  test "${activity_ready}" = "1"
-  printf '%s\n' "${activity}"
+  launch_output=$(timeout 90s adb shell am start -W -n io.github.lucifron28.unipm/.MainActivity)
+  printf '%s\n' "${launch_output}"
+  printf '%s\n' "${launch_output}" | grep -q 'Status: ok'
 
   sleep 5
   adb shell screencap -p /sdcard/unipm-startup.png
