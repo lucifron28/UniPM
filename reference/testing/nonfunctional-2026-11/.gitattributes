@@ -1,0 +1,5 @@
+web-performance/*.csv -text
+web-performance/*.json -text
+zap-header-verification.json -text
+zap-report-*.html -text
+zap-report-*.json -text

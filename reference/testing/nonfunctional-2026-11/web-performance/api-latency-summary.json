@@ -1,0 +1,65 @@
+{
+  "runStartedAtUtc": "2026-11-12T15:56:56.278Z",
+  "target": "http://127.0.0.1:5254",
+  "testType": "authenticated local ASP.NET Core API round-trip; request plus complete response body read",
+  "measuredEndpoints": 3,
+  "sampleCountPerEndpoint": 30,
+  "warmupCountPerEndpoint": 5,
+  "execution": "serial requests; one Node.js process; no browser; no UI rendering",
+  "database": "local SQL Server 2019 Developer, isolated synthetic-data database",
+  "runtime": {
+    "node": "v24.15.0",
+    "platform": "win32 10.0.26200 x64",
+    "cpuLogicalCount": 16,
+    "totalMemoryBytes": 16574672896
+  },
+  "loginHttpStatus": 200,
+  "requestFailures": 0,
+  "summaries": [
+    {
+      "endpoint": "asset-registry",
+      "path": "/api/v1/assets/registry?page=1&pageSize=25",
+      "sampleCount": 30,
+      "warmupCount": 5,
+      "httpStatusCounts": {
+        "200": 30
+      },
+      "medianMs": 11.477,
+      "p95Ms": 25.715,
+      "maximumMs": 40.062,
+      "responseBytesLastSample": 9674,
+      "itemsLastSample": 25,
+      "totalRecordsLastSample": 45
+    },
+    {
+      "endpoint": "preventive-maintenance-scheduling",
+      "path": "/api/v1/schedules/registry?page=1&pageSize=25",
+      "sampleCount": 30,
+      "warmupCount": 5,
+      "httpStatusCounts": {
+        "200": 30
+      },
+      "medianMs": 14.257,
+      "p95Ms": 20.265,
+      "maximumMs": 30.365,
+      "responseBytesLastSample": 18895,
+      "itemsLastSample": 25,
+      "totalRecordsLastSample": 139
+    },
+    {
+      "endpoint": "inspection-form-review",
+      "path": "/api/v1/inspections/registry?page=1&pageSize=25",
+      "sampleCount": 30,
+      "warmupCount": 5,
+      "httpStatusCounts": {
+        "200": 30
+      },
+      "medianMs": 19.063,
+      "p95Ms": 24.176,
+      "maximumMs": 87.07,
+      "responseBytesLastSample": 23892,
+      "itemsLastSample": 25,
+      "totalRecordsLastSample": 88
+    }
+  ]
+}

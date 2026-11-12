@@ -1,0 +1,91 @@
+---
+env:
+  contexts:
+    - name: unipm-local
+      urls:
+        - http://127.0.0.1:5254
+      includePaths:
+        - http://127.0.0.1:5254/.*
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+jobs:
+  - type: spider
+    name: local-api-root
+    parameters:
+      context: unipm-local
+      url: http://127.0.0.1:5254/
+      maxDuration: 1
+      maxDepth: 4
+      maxChildren: 100
+      acceptCookies: false
+      handleParameters: use_all
+  - type: spider
+    name: local-openapi-document
+    parameters:
+      context: unipm-local
+      url: http://127.0.0.1:5254/openapi/v1.json
+      maxDuration: 1
+      maxDepth: 3
+      maxChildren: 100
+      acceptCookies: false
+  - type: spider
+    name: local-assets-registry
+    parameters:
+      context: unipm-local
+      url: http://127.0.0.1:5254/api/v1/assets/registry?page=1&pageSize=25
+      maxDuration: 1
+      maxDepth: 2
+      maxChildren: 100
+      acceptCookies: false
+      handleParameters: use_all
+  - type: spider
+    name: local-schedules-registry
+    parameters:
+      context: unipm-local
+      url: http://127.0.0.1:5254/api/v1/schedules/registry?page=1&pageSize=25
+      maxDuration: 1
+      maxDepth: 2
+      maxChildren: 100
+      acceptCookies: false
+      handleParameters: use_all
+  - type: spider
+    name: local-inspections-registry
+    parameters:
+      context: unipm-local
+      url: http://127.0.0.1:5254/api/v1/inspections/registry?page=1&pageSize=25
+      maxDuration: 1
+      maxDepth: 2
+      maxChildren: 100
+      acceptCookies: false
+      handleParameters: use_all
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+  - type: report
+    name: generate-html-report
+    parameters:
+      template: traditional-html
+      reportDir: ../../../artifacts/nonfunctional-2026-11/zap
+      reportFile: unipm-passive-baseline-{{yyyy-MM-dd}}
+      reportTitle: UniPM Local Development Passive Baseline
+      reportDescription: Local unauthenticated passive scan of the synthetic development API. No active scanner was run.
+      displayReport: false
+    sites:
+      - http://127.0.0.1:5254
+    risks: [high, medium, low, info]
+    confidences: [high, medium, low, falsepositive]
+  - type: report
+    name: generate-json-report
+    parameters:
+      template: traditional-json
+      reportDir: ../../../artifacts/nonfunctional-2026-11/zap
+      reportFile: unipm-passive-baseline-{{yyyy-MM-dd}}
+      reportTitle: UniPM Local Development Passive Baseline
+      reportDescription: Local unauthenticated passive scan of the synthetic development API. No active scanner was run.
+      displayReport: false
+    sites:
+      - http://127.0.0.1:5254
+    risks: [high, medium, low, info]
+    confidences: [high, medium, low, falsepositive]
