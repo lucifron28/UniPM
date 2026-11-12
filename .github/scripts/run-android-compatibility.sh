@@ -52,9 +52,9 @@ log="artifacts/nonfunctional-android/run-${api_level}.log"
   echo "Waiting for cold-start rendering"
   sleep 20
   echo "Capturing startup screenshot"
-  timeout 30s adb shell screencap -p /sdcard/unipm-startup.png
-  timeout 60s adb pull /sdcard/unipm-startup.png "artifacts/nonfunctional-android/startup-${api_level}.png"
-  test -s "artifacts/nonfunctional-android/startup-${api_level}.png"
+  screenshot_path="artifacts/nonfunctional-android/startup-${api_level}.png"
+  timeout 90s adb exec-out screencap -p > "${screenshot_path}"
+  test -s "${screenshot_path}"
   echo "Running focused app configuration tests"
   timeout 10m flutter test --device-id emulator-5554 --no-pub --reporter expanded test/app_config_test.dart
 } 2>&1 | tee "${log}"
