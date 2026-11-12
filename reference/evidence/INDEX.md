@@ -11,7 +11,9 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
-- [TEST-193: Android, web performance, and ZAP non-functional evidence](test-runs/TEST-193-nonfunctional-requirements-2026-11.md): 90 local API measurements and a passive ZAP report were executed; React build/tests and API 37 Flutter checks passed. Required API 29/API 34 emulator runs and live mobile workflows remain unexecuted.
+- [TEST-193: Android, web performance, and ZAP non-functional evidence](test-runs/TEST-193-nonfunctional-requirements-2026-11.md): 90 local API measurements and a passive ZAP report were executed; React build/tests and API 37 Flutter checks passed. API 29/API 34 and live mobile workflows were pending at TEST-193; see TEST-194 for the later emulator run and remaining limits.
+
+- [TEST-194: Android and security follow-up](test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md): API 29/API 34 CI build/install/process checks and four app-config tests passed, but screenshots show system/launcher not-responding dialogs; header alert absent after fix; 10 moderate development-only npm entries remain.
 
 - [TEST-192: Compact dashboard attention navigation](test-runs/TEST-192-compact-attention-navigation.md): eight focused backend cases passed; desktop synthetic checks cover both role-specific links, preserved form filters, back navigation and zero counts. Replaces the dashboard layout from TEST-191.
 
@@ -56,6 +58,7 @@ record's evidence level and tested/source commit.
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
 | TEST-193 | test-run | Non-functional Android, web performance, and ZAP evidence | executed | locally-executed | 53afe5708ca640b6fe7618589cbf3be1a1de6ae3 | [record](test-runs/TEST-193-nonfunctional-requirements-2026-11.md) | API performance and passive ZAP executed; React 278 and Flutter 198 suites passed; API 29/API 34 emulator execution remains pending. |
+| TEST-194 | test-run | Non-functional Android and security follow-up | executed | ci-executed | 530b5be36727698f3e66935e56e53c698e4df52b | [record](test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md) | API 29/API 34 jobs passed build/install/process/config checks but screenshots show system/launcher not-responding dialogs; header alert absent after remediation; 10 moderate development-only npm entries remain. |
 | TEST-172 | test-run | Schedule batch side panels | executed | locally-executed | `fde2bbc` | [record](test-runs/TEST-172-schedule-batch-panels.md) | 25 schedule workflow tests passed after one existing-expectation correction; type check passed. Browser visual verification unavailable. |
 | TEST-171 | test-run | Dashboard records and detailed report | executed | locally-executed | `fd70ea4` | [record](test-runs/TEST-171-dashboard-records-print.md) | Backend build, 10 dashboard tests and type check passed. Built-in desktop table/filter/pagination checks executed; final PDF/print layout unverified. |
 | TEST-170 | test-run | Guarded local rebuilt demo reset | executed | locally-executed | `1073065` | [record](test-runs/TEST-170-rebuilt-demo-reset.md) | Manifest initialization and rollback-only reset check passed. Unrelated-data refusal was source-inspected; no committed reset. |

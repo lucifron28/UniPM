@@ -1,65 +1,84 @@
 # Android compatibility test matrix
 
-## Requested configurations
+## Required emulator configurations
 
-| Configuration | Status | Evidence |
+The GitHub Actions workflow defines two portrait configurations:
+
+| Requested profile | Emulator profile | Observed display | Logical viewport | Workflow job |
+|---|---|---:|---:|---|
+| Android 10 / API 29, small | Nexus 5 | 1080×1920 at 480 dpi | 360×640 dp | [API 29 job, run 43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992/job/131457612840) |
+| Android 14 / API 34, large | Pixel 7 Pro | 1440×3120 at 560 dpi | approximately 411×891 dp | [API 34 job, run 43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992/job/131457612496) |
+
+Workflow execution used Ubuntu 24.04, Java 21, Flutter 3.47.1 stable, x86_64 Android emulators, software rendering, and no KVM acceleration. Exact source commit: `530b5be36727698f3e66935e56e53c698e4df52b`. Run: [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992), triggered 2026-11-12T20:06:20Z and completed successfully. In Asia/Manila the run occurred on 2026-11-13.
+
+## Results from the latest run
+
+| Check | Android 10 / API 29 | Android 14 / API 34 |
 |---|---|---|
-| Android 10 / API 29, small profile (Nexus 5) | NOT EXECUTED | The local SDK contained only API 37 system images. The GitHub Actions matrix is prepared; no remote run has been dispatched. |
-| Android 14 / API 34, large profile (Pixel 7 Pro) | NOT EXECUTED | The local SDK contained only API 37 system images. The GitHub Actions matrix is prepared; no remote run has been dispatched. |
-| Android 17 / API 37, Resizable Experimental AVD | EXECUTED, SUPPLEMENTAL | APK installed, MainActivity launched, sign-in screen rendered, and 198 Flutter tests passed. This does not substitute for API 29/API 34. |
+| Debug APK build | **PASS** — 222.6 s | **PASS** — 231.2 s |
+| APK installation | **PASS** — `adb install` returned `Success` | **PASS** — `adb install` returned `Success` |
+| Activity/process start | **PARTIAL** — `am start -W` returned `Status: timeout` but reported `MainActivity`; app process PID 5239 was present | **PARTIAL** — `am start -W` returned `Status: timeout` but reported `MainActivity`; app process PID 4623 was present |
+| Startup screenshot / visible app UI | **FAIL** — screenshot shows “System UI isn't responding” over a blank screen; UniPM controls are not visible | **FAIL** — screenshot shows “Pixel Launcher isn't responding” over a blank screen; UniPM controls are not visible |
+| Focused `test/app_config_test.dart` | **PASS** — 4/4 | **PASS** — 4/4 |
+| GitHub Actions job conclusion | **PASS** — scripted workflow completed | **PASS** — scripted workflow completed |
+| Login, authenticated navigation, asset/form/history flows | **NOT EXECUTED** | **NOT EXECUTED** |
+| Overflow/responsive content review | **BLOCKED** — app content is not visible in the captured screen | **BLOCKED** — app content is not visible in the captured screen |
+| Offline persistence, reconnect synchronization, live errors/conflicts | **NOT EXECUTED** | **NOT EXECUTED** |
 
-The local SDK did not contain API 29/API 34 images or Android command-line tools to install them. The added [GitHub Actions emulator workflow](../../../.github/workflows/nonfunctional-android-compatibility.yml) uses [ReactiveCircus/android-emulator-runner](https://github.com/ReactiveCircus/android-emulator-runner) with the API 29 Nexus 5 and API 34 Pixel 7 Pro profiles. It records the Android version, API, emulator size/density, app startup hierarchy and screenshot, runs the Flutter suite, and uploads logs. YAML and its two matrix entries were parsed locally. The workflow itself remains NOT EXECUTED.
+The successful job conclusion means that the APK built and installed, the `MainActivity` process was present, a non-empty screenshot was captured, and the four app-configuration tests passed. It does **not** establish that the UniPM startup screen rendered correctly: both real screenshots show an Android launcher/system UI not-responding dialog and no app controls. The screenshots do not identify the cause, so the evidence does not attribute this behavior to the app or to the emulator. The requested configurations were exercised, but visual startup and functional compatibility remain incomplete pending a responsive rendered screen.
 
-## API 37 execution
+- [API 29 startup screenshot](android-workflow-runs/432969/api29/startup-29.png) · [helper log](android-workflow-runs/432969/api29/run-29.log) · [full Actions job log](android-workflow-runs/432969/api29/actions-job.log)
+- [API 34 startup screenshot](android-workflow-runs/432969/api34/startup-34.png) · [helper log](android-workflow-runs/432969/api34/run-34.log) · [full Actions job log](android-workflow-runs/432969/api34/actions-job.log)
 
-- Device: emulator-5554, Resizable Experimental AVD
-- Android release/API: Android 17 / API 37
-- Default display: 1080×2400 at 420 dpi (about 411×914 dp)
-- Compact override: 720×1280 at 320 dpi (360×640 dp); the physical display settings were reset after capture
-- Package: io.github.lucifron28.unipm
-- APK: Debug build using the local emulator API URL 10.0.2.2:5254
-- Installation: adb install succeeded
-- Launch: MainActivity became the top resumed activity
-- First cold rendered sign-in screen: ActivityTaskManager recorded Displayed +21s151ms
-- Screen review: the sign-in screen controls and button were visible at both captured viewports; no clipping was visually observed on that one screen
+The focused Flutter tests check development/release API URL configuration only. They are automated unit/configuration checks run with the emulator selected; they do not sign in or exercise server-backed workflows. The Actions workflow does not start the API or create a test account.
 
-Authentic screenshots: [compact viewport](android-api37-small-viewport.png) and [default viewport](android-api37-default-viewport.png). They are from API 37 and show the debug build.
+## Earlier workflow attempts
 
-## Automated Flutter checks
+The earlier runs are retained in the evidence directory; they explain the workflow harness corrections and are not substituted for the latest results.
 
-- flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/ — passed
-- adb install and launcher activity check — passed
-- flutter test --device-id emulator-5554 --no-pub --reporter expanded — 198 passed
-- flutter test --device-id emulator-5554 --no-pub --reporter expanded test/app_config_test.dart — 4 passed
-- Host flutter test --no-pub --reporter expanded — 198 passed
-- flutter analyze --no-pub — no issues found
-- dart format --output=none --set-exit-if-changed lib test — 64 files formatted, zero changes
+| Run and tested commit | API 29 | API 34 |
+|---|---|---|
+| [43284530284](https://github.com/lucifron28/UniPM/actions/runs/43284530284), `87069560a29c65714dfd8898892786bcb5e208bf` | APK built; install timed out after 3 minutes; no launch/screenshot/tests | APK built and ADB push started; install timed out after 3 minutes; no screenshot/tests |
+| [43288290256](https://github.com/lucifron28/UniPM/actions/runs/43288290256), `e0baa9b30bf9198eb765cefde974c1861fa2e1f9` | Install succeeded; `am start` reported timeout and `MainActivity`; helper stopped before process/screenshot/config tests | Install timed out after 8 minutes; no screenshot/tests |
+| [43293011562](https://github.com/lucifron28/UniPM/actions/runs/43293011562), `37fa6a5c57a77290a1db4425d18a8a9509a2e8a7` | Install and process start observed; screenshot attempt failed because `/sdcard` capture returned permission/timeout errors; focused tests did not run | Install and process start observed; screenshot attempt failed with permission denied; focused tests did not run |
+| [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992), `530b5be36727698f3e66935e56e53c698e4df52b` | Build, install, process check, screenshot capture, and four config tests completed; screenshot visually failed as described above | Build, install, process check, screenshot capture, and four config tests completed; screenshot visually failed as described above |
 
-The 198 tests include repository/widget cases for asset lookup, asset maintenance history, maintenance drafts, offline repository behavior, and conflict/error states. Those tests execute their existing test doubles/fakes. They are useful automated regression evidence, but they do not represent a live login or authenticated device-to-server workflow.
+Each earlier API helper log is retained under `android-workflow-runs/<run-id>/api29/` and `api34/`. The GitHub Actions run links remain the source for the corresponding workflow records.
 
-## Requested feature checks and limits
+## Supplemental Android 17 / API 37 smoke
+
+A separate local smoke used an Android 17/API 37 emulator and synthetic development data. This evidence is supplemental and does not replace API 29/API 34 results.
 
 | Check | Result |
 |---|---|
-| Install and launch | Passed on API 37 only. The sign-in UI rendered after the first cold launch. |
-| Login and authenticated navigation | NOT EXECUTED with the local API on a device. Existing automated tests do not establish a live session. |
-| Responsive layout and overflow | Partial: sign-in screen visually inspected at the two API 37 viewports; no operational page layout was inspected. No claim for API 29/API 34. |
-| Asset lookup | Existing automated Flutter tests passed; no live account/device lookup was performed. |
-| PM form entry | Existing draft/form tests passed; no live form submission was performed. |
-| Offline draft persistence | Existing offline/draft tests passed using test doubles; persistence across a real app/device restart was NOT EXECUTED. |
-| Synchronization after reconnect | NOT EXECUTED as a live device/API sequence. |
-| Maintenance/inspection history | Existing history/repository tests passed; no live account history was opened on the emulator. |
-| Error and conflict handling | Existing simulated error/conflict tests passed; no server conflict was induced from the installed app. |
+| Install, sign-in screen and login | Passed; authenticated Maintenance Inspector navigation observed. The home screenshot still had loading task panels. |
+| Asset lookup | Passed; synthetic CCMS asset search and asset details opened. |
+| Maintenance history | Passed; two acknowledged synthetic records displayed. |
+| PM schedule selection | Passed up to schedule details; the draft form list stayed on a loading state. |
+| PM form entry | Blocked; an authenticated read-only form-list request timed out after 20,046 ms. No form was entered or submitted. |
+| Offline draft persistence/reconnect sync | Not executed on device. |
+| Live conflict/error handling | Not executed on device. |
+| Full Flutter suite | 198/198 passed on API 37; tests for drafts, history, offline behavior and errors use fakes/test doubles. |
 
-## Reproduction
+Details, logs references, and actual screenshots are in [the API 37 smoke record](android-api37-live/README.md). The two API 37 viewport screenshots show only the sign-in screen and do not establish operational-page overflow behavior.
 
-From the repository root, use the matrix workflow for the two required OS versions. To repeat the local supplemental API 37 run:
+## Compatibility boundary and reproduction
 
-    Set-Location .\mobile
-    flutter pub get
-    flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/
-    adb install -r .\build\app\outputs\flutter-apk\app-debug.apk
-    adb shell monkey -p io.github.lucifron28.unipm 1
-    flutter test --device-id emulator-5554 --no-pub --reporter expanded
+`mobile/android/app/build.gradle.kts` relies on Flutter's Android SDK defaults; with Flutter 3.47.1, the resolved minimum SDK is API 24, and compile/target SDK are API 36. Both requested APIs are above the installation minimum, and the CI run directly confirms APK installation on both. However, neither captured startup image showed the application interface. Therefore no API 29/API 34 claim is made for layout fit, authentication, asset lookup, inspection entry, persistence, synchronization, history or conflict handling.
 
-Do not cite this API 37 supplement as evidence for Android 10/API 29 or Android 14/API 34 compatibility.
+To repeat the workflow after pushing this branch:
+
+```powershell
+gh workflow run nonfunctional-android-compatibility.yml --ref codex/nonfunctional-testing-2026-11
+gh run list --workflow nonfunctional-android-compatibility.yml --branch codex/nonfunctional-testing-2026-11
+```
+
+The existing run can be inspected with:
+
+```powershell
+gh run view 43296932992 --log
+gh run download 43296932992 --name android-api-29-evidence
+gh run download 43296932992 --name android-api-34-evidence
+```
+
+Do not report the current startup/rendering evidence as full compatibility acceptance. A future run should produce a responsive UniPM screen before layout or authenticated-feature checks can be claimed.

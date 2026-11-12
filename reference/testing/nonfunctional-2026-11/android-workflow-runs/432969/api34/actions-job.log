@@ -1,0 +1,1171 @@
+Android 14 · pixel_7_pro	Set up job	﻿2026-11-12T20:06:23.6059104Z Current runner version: '2.338.2'
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6078458Z ##[group]Runner Image Provisioner
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6079050Z Hosted Compute Agent
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6079402Z Version: 20261028.624
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6079854Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6080337Z Build Date: 2026-10-28T21:51:42Z
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6080822Z Worker ID: {2b2f243a-d07c-43b3-ad99-8eb5e7e0eac6}
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6081423Z Region: southcentralus
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6081774Z Cloud: Azure
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6082164Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6083020Z ##[group]Operating System
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6083698Z Ubuntu
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6084039Z 24.04.5
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6084363Z LTS
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6084719Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6085098Z ##[group]Runner Image
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6085528Z Image: ubuntu-24.04
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6085897Z Version: 20261101.360.1
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6086532Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6087653Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6088245Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6088912Z ##[group]GITHUB_TOKEN Permissions
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6090368Z Contents: read
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6090787Z Metadata: read
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6091282Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6092923Z Secret source: Actions
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6093517Z Cache mode: write
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6094048Z Prepare workflow directory
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6344779Z Prepare all required actions
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.6377106Z Getting action download info
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:23.9467195Z Download action repository 'actions/checkout@v6' (SHA:d23441a48e516b6c34aea4fa41551a30e30af803)
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:24.0819587Z Download action repository 'actions/setup-java@v4' (SHA:cf277c60eb25467037889841efdb72551f06f6c3)
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:24.6992676Z Download action repository 'subosito/flutter-action@v2' (SHA:1a449444c387b1966244ae4d4f8c696479add0b2)
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:24.9793257Z Download action repository 'reactivecircus/android-emulator-runner@v2' (SHA:a421e43855164a8197daf9d8d40fe71c6996bb0d)
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:25.3514750Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:25.5554520Z Getting action download info
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:25.6562323Z Download action repository 'actions/cache@v5' (SHA:caa296126883cff596d87d8935842f9db880ef25)
+Android 14 · pixel_7_pro	Set up job	2026-11-12T20:06:25.8295495Z Complete job name: Android 14 · pixel_7_pro
+Android 14 · pixel_7_pro	Check out source	﻿2026-11-12T20:06:25.8985281Z ##[group]Run actions/checkout@v6
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8986075Z with:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8986574Z   repository: lucifron28/UniPM
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8991357Z   token: ***
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8991886Z   ssh-strict: true
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8992390Z   ssh-user: git
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8992897Z   persist-credentials: true
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8993451Z   clean: true
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8993981Z   sparse-checkout-cone-mode: true
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8994615Z   fetch-depth: 1
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8995109Z   fetch-tags: false
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8995614Z   show-progress: true
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8996127Z   lfs: false
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8996614Z   submodules: false
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8997133Z   set-safe-directory: true
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8997723Z   allow-unsafe-pr-checkout: false
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:25.8998423Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0870591Z Syncing repository: lucifron28/UniPM
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0873398Z ##[group]Getting Git version info
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0874615Z Working directory is '/home/runner/work/UniPM/UniPM'
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0876339Z [command]/usr/bin/git version
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0947513Z git version 2.56.0
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0962492Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0973389Z Temporarily overriding HOME='/home/runner/work/_temp/ad16f3f8-26e3-4638-b321-9ceb51335557' before making global git config changes
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0976008Z Adding repository directory to the temporary git global config as a safe directory
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.0978431Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/UniPM/UniPM
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1028605Z Deleting the contents of '/home/runner/work/UniPM/UniPM'
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1030454Z ##[group]Determining repository object format
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1032148Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1033249Z ##[group]Initializing the repository
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1033993Z [command]/usr/bin/git init /home/runner/work/UniPM/UniPM
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1112314Z hint: Using 'master' as the name for the initial branch. This default branch name
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1113508Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1114559Z hint: to use in all of your new repositories, which will suppress this warning,
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1115396Z hint: call:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1115863Z hint:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1116476Z hint: 	git config --global init.defaultBranch <name>
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1117176Z hint:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1117841Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1118888Z hint: 'development'. The just-created branch can be renamed via this command:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1119705Z hint:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1120190Z hint: 	git branch -m <name>
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1120722Z hint:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1121580Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1130460Z Initialized empty Git repository in /home/runner/work/UniPM/UniPM/.git/
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1139103Z [command]/usr/bin/git remote add origin https://github.com/lucifron28/UniPM
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1178994Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1179899Z ##[group]Disabling automatic garbage collection
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1182273Z [command]/usr/bin/git config --local gc.auto 0
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1210776Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1217253Z ##[group]Setting up auth
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1217914Z Removing SSH command configuration
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1218816Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1249359Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1543005Z Removing HTTP extra header
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1548414Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1587351Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1774125Z Removing includeIf entries pointing to credentials config files
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1779245Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.1817980Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2011042Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2052065Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/UniPM/UniPM/.git.path /home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2089348Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/UniPM/UniPM/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2126382Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2170827Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2205947Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2207332Z ##[group]Fetching the repository
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:26.2213001Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +530b5be36727698f3e66935e56e53c698e4df52b:refs/remotes/origin/codex/nonfunctional-testing-2026-11
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1007564Z From https://github.com/lucifron28/UniPM
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1012085Z  * [new ref]         530b5be36727698f3e66935e56e53c698e4df52b -> origin/codex/nonfunctional-testing-2026-11
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1030212Z [command]/usr/bin/git branch --list --remote origin/codex/nonfunctional-testing-2026-11
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1050501Z   origin/codex/nonfunctional-testing-2026-11
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1058459Z [command]/usr/bin/git rev-parse refs/remotes/origin/codex/nonfunctional-testing-2026-11
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1088177Z 530b5be36727698f3e66935e56e53c698e4df52b
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1092905Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1093460Z ##[group]Determining the checkout info
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1094009Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1097716Z [command]/usr/bin/git sparse-checkout disable
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1150331Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1186694Z ##[group]Checking out the ref
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1189944Z [command]/usr/bin/git checkout --progress --force -B codex/nonfunctional-testing-2026-11 refs/remotes/origin/codex/nonfunctional-testing-2026-11
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1874061Z Switched to a new branch 'codex/nonfunctional-testing-2026-11'
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1876903Z branch 'codex/nonfunctional-testing-2026-11' set up to track 'origin/codex/nonfunctional-testing-2026-11'.
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1884899Z ##[endgroup]
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1930208Z [command]/usr/bin/git log -1 --format=%H
+Android 14 · pixel_7_pro	Check out source	2026-11-12T20:06:27.1960744Z 530b5be36727698f3e66935e56e53c698e4df52b
+Android 14 · pixel_7_pro	Set up Java	﻿2026-11-12T20:06:27.2177950Z ##[group]Run actions/setup-java@v4
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2178170Z with:
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2178342Z   distribution: temurin
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2178500Z   java-version: 21
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2178651Z   java-package: jdk
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2178800Z   check-latest: false
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2178950Z   server-id: github
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2179103Z   server-username: GITHUB_ACTOR
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2179283Z   server-password: GITHUB_TOKEN
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2179457Z   overwrite-settings: true
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2179623Z   job-status: success
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2180994Z   token: ***
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.2181388Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3320625Z ##[warning]setup-java v4 is deprecated and will no longer receive updates. Please migrate to actions/setup-java@v5.
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3326392Z ##[group]Installed distributions
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3346437Z Resolved Java 21.0.13+9 from tool-cache
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3346712Z Setting Java 21.0.13+9 as the default
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3353883Z (node:2117) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3356348Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3356825Z Creating toolchains.xml for JDK version 21 from temurin
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3418117Z Writing to /home/runner/.m2/toolchains.xml
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3418437Z 
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3418579Z Java configuration:
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3418821Z   Distribution: temurin
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3419065Z   Version: 21.0.13+9
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3419393Z   Path: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3419648Z 
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3419976Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3434330Z Creating settings.xml with server-id: github
+Android 14 · pixel_7_pro	Set up Java	2026-11-12T20:06:27.3434721Z Writing to /home/runner/.m2/settings.xml
+Android 14 · pixel_7_pro	Set up Flutter	﻿2026-11-12T20:06:27.3708660Z ##[group]Run subosito/flutter-action@v2
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3709055Z with:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3709282Z   channel: stable
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3709521Z   flutter-version: 3.47.1
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3709868Z   cache: true
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3710041Z   architecture: X64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3710274Z   pub-cache-path: default
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3710432Z   dry-run: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3710623Z   git-source: https://github.com/flutter/flutter.git
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3710828Z env:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3711191Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3711545Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3711786Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3757508Z ##[start-action display=Make yq tool available on Windows runners;id=__subosito_flutter-action.__run]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3764727Z ##[end-action id=__subosito_flutter-action.__run;outcome=skipped;conclusion=skipped;duration_ms=0]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3766234Z ##[start-action display=Make setup script executable;id=__subosito_flutter-action.__run_2]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3824965Z ##[group]Run chmod +x "$GITHUB_ACTION_PATH/setup.sh"
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3825277Z ^[[36;1mchmod +x "$GITHUB_ACTION_PATH/setup.sh"^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3846611Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3846855Z env:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3847060Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3847366Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3847603Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3918912Z ##[end-action id=__subosito_flutter-action.__run_2;outcome=success;conclusion=success;duration_ms=15]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3920583Z ##[start-action display=Set action inputs;id=__subosito_flutter-action.flutter-action]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3950164Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh -p \
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3950449Z ^[[36;1m$GITHUB_ACTION_PATH/setup.sh -p \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3950653Z ^[[36;1m  -n '3.47.1' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3950814Z ^[[36;1m  -f '' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3950961Z ^[[36;1m  -a 'X64' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3951331Z ^[[36;1m  -k '' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3951486Z ^[[36;1m  -c '' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3951628Z ^[[36;1m  -l '' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3951776Z ^[[36;1m  -d 'default' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3952004Z ^[[36;1m  -g 'https://github.com/flutter/flutter.git' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3952216Z ^[[36;1m  stable^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3967373Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3967593Z env:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3967798Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3968105Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.3968350Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6349484Z ##[end-action id=__subosito_flutter-action.flutter-action;outcome=success;conclusion=success;duration_ms=242]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6354192Z ##[start-action display=Cache Flutter;id=__subosito_flutter-action.cache-flutter]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6389795Z ##[group]Run actions/cache@v5
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6389973Z with:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6390160Z   path: /opt/hostedtoolcache/flutter/stable-3.47.1-x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6390443Z   key: flutter-linux-stable-3.47.1-x64-6655482ec06e547f90abf8ae7590466f4415978d
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6390704Z   enableCrossOsArchive: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6390875Z   fail-on-cache-miss: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6391034Z   lookup-only: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6391392Z   save-always: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6391571Z env:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6391766Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6392063Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.6392293Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.8821652Z Cache not found for input keys: flutter-linux-stable-3.47.1-x64-6655482ec06e547f90abf8ae7590466f4415978d
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.8898402Z ##[end-action id=__subosito_flutter-action.cache-flutter;outcome=success;conclusion=success;duration_ms=254]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.8900809Z ##[start-action display=Cache pub dependencies;id=__subosito_flutter-action.cache-pub]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9945866Z ##[group]Run actions/cache@v5
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9946108Z with:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9946274Z   path: /home/runner/.pub-cache
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9946686Z   key: flutter-pub-linux-stable-3.47.1-x64-6655482ec06e547f90abf8ae7590466f4415978d-553a518d1e9a301d31e71125cdd72fb2f34622b39a02f75378833aae981f8477
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9947110Z   enableCrossOsArchive: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9947295Z   fail-on-cache-miss: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9947458Z   lookup-only: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9947610Z   save-always: false
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9947753Z env:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9947953Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9948255Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:27.9948507Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2633490Z Cache not found for input keys: flutter-pub-linux-stable-3.47.1-x64-6655482ec06e547f90abf8ae7590466f4415978d-553a518d1e9a301d31e71125cdd72fb2f34622b39a02f75378833aae981f8477
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2732484Z ##[end-action id=__subosito_flutter-action.cache-pub;outcome=success;conclusion=success;duration_ms=383]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2734624Z ##[start-action display=Run setup script;id=__subosito_flutter-action.__run_3]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2762409Z ##[group]Run $GITHUB_ACTION_PATH/setup.sh \
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2762647Z ^[[36;1m$GITHUB_ACTION_PATH/setup.sh \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2762807Z ^[[36;1m  -n '3.47.1' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2762942Z ^[[36;1m  -a 'x64' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2763134Z ^[[36;1m  -c '/opt/hostedtoolcache/flutter/stable-3.47.1-x64' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2763344Z ^[[36;1m  -d '/home/runner/.pub-cache' \^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2763493Z ^[[36;1m  stable^[[0m
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2780465Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2780675Z env:
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2780857Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2781299Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.2781518Z ##[endgroup]
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.4436154Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.4437049Z                                  Dload  Upload   Total   Spent    Left  Speed
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.4437489Z 
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:28.7175637Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:29.7193682Z   2 1500M    2 38.5M    0     0   140M      0  0:00:10 --:--:--  0:00:10  140M
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:30.7173480Z  25 1500M   25  377M    0     0   296M      0  0:00:05  0:00:01  0:00:04  296M
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:31.7176147Z  49 1500M   49  742M    0     0   326M      0  0:00:04  0:00:02  0:00:02  326M
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:32.7175895Z  70 1500M   70 1064M    0     0   325M      0  0:00:04  0:00:03  0:00:01  325M
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:06:32.8833600Z  95 1500M   95 1429M    0     0   334M      0  0:00:04  0:00:04 --:--:--  334M
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:07:14.0453375Z 100 1500M  100 1500M    0     0   338M      0  0:00:04  0:00:04 --:--:--  351M
+Android 14 · pixel_7_pro	Set up Flutter	2026-11-12T20:07:14.0461344Z ##[end-action id=__subosito_flutter-action.__run_3;outcome=success;conclusion=success;duration_ms=45772]
+Android 14 · pixel_7_pro	Resolve Flutter packages	﻿2026-11-12T20:07:14.0513401Z ##[group]Run flutter pub get
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0513613Z ^[[36;1mflutter pub get^[[0m
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0531013Z shell: /usr/bin/bash -e {0}
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0531327Z env:
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0531503Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0531772Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0532030Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.47.1-x64/flutter
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0532276Z   PUB_CACHE: /home/runner/.pub-cache
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:14.0532424Z ##[endgroup]
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:17.2066954Z Resolving dependencies...
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:17.5056823Z Downloading packages...
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3983901Z   archive 4.4.0 (4.6.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3984606Z   camera 0.12.1 (0.12.2 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3984855Z   camera_android_camerax 0.7.5+1 (0.7.6+1 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3985135Z   camera_avfoundation 0.10.3+1 (0.11.1 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3985416Z   camera_platform_interface 2.14.0 (2.15.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3985736Z   camera_web 0.3.5+6 (0.3.6 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3985957Z   clock 1.1.2 (1.1.3 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3986180Z   code_assets 1.2.1 (2.2.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3986409Z   cross_file 0.3.5+5 (0.4.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3986641Z   crypto 3.0.7 (3.0.8 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3986901Z   hooks 2.0.2 (2.2.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3987156Z   image 4.10.2 (4.12.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3987377Z   jni 1.1.0 (1.1.2 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3987588Z > matcher 0.12.20 (was 0.12.19)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3988167Z   material_color_utilities 0.13.0 (0.13.1 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3988637Z > meta 1.19.0 (was 1.18.0)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3989228Z   mobile_scanner 7.4.0 (7.5.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3989594Z   objective_c 9.5.0 (9.6.4 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3989929Z   petitparser 7.0.2 (7.1.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3990327Z   posix 6.5.2 (6.5.4 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3990712Z   record_use 0.6.0 (1.1.1 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3991347Z   stack_trace 1.12.1 (1.12.2 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3991701Z > test_api 0.7.12 (was 0.7.11) (0.7.15 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3992045Z > vector_math 2.4.4 (was 2.2.0)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3992420Z   vm_service 15.2.0 (15.4.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3992783Z   web 1.1.1 (1.1.2 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3993117Z   xml 7.0.1 (7.1.0 available)
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3993474Z Changed 4 dependencies!
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3993914Z 24 packages have newer versions incompatible with dependency constraints.
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.3994432Z Try `flutter pub outdated` for more information.
+Android 14 · pixel_7_pro	Resolve Flutter packages	2026-11-12T20:07:18.5213816Z Upgrading analysis_options.yaml to exclude build and platform directories.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	﻿2026-11-12T20:07:18.6471442Z ##[group]Run reactivecircus/android-emulator-runner@v2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6471654Z with:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6471768Z   api-level: 34
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6471892Z   target: google_apis
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6472007Z   arch: x86_64
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6472118Z   profile: pixel_7_pro
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6472349Z   emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6472608Z   disable-animations: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6472745Z   disable-linux-hw-accel: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6472997Z   script: bash -euo pipefail .github/scripts/run-android-compatibility.sh '14' '34' 'pixel_7_pro' 'large'
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6473251Z   cores: 2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6473358Z   avd-name: test
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6473474Z   force-avd-creation: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6473608Z   emulator-boot-timeout: 600
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6473739Z   emulator-port: 5554
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6473867Z   disable-spellchecker: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6474014Z   enable-hw-keyboard: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6474169Z   channel: stable
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6474277Z env:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6474439Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6474700Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6474953Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.47.1-x64/flutter
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6475154Z   PUB_CACHE: /home/runner/.pub-cache
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6475295Z ##[endgroup]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6883988Z ##[group]Configure emulator
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6884849Z You're running a Linux VM where hardware acceleration is not available. Please consider using a macOS VM instead to take advantage of native hardware acceleration support provided by HAXM.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6885486Z API level: 34
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6885675Z System image API level: 34
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6885876Z target: google_apis
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6886459Z CPU architecture: x86_64
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6891701Z Hardware profile: pixel_7_pro
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6895678Z Cores: 2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6895825Z RAM size: 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6895940Z Heap size: 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6896055Z SD card path or size: 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6896184Z Disk size: 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6896288Z AVD name: test
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6896405Z force avd creation: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6896544Z Emulator boot timeout: 600
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6896673Z emulator port: 5554
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6896916Z emulator options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6897174Z disable animations: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6897308Z disable spellchecker: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6897451Z disable Linux hardware acceleration: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6897613Z enable hardware keyboard: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6897750Z Channel: 0 (stable)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6897861Z Script:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6898074Z bash -euo pipefail .github/scripts/run-android-compatibility.sh '14' '34' 'pixel_7_pro' 'large'
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6898345Z Pre emulator launch script:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6898613Z ##[endgroup]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6898816Z ##[group]Install Android SDK
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:18.6928158Z [command]/usr/bin/sh -c \yes | sdkmanager --licenses > /dev/null
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:22.4710058Z Installing latest build tools, platform tools, and platform.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:22.4720898Z [command]/usr/bin/sh -c \sdkmanager --install 'build-tools;37.0.0' platform-tools 'platforms;android-34'> /dev/null
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:23.5271815Z Installing latest emulator.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:23.5282723Z [command]/usr/bin/sh -c \sdkmanager --install emulator --channel=0 > /dev/null
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:40.9666630Z Installing system images.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:07:40.9676470Z [command]/usr/bin/sh -c \sdkmanager --install 'system-images;android-34;google_apis;x86_64' --channel=0 > /dev/null
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.4112263Z ##[endgroup]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.4113318Z ##[group]Create AVD
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.4113819Z Creating AVD.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.4129513Z [command]/usr/bin/sh -c \echo no | avdmanager create avd --force -n test --package 'system-images;android-34;google_apis;x86_64' --device 'pixel_7_pro'
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.9324838Z Loading local repository...                                                     
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.9325535Z [=========                              ] 25% Loading local repository...       
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.9325935Z [=========                              ] 25% Fetch remote repository...        
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.9326235Z [=======================================] 100% Fetch remote repository...       
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:42.9688717Z Auto-selecting single ABI x86_64
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2619758Z [command]/usr/bin/sh -c \printf 'hw.cpu.ncore=2\n' >> /home/runner/.android/avd/test.avd/config.ini
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2640495Z ##[endgroup]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2642250Z ##[group]Launch Emulator
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2642503Z Disabling Linux hardware acceleration.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2642786Z Starting emulator.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2651676Z [command]/usr/bin/sh -c \/usr/local/lib/android/sdk/emulator/emulator -port 5554 -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -accel off &
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2745061Z INFO         | Android emulator version 37.2.13.0 (build_id 16740729) (CL:N/A)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2745403Z INFO         | Graphics backend: gfxstream
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.2745673Z INFO         | Found systemPath /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64/
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3125207Z INFO         | Saving last run QEMU version for the AVD to 2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3125910Z INFO         | Increasing RAM size to 4096MB
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3126671Z ##############################################################################
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3127064Z ##                        WARNING - ACTION REQUIRED                         ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3127441Z ##  Consider using the '-metrics-collection' flag to help improve the       ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3128105Z ##  emulator by sending anonymized usage data. Or use the '-no-metrics'     ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3128525Z ##  flag to bypass this warning and turn off the metrics collection.        ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3128920Z ##  In a future release this warning will turn into a one-time blocking     ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3129320Z ##  prompt to ask for explicit user input regarding metrics collection.     ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3129655Z ##                                                                          ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3130000Z ##  Please see '-help-metrics-collection' for more details. You can use     ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3130409Z ##  '-metrics-to-file' or '-metrics-to-console' flags to see what type of   ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3130816Z ##  data is being collected by emulator as part of usage statistics.        ##
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3131300Z ##############################################################################
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3131561Z INFO         | Guest GLES Driver: Auto (ext controls)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3131931Z INFO         | emuglConfig_init: vulkan_mode_selected:swiftshader gles_mode_selected:swiftshader
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3132316Z INFO         | Checking system compatibility:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3132558Z INFO         |   Checking: hasSufficientDiskSpace
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3132850Z INFO         |      Ok: Disk space requirements to run avd: `test` are met
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3133143Z INFO         |   Checking: hasSufficientHwGpu
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3133432Z INFO         |      Ok: Hardware GPU compatibility checks are not required
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3133737Z INFO         |   Checking: hasSufficientSystem
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3134022Z INFO         |      Ok: System requirements to run avd: `test` are met
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.3134678Z WARNING      | Feature QuickbootFileBacked is disabled due to stability issues, if you really want that, the environment variable ANDROID_EMU_FORCE_QUICKBOOT_FILE_BACKED need to set to 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4687249Z ProbeKVM: This user doesn't have permissions to use KVM (/dev/kvm).
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4688449Z The KVM line in /etc/group is: [kvm:x:993:]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4688668Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4688771Z If the current user has KVM permissions,
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4689087Z the KVM line in /etc/group should end with ":" followed by your username.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4689312Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4689447Z If we see LINE_NOT_FOUND, the kvm group may need to be created along with permissions:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4689806Z     sudo groupadd -r kvm
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4690101Z     # Then ensure /lib/udev/rules.d/50-udev-default.rules contains something like:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4690442Z     # KERNEL=="kvm", GROUP="kvm", MODE="0660"
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4690680Z     # and then run:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4690869Z     sudo gpasswd -a $USER kvm
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4691009Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4691465Z If we see kvm:... but no username at the end, running the following command may allow KVM access:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4691855Z     sudo gpasswd -a $USER kvm
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4691989Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4692136Z You may need to log out and back in for changes to take effect.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4692343Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.4692503Z WARNING      | x86_64 emulation may not work without hardware acceleration!
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7843250Z ERROR        | Unable to connect to adb daemon on port: 5037
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7888734Z INFO         | Storing crashdata in: /tmp/android-runner/emu-crash-37.2.13.db, detection is enabled for process: 2843
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7889273Z INFO         | Initializing gfxstream backend
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7898805Z INFO         | startOpenglesRendererImpl: gpu info
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7899080Z INFO         | 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7901363Z INFO         | initIcdPaths: ICD set to 'swiftshader', using Swiftshader ICD
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7901948Z INFO         | Setting ICD filenames for the loader = /usr/local/lib/android/sdk/emulator/lib64/vulkan/vk_swiftshader_icd.json
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7902943Z INFO         | SharedLibrary::open for [/usr/local/lib/android/sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7904118Z INFO         | SharedLibrary::open for [/usr/local/lib/android/sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so.1]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7904909Z INFO         | SharedLibrary::open for [/usr/local/lib/android/sdk/emulator/lib64/vulkan/libvulkan.so]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7906485Z INFO         | Added library: /usr/local/lib/android/sdk/emulator/lib64/vulkan/libvulkan.so
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7943091Z INFO         | Selecting Vulkan device: SwiftShader Device (Subzero), Version: 1.3.0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.7943501Z INFO         | Using Vulkan externalMemoryMode: OpaqueFd for VkEmulation
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8405613Z INFO         | Format VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16 does not support YCbCr sampler conversion
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8427564Z INFO         | SharedLibrary::open for [libX11]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8428010Z WARNING      | Could not open libX11.so, try libX11.so.6
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8428362Z INFO         | SharedLibrary::open for [libX11.so.6]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8428727Z INFO         | SharedLibrary::open for [libX11-xcb]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8429126Z WARNING      | Could not open libX11-xcb.so, try libX11-xcb.so.1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8429418Z INFO         | SharedLibrary::open for [libX11-xcb.so.1]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8489108Z INFO         | Initializing VkEmulation features:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8489476Z INFO         |     glInteropSupported: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8489728Z INFO         |     useDeferredCommands: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8489998Z INFO         |     createResourceWithRequirements: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8490266Z INFO         |     useVulkanComposition: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8490523Z INFO         |     useVulkanNativeSwapchain: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8490777Z INFO         |     enable guestRenderDoc: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8491022Z INFO         |     ASTC LDR emulation mode: Gpu
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8491386Z INFO         |     enable ETC2 emulation: true
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8491667Z INFO         |     enable Ycbcr emulation: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8492211Z INFO         |     guestVulkanOnly: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8492375Z INFO         |     useDedicatedAllocations: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8492548Z INFO         |     guestVulkanMaxApiVersion: 1.3.0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8492728Z INFO         |     enableProtectedMemoryEmulation: false
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8495608Z INFO         | Graphics Adapter Vendor Google (Google Inc.)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8495946Z INFO         | Graphics Adapter Android Emulator OpenGL ES Translator (Google SwiftShader)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8496364Z INFO         | Graphics API Version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8497755Z INFO         | Graphics API Extensions GL_OES_EGL_sync GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_depth24 GL_OES_depth32 GL_OES_element_index_uint GL_OES_texture_float GL_OES_texture_float_linear GL_OES_compressed_paletted_texture GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth_texture GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_packed_depth_stencil GL_OES_vertex_half_float GL_OES_standard_derivatives GL_OES_texture_npot GL_OES_rgb8_rgba8 GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_texture_format_BGRA8888 GL_APPLE_texture_format_BGRA8888 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8499654Z INFO         | Graphics Device Extensions N/A
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8499925Z INFO         | Disabling sparse binding feature support
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8551061Z INFO         | Sending adb public key [QAAAAHFxvBhv0I+MDDbOdVUGpAlANVT+y/Lwv+cZRmhH4ya0/ZpHopcsac6pl6s/bsyjLzt450qSV8NjJefXyyXxgUSNF8GtHCky0Mz6PUx2W62s9AsPc0hVWS1VSh/7L/IXz64mWkZJBJofsIXcVlwFMQqb29x2gUC3s9zhZZP1BdTwwjiu1k/VwTl3gOURZQS/2pguLDQKRYqKpTviv9TD5h78XhBiXxtG/VzJU9Sif6AmsFrLL0Ra6HB5IMAFaZl3RC2K15rDpLZc1sH1K+fQQ6vGkpfAJeIhz5yljTsCDemQFsu67v4OytwAeigXqEQSC6WRBo8D5HiKeCzxfAbHavvB62XDelgI25Jm7ENZR6cD+vMHyy8YhcKkTctmzYxUPvAdnnHaDdMYD5Bxkxe9w6/1c+3JawKOQKJZLUNrDzpOyiLXkm8SlxfAh2seYS7OHDmmcQU+NuvmgG+lRfR6mpgVFHNg4j821R5M/adwBJumQN1fwPTNekG8I5S4+eN66oUKWKtlMysRog6hKuJxxbcVRoMJ/LBYkn5Z0DNMDHCg0CaXsm2QirNQsIj8u6My5/QQsdPygaIcGDSBMPA5Wcy4rGBiQRROrs9fgUhyb6ecWDKfLwuYV7kf5IfuW+9fe+MlK+74UeM1hgG6MVqHmdBK01XcBL6faL3yZCYIzmLufaktVAEAAQA= runner@unknown]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8554698Z INFO         | Userspace boot properties:
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8555344Z INFO         |   androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:06.0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8555726Z INFO         |   androidboot.dalvik.vm.heapsize=576m
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8556017Z INFO         |   androidboot.debug.hwui.renderer=skiagl
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8556228Z INFO         |   androidboot.debug.sf.nobootanimation=1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8556407Z INFO         |   androidboot.hardware=ranchu
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8556592Z INFO         |   androidboot.hardware.gltransport=pipe
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8556772Z INFO         |   androidboot.hardware.vulkan=ranchu
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8556937Z INFO         |   androidboot.logcat=*:V
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8557112Z INFO         |   androidboot.opengles.version=196608
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8557282Z INFO         |   androidboot.qemu=1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8558966Z INFO         |   androidboot.qemu.adb.pubkey=QAAAAHFxvBhv0I+MDDbOdVUGpAlANVT+y/Lwv+cZRmhH4ya0/ZpHopcsac6pl6s/bsyjLzt450qSV8NjJefXyyXxgUSNF8GtHCky0Mz6PUx2W62s9AsPc0hVWS1VSh/7L/IXz64mWkZJBJofsIXcVlwFMQqb29x2gUC3s9zhZZP1BdTwwjiu1k/VwTl3gOURZQS/2pguLDQKRYqKpTviv9TD5h78XhBiXxtG/VzJU9Sif6AmsFrLL0Ra6HB5IMAFaZl3RC2K15rDpLZc1sH1K+fQQ6vGkpfAJeIhz5yljTsCDemQFsu67v4OytwAeigXqEQSC6WRBo8D5HiKeCzxfAbHavvB62XDelgI25Jm7ENZR6cD+vMHyy8YhcKkTctmzYxUPvAdnnHaDdMYD5Bxkxe9w6/1c+3JawKOQKJZLUNrDzpOyiLXkm8SlxfAh2seYS7OHDmmcQU+NuvmgG+lRfR6mpgVFHNg4j821R5M/adwBJumQN1fwPTNekG8I5S4+eN66oUKWKtlMysRog6hKuJxxbcVRoMJ/LBYkn5Z0DNMDHCg0CaXsm2QirNQsIj8u6My5/QQsdPygaIcGDSBMPA5Wcy4rGBiQRROrs9fgUhyb6ecWDKfLwuYV7kf5IfuW+9fe+MlK+74UeM1hgG6MVqHmdBK01XcBL6faL3yZCYIzmLufaktVAEAAQA= runner@unknown
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8560797Z INFO         |   androidboot.qemu.avd_name=test
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8560984Z INFO         |   androidboot.qemu.camera_hq_edge_processing=0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8561718Z INFO         |   androidboot.qemu.camera_protocol_ver=1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8561905Z INFO         |   androidboot.qemu.cpuvulkan.version=4206592
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8562113Z INFO         |   androidboot.qemu.gltransport.drawFlushInterval=800
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8562321Z INFO         |   androidboot.qemu.gltransport.name=pipe
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8562500Z INFO         |   androidboot.qemu.hwcodec.avcdec=2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8562674Z INFO         |   androidboot.qemu.hwcodec.hevcdec=2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8562849Z INFO         |   androidboot.qemu.hwcodec.vpxdec=2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8563064Z INFO         |   androidboot.qemu.settings.system.screen_off_timeout=2147483647
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8563278Z INFO         |   androidboot.qemu.skin=1440x3120
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8563445Z INFO         |   androidboot.qemu.virtiowifi=1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8563746Z INFO         |   androidboot.qemu.vsync=60
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8563947Z INFO         |   androidboot.serialno=EMULATOR37X2X13X0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8564216Z INFO         |   androidboot.vbmeta.digest=451e57ed688ff746d2c636d52169ade253e2bc5bb30a5c3ff23679ca15d3bcd3
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8564478Z INFO         |   androidboot.vbmeta.hash_alg=sha256
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8564642Z INFO         |   androidboot.vbmeta.size=6656
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8564810Z INFO         |   androidboot.veritymode=enforcing
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8682081Z TCG doesn't support requested feature: CPUID.01H:ECX.avx [bit 28]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8682564Z TCG doesn't support requested feature: CPUID.01H:ECX.f16c [bit 29]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8732261Z TCG doesn't support requested feature: CPUID.01H:ECX.avx [bit 28]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8733049Z TCG doesn't support requested feature: CPUID.01H:ECX.f16c [bit 29]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8733788Z WARNING: cannnot unmap ptr 0x7f2a43e01000 as it is in the protected range from 0x7f2943e00000 to 0x7f2a44000000
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8734304Z pc_memory_init: above 4g size: 40000000
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:43.8856895Z INFO         | Monitoring duration of emulator setup.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.8895130Z INFO         | Activated packet streamer for bluetooth emulation
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.8896833Z INFO         | Successfully initialized netsim WiFi
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.8903772Z INFO         | Setting display: 0 configuration to: 1440x3120, dpi: 560x560 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.8904336Z INFO         | setDisplayActiveConfig: id:0, 1440x3120
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.8905037Z INFO         | emulatorSetupEnvironment: Environment scene is not required
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.8975628Z INFO         | Loading snapshot 'default_boot'...
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.8976399Z WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.9164570Z WARNING      | Device 'cache' does not have the requested snapshot 'default_boot'
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.9171579Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.9171933Z WARNING      | Failed to load snapshot 'default_boot'
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:44.9172387Z USER_INFO    | The emulator is performing a cold boot without a saved state because there's no snapshot and you have configured it not to save on exit.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:45.1876747Z WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:53.2691754Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:53.2718107Z * daemon not running; starting now at tcp:5037
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:53.3757055Z * daemon started successfully
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:53.3763014Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:53.3767825Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:55.3795519Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:55.3825698Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:55.3830082Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:57.3854761Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:57.3886826Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:57.3891833Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:59.3910997Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:59.3941999Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:08:59.3946526Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:01.3981555Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:01.4014506Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:01.4018602Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:03.4049958Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:03.4083511Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:03.4088121Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:05.4106960Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:05.4139666Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:05.4144313Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:07.4179130Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:07.4214204Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:07.4218159Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:09.4252556Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:09.4283131Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:09.4287461Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:11.4321381Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:11.4351630Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:11.4355081Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:13.4382584Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:13.4412672Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:13.4416740Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:15.4459282Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:15.4481505Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:15.4485916Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:17.4514525Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:17.4547265Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:17.4551952Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:19.4586039Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:19.4621452Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:19.4627230Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:21.4687248Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:21.4710836Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:21.4716011Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:23.4755455Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:23.4787775Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:23.4792669Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:25.4833865Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:25.4868986Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:25.4873381Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:27.4896240Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:27.4932240Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:27.4936529Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:29.4969777Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:29.4990802Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:29.5000160Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:31.5028055Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:31.5058727Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:31.5062955Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:33.5094038Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:33.5127613Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:33.5131771Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:35.5154139Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:35.5185275Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:35.5188933Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:37.5205894Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:37.5239915Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:37.5244077Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:39.5276501Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:39.5309457Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:39.5314337Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:41.5346948Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:41.5377969Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:41.5382705Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:43.5413730Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:43.5444472Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:43.5448640Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:45.5465139Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:45.5497457Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:45.5501806Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:47.5530283Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:47.5560587Z adb: device offline
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:47.5564065Z The process '/usr/local/lib/android/sdk/platform-tools/adb' failed with exit code 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:49.5596095Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:50.6108108Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:52.7044719Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:55.6736625Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:57.6777683Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:09:59.1467847Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:01.1598032Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:02.1039546Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:04.1074155Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:04.6070508Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:06.6098662Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:06.9781365Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:08.9796976Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:09.4170371Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:11.4257814Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:11.7903894Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:13.7974213Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:14.1967567Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:16.2090721Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:16.6152547Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:18.6286778Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:19.0734075Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:21.0770476Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:21.5172805Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:23.5336423Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:23.9560083Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:25.9714307Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:26.5987336Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:28.6051963Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:29.0254496Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:31.0293056Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:31.4767425Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:33.4814332Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:34.0086945Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:36.0123277Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:36.7166793Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:38.7206564Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:39.1980694Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:41.2017154Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:41.5626374Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:43.5805985Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:43.9884368Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:45.9914094Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:46.4407757Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:48.4444522Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:48.8367723Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:50.8489067Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:51.2937148Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:53.3036710Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:53.7667945Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:55.7700875Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:56.2131876Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:58.2152594Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:10:58.6808144Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:00.6872092Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:01.1292433Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:03.1646015Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:03.7020994Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:05.7053516Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:06.1820332Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:08.1959285Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:08.6773340Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:10.6808476Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:11.2015031Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:13.2035717Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:13.6880974Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:15.6909191Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:16.2128786Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:18.2395149Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:18.7205971Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:20.7326633Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:21.1888682Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:23.1945509Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:23.6924209Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:25.6954820Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:26.2057003Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:28.2484305Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:28.7722801Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:30.7977556Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:31.3206495Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:33.3334543Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:33.9212158Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:35.9361473Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:36.4595346Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:38.4679626Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:38.9980102Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:41.0083142Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:41.5106573Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:43.5199500Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:44.0495657Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:46.0562458Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:46.6215601Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:48.6253285Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:49.1409888Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:51.1523786Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:51.6147897Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:53.6186582Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:54.0888169Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:56.0989866Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:56.5804947Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:58.5906290Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:11:59.7052344Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:01.7165309Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:02.4499070Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:04.4558858Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:05.1110300Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:07.1344916Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:07.7044269Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:09.7127127Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:10.5659151Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:12.5783986Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:13.1476372Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:15.1789836Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:15.7742978Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:17.8090326Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:18.3963327Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:20.4005487Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:21.0702800Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:23.0756307Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:23.9132659Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:25.9172143Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:26.4765430Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:28.5000536Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:29.2509346Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:31.2547115Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:31.9840981Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:33.9879179Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:34.7252294Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:36.7288905Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:37.3684826Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:39.3884440Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:40.0774998Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:42.1020209Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:42.8617372Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:44.8723399Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:45.7354179Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:47.7600764Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:48.5393410Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:50.5489948Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:51.3973019Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:53.4005594Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:54.0685524Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:56.0783054Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:56.8618218Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:58.8748788Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:12:59.6073596Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:01.6294119Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:02.3185380Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:04.3241909Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:05.2087246Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:07.2112147Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:07.9688454Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:09.9818136Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:10.8531430Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:12.8564484Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:13.5768576Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:15.6419108Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:16.4362995Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:18.4401482Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:19.5615193Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:21.5680228Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:22.3544220Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:24.3584322Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:25.0862551Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:27.1079250Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:27.9329503Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:29.9567396Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:30.5928919Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:32.5974315Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:33.4061648Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:35.4102915Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:36.3520288Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:38.3595380Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:39.1977910Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:41.2156570Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:42.0628842Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:44.0667721Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:44.7407872Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:46.7500755Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:47.5568879Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:49.5717291Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:50.4311529Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:52.4482036Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:53.3773928Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:55.3915952Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:56.2598404Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:58.2651634Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:13:59.2131346Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:01.2173773Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:02.2414108Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:04.2486324Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:04.9202165Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:06.9305771Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:07.5286982Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:09.5334399Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:10.0893068Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:12.1152152Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:12.9948193Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:14.9985211Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:15.7079928Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:17.7221784Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:18.3679292Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:20.3704655Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:21.1565218Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:23.1680141Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:23.9080476Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:25.9110986Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:26.7636700Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:28.7671535Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:29.6332765Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:31.6371230Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:32.2064804Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:34.2095419Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:34.7481443Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:36.7724533Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:37.6119187Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:39.6294747Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:40.4527875Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:42.4558500Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:43.2974062Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:45.3055289Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:46.2485117Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:48.2752907Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:48.9304005Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:50.9396192Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:51.4978838Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:53.5114724Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:54.4090292Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:56.4128106Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:57.3166691Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:14:59.3395565Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:00.0174509Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:02.0351489Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:02.9212422Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:04.9234520Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:05.6326132Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:07.6365398Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:08.4478768Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:10.4574247Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:11.4503461Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:13.4595115Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:14.0642371Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:16.0733193Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:16.6496580Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:18.6671371Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:19.4905654Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:21.4994434Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:22.0664600Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:24.0896270Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:24.9246445Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:26.9270463Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:27.6798324Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:29.6912480Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:30.4563826Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:32.4599848Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:33.0474194Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:35.0637039Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:35.9407720Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:37.9620818Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:38.6843461Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:40.6916771Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:41.7049061Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:43.7261270Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:44.6220506Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:46.6354418Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:47.1195926Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:49.1291588Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:49.6739479Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:51.6786127Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:52.2056276Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:54.2088251Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:54.8525626Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:56.8754633Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:57.5059182Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:15:59.5207574Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:00.3542756Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:02.3626250Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:02.8550085Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:04.8732772Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:05.4720969Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:07.4792606Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:08.2320126Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:10.2353884Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:10.7317138Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:12.7481882Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:13.3933108Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:15.4129501Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:15.9680840Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:17.9718342Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:18.4133649Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:20.4152921Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:20.9402467Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:22.9429975Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:23.2317036Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:25.2404114Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:25.6783463Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:27.7035124Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:28.1040322Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:30.1178244Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:30.7192082Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:32.7307204Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:33.2199196Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:35.2237303Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:35.6212864Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:37.6336208Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:38.2500031Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:40.2658884Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:40.7086510Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:42.7145463Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:43.5577515Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:45.5614531Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:46.0515444Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:48.0549812Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:48.4473936Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:50.4592742Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:50.8766065Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:52.8985529Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:53.8154162Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:55.8310905Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:56.2439402Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:58.2484929Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:16:59.0064779Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:01.0209519Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:01.6093125Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:03.6251536Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:04.0374729Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:06.0414637Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:06.7000489Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:08.7176855Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:09.4364600Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:11.4730182Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:12.1029017Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:14.1151349Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:14.8775837Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:16.9056494Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:17.4166552Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:19.4429725Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:19.8342237Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:21.8476232Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:22.4451617Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:24.4535320Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:24.9570086Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:26.9703028Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:27.4078275Z 1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:27.4284025Z Emulator booted.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:27.4293563Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell input keyevent 82
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:31.3757485Z Disabling animations.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:31.3767062Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell settings put global window_animation_scale 0.0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:33.5273015Z INFO         | Boot completed in 530232 ms
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:33.5274394Z INFO         | Increasing screen off timeout, logcat buffer size to 2M.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:33.7655643Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell settings put global transition_animation_scale 0.0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:36.8622885Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 shell settings put global animator_duration_scale 0.0
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:41.8752005Z ##[endgroup]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:41.8764625Z [command]/usr/bin/sh -c bash -euo pipefail .github/scripts/run-android-compatibility.sh '14' '34' 'pixel_7_pro' 'large'
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:41.8824740Z android_version=14
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:41.8826825Z api_level=34
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:41.8829668Z profile=pixel_7_pro
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:41.8829940Z screen_class=large
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:41.8830152Z Collecting emulator display metadata
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:42.7439123Z device_release=14
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:43.4836488Z device_api=34
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:45.8880656Z screen_size=Physical size: 1440x3120
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:47.1921899Z density_dpi=560
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:17:47.1922669Z Building the debug APK
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:01.3112547Z Running Gradle task 'assembleDebug'...                          
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:01.3113271Z Loading package information...                                                  
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:01.4007308Z Loading local repository...                                                     
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:01.4007797Z [                                       ] 3% Loading local repository...        
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.0072342Z [                                       ] 3% Fetch remote repository...         
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.3001641Z [=                                      ] 3% Fetch remote repository...         
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.4009803Z [=                                      ] 4% Fetch remote repository...         
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.4050140Z [=                                      ] 5% Fetch remote repository...         
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.5020262Z [==                                     ] 5% Fetch remote repository...         
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.5074226Z [==                                     ] 6% Fetch remote repository...         
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.5095671Z [==                                     ] 7% Fetch remote repository...         
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.5096417Z [==                                     ] 7% Computing updates...               
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.6026279Z [===                                    ] 8% Computing updates...               
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.6045344Z [===                                    ] 10% Computing updates...              
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.7004920Z [===                                    ] 10% Installing NDK (Side by side) 28.2
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.8003759Z [===                                    ] 10% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:02.9006064Z [====                                   ] 10% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.2001056Z [====                                   ] 11% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.5000581Z [====                                   ] 12% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.5999991Z [=====                                  ] 13% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.7002149Z [=====                                  ] 14% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.8015540Z [=====                                  ] 15% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.8016031Z [======                                 ] 15% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.9000840Z [======                                 ] 16% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.9001676Z [======                                 ] 17% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:03.9999937Z [=======                                ] 18% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.1002174Z [=======                                ] 19% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.1002941Z [=======                                ] 20% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.2004659Z [========                               ] 20% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.2009260Z [========                               ] 21% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.3003667Z [========                               ] 22% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.3004061Z [=========                              ] 23% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.4000823Z [=========                              ] 24% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.4999750Z [=========                              ] 25% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.5000513Z [==========                             ] 25% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.5999836Z [==========                             ] 26% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.6000618Z [==========                             ] 27% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.7003050Z [===========                            ] 28% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.7006300Z [===========                            ] 29% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.7006794Z [===========                            ] 30% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.8003029Z [============                           ] 30% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.8004373Z [============                           ] 31% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.9003604Z [============                           ] 32% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:04.9072068Z [============                           ] 33% Downloading android-ndk-r28c-linux
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.1999487Z [============                           ] 33% Unzipping...                      
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.2000349Z [============                           ] 33% Unzipping... android-ndk-r28c/    
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.2000721Z [============                           ] 33% Unzipping... android-ndk-r28c/READ
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.2001043Z [=============                          ] 33% Unzipping... android-ndk-r28c/READ
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.4001506Z [=============                          ] 33% Unzipping... android-ndk-r28c/meta
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.9003381Z [=============                          ] 33% Unzipping... android-ndk-r28c/shad
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.9005326Z [=============                          ] 33% Unzipping... android-ndk-r28c/ndk-
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.9005857Z [=============                          ] 33% Unzipping... android-ndk-r28c/wrap
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:05.9006157Z [=============                          ] 33% Unzipping... android-ndk-r28c/ndk-
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:06.1999620Z [=============                          ] 33% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:07.3998769Z [=============                          ] 34% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:08.6000781Z [=============                          ] 35% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:08.7999573Z [==============                         ] 35% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:09.0999658Z [==============                         ] 36% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:10.2999292Z [==============                         ] 37% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:11.5001672Z [===============                        ] 38% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:12.2009572Z [===============                        ] 39% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:12.3999232Z [===============                        ] 40% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:12.7999421Z [================                       ] 40% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:13.4999554Z [================                       ] 41% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:14.5006433Z [================                       ] 42% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:15.2000077Z [=================                      ] 43% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:16.0000196Z [=================                      ] 44% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:16.3003192Z [=================                      ] 45% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:16.7999699Z [==================                     ] 45% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:17.3999466Z [==================                     ] 46% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:17.9999026Z [==================                     ] 47% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:18.6999732Z [===================                    ] 48% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:19.1999634Z [===================                    ] 49% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:19.4999804Z [===================                    ] 50% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:19.8001591Z [====================                   ] 50% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:20.6000190Z [====================                   ] 51% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:20.8999958Z [====================                   ] 52% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:21.8999759Z [=====================                  ] 53% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.2002922Z [=====================                  ] 54% Unzipping... android-ndk-r28c/tool
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.2003451Z [=====================                  ] 54% Unzipping... android-ndk-r28c/buil
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5014376Z [=====================                  ] 54% Unzipping... android-ndk-r28c/sour
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5014847Z [=====================                  ] 54% Unzipping... android-ndk-r28c/NOTI
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5015166Z [=====================                  ] 54% Unzipping... android-ndk-r28c/ndk-
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5015474Z [=====================                  ] 54% Unzipping... android-ndk-r28c/NOTI
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5015804Z [=====================                  ] 54% Unzipping... android-ndk-r28c/pyth
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5016107Z [=====================                  ] 54% Unzipping... android-ndk-r28c/preb
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5016394Z [=====================                  ] 54% Unzipping... android-ndk-r28c/ndk-
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.5016682Z [=====================                  ] 54% Unzipping... android-ndk-r28c/sour
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.6006549Z [=====================                  ] 54% Unzipping... android-ndk-r28c/simp
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.7000165Z [=====================                  ] 55% Unzipping... android-ndk-r28c/simp
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.8002843Z [=====================                  ] 55% Unzipping... android-ndk-r28c/CHAN
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:22.8004522Z [=======================================] 100% Unzipping... android-ndk-r28c/CHA
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:23.0022870Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6054767Z WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): mobile_scanner
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6060815Z Future versions of Flutter will fail to build if your app uses plugins that apply KGP.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6061507Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6061902Z Please check the changelogs of these plugins and upgrade to a version that supports Built-in Kotlin.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6062621Z If no such version exists, report the issue to the plugin. If necessary, here is a guide on filing
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6063702Z an issue against a plugin: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers#report-incompatible-kotlin-gradle-plugin-usage-to-plugin-authors
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6064461Z 
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:19:49.6065037Z If you are a plugin author, please migrate your plugin to Built-in Kotlin using this guide: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:24.2044693Z Checking the license for package CMake 3.22.1 in /usr/local/lib/android/sdk/licenses
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:24.2072418Z License for package CMake 3.22.1 accepted.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:24.2177845Z Preparing "Install CMake 3.22.1 v.3.22.1".
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:25.5032522Z "Install CMake 3.22.1 v.3.22.1" ready.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:25.5112655Z Installing CMake 3.22.1 in /usr/local/lib/android/sdk/cmake/3.22.1
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:25.5141665Z "Install CMake 3.22.1 v.3.22.1" complete.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:25.9012055Z "Install CMake 3.22.1 v.3.22.1" finished.
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:38.7667948Z Running Gradle task 'assembleDebug'...                            231.2s
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:39.2672028Z ✓ Built build/app/outputs/flutter-apk/app-debug.apk
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:21:39.2795521Z Installing the APK with bounded ADB timeout
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:24:40.0045974Z Performing Streamed Install
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:24:40.0046573Z Success
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:24:40.0054445Z Launching MainActivity
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0682689Z Starting: Intent { cmp=io.github.lucifron28.unipm/.MainActivity }
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0683566Z Status: timeout
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0684162Z LaunchState: UNKNOWN (-1)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0684592Z Activity: io.github.lucifron28.unipm/.MainActivity
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0684989Z WaitTime: 22454
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0685287Z Complete
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0719685Z activity_start_status=timeout; expected activity reported
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.0720242Z Verifying application process
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.9418177Z app_process_id=4623
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:04.9419089Z Waiting for cold-start rendering
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:24.9439279Z Capturing startup screenshot
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:49.5769306Z Running focused app configuration tests
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:51.1365938Z 00:00 +0: loading /home/runner/work/UniPM/UniPM/mobile/test/app_config_test.dart
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:58.8992534Z 00:00 +0: debug configuration accepts an HTTP development API URL
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:58.9160976Z 00:00 +1: release configuration rejects an HTTP API URL
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:58.9186434Z 00:00 +2: release configuration accepts an HTTPS API URL
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:58.9298208Z 00:00 +3: configuration rejects unsupported URL schemes
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:58.9532312Z 00:00 +4: All tests passed!
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:59.0323165Z ##[group]Terminate Emulator
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:59.0336736Z [command]/usr/local/lib/android/sdk/platform-tools/adb -s emulator-5554 emu kill
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:59.0376239Z OK: killing emulator, bye bye
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:59.0376693Z OK
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:59.0379888Z ##[endgroup]
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:59.0386955Z INFO         | Wait for emulator (pid 2843) 20 seconds to shutdown gracefully before kill;you can set environment variable ANDROID_EMULATOR_WAIT_TIME_BEFORE_KILL(in seconds) to change the default value (20 seconds)
+Android 14 · pixel_7_pro	Run emulator compatibility checks	2026-11-12T20:25:59.0388180Z 
+Android 14 · pixel_7_pro	Upload Android evidence	﻿2026-11-12T20:26:22.9316264Z ##[group]Run actions/upload-artifact@v4
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9316739Z with:
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9319525Z   name: android-api-34-evidence
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9323883Z   path: mobile/artifacts/nonfunctional-android/
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9325451Z   if-no-files-found: warn
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9326883Z   compression-level: 6
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9329590Z   overwrite: false
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9332316Z   include-hidden-files: false
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9335905Z env:
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9337929Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9339584Z   JAVA_HOME_21_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.13-9/x64
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9341434Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.47.1-x64/flutter
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9341681Z   PUB_CACHE: /home/runner/.pub-cache
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9343011Z   ANDROID_AVD_HOME: /home/runner/.android/avd
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:22.9344436Z ##[endgroup]
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.1576463Z (node:4808) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.1579530Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.1656358Z With the provided path, there will be 2 files uploaded
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.1659113Z Artifact name is valid!
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.1661673Z Root directory input is valid!
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.4878944Z Beginning upload of artifact content to blob storage
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.5088008Z (node:4808) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.7046307Z Uploaded bytes 61739
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.7449290Z Finished uploading artifact content to blob storage!
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.7451894Z SHA256 digest of uploaded artifact zip is d65511e139b9062502475500f82b5d90973e2d91b38a8595022436183ed6cf03
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:23.7453984Z Finalizing artifact upload
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:24.1313520Z Artifact android-api-34-evidence.zip successfully finalized. Artifact ID 13982040179
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:24.1337396Z Artifact android-api-34-evidence has been successfully uploaded! Final size is 61739 bytes. Artifact ID is 13982040179
+Android 14 · pixel_7_pro	Upload Android evidence	2026-11-12T20:26:24.1338264Z Artifact download URL: https://github.com/lucifron28/UniPM/actions/runs/43296932992/artifacts/13982040179
+Android 14 · pixel_7_pro	Post Set up Flutter	﻿2026-11-12T20:26:24.1809952Z Post job cleanup.
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:24.1842017Z ##[start-action display=Cache pub dependencies;id=__146f7ec6-0c90-4d26-a343-cbd4448424e0.cache-pub]
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:24.7809390Z Post job cleanup.
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:24.8942468Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/UniPM/UniPM --files-from manifest.txt --use-compress-program zstdmt
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:28.3039518Z Failed to save: Unable to reserve cache with key flutter-pub-linux-stable-3.47.1-x64-6655482ec06e547f90abf8ae7590466f4415978d-553a518d1e9a301d31e71125cdd72fb2f34622b39a02f75378833aae981f8477, another job may be creating this cache.
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:28.3286840Z ##[end-action id=__146f7ec6-0c90-4d26-a343-cbd4448424e0.cache-pub;outcome=success;conclusion=success;duration_ms=4144]
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:28.3296174Z ##[start-action display=Cache Flutter;id=__146f7ec6-0c90-4d26-a343-cbd4448424e0.cache-flutter]
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:28.3519889Z Post job cleanup.
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:28.4550829Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/UniPM/UniPM --files-from manifest.txt --use-compress-program zstdmt
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:43.7223176Z Failed to save: Unable to reserve cache with key flutter-linux-stable-3.47.1-x64-6655482ec06e547f90abf8ae7590466f4415978d, another job may be creating this cache.
+Android 14 · pixel_7_pro	Post Set up Flutter	2026-11-12T20:26:43.8697643Z ##[end-action id=__146f7ec6-0c90-4d26-a343-cbd4448424e0.cache-flutter;outcome=success;conclusion=success;duration_ms=15539]
+Android 14 · pixel_7_pro	Post Set up Java	﻿2026-11-12T20:26:43.8885327Z Post job cleanup.
+Android 14 · pixel_7_pro	Post Set up Java	2026-11-12T20:26:44.0008866Z (node:4879) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+Android 14 · pixel_7_pro	Post Set up Java	2026-11-12T20:26:44.0009425Z (Use `node --trace-deprecation ...` to show where the warning was created)
+Android 14 · pixel_7_pro	Post Check out source	﻿2026-11-12T20:26:44.0219370Z Post job cleanup.
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.0943389Z [command]/usr/bin/git version
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1042597Z git version 2.56.0
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1079344Z Temporarily overriding HOME='/home/runner/work/_temp/57502328-2a60-43e0-b2ee-a6c7ffa86150' before making global git config changes
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1080223Z Adding repository directory to the temporary git global config as a safe directory
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1084634Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/UniPM/UniPM
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1146254Z Removing SSH command configuration
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1153362Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1195826Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1590074Z Removing HTTP extra header
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1597057Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1649885Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1881960Z Removing includeIf entries pointing to credentials config files
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1902373Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1945140Z includeif.gitdir:/home/runner/work/UniPM/UniPM/.git.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1945968Z includeif.gitdir:/home/runner/work/UniPM/UniPM/.git/worktrees/*.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1946766Z includeif.gitdir:/github/workspace/.git.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1947440Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1956208Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/UniPM/UniPM/.git.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.1991372Z /home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2002673Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/UniPM/UniPM/.git.path /home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2051793Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/UniPM/UniPM/.git/worktrees/*.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2086425Z /home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2097056Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/UniPM/UniPM/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2144379Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2177975Z /github/runner_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2185982Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2230360Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2263749Z /github/runner_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2271868Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2320379Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Android 14 · pixel_7_pro	Post Check out source	2026-11-12T20:26:44.2533677Z Removing credentials config '/home/runner/work/_temp/git-credentials-e3ca0bbc-576f-4bf8-af37-39850b9c3261.config'
+Android 14 · pixel_7_pro	Complete job	﻿2026-11-12T20:26:44.2871022Z Cleaning up orphan processes
+Android 14 · pixel_7_pro	Complete job	2026-11-12T20:26:44.3289631Z Terminate orphan process: pid (2940) (adb)
+Android 14 · pixel_7_pro	Complete job	2026-11-12T20:26:44.3353597Z Terminate orphan process: pid (3757) (java)
+Android 14 · pixel_7_pro	Complete job	2026-11-12T20:26:44.3468709Z Terminate orphan process: pid (3885) (java)
+Android 14 · pixel_7_pro	Complete job	2026-11-12T20:26:44.3519780Z Terminate orphan process: pid (4166) (java)
+Android 14 · pixel_7_pro	Complete job	2026-11-12T20:26:44.3780965Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/setup-java@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

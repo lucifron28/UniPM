@@ -1,0 +1,28 @@
+  server -> <repository-root>\server\bin\Release\net10.0\UniPM.Api.dll
+  UniPM.DemoQrGenerator -> <repository-root>\tools\UniPM.DemoQrGenerator\bin\Release\net10.0\UniPM.DemoQrGenerator.dll
+  UniPM.PmAnalytics.V3Evaluation -> <repository-root>\tools\UniPM.PmAnalytics.V3Evaluation\bin\Release\net10.0\UniPM.PmAnalytics.V3Evaluation.dll
+  UniPM.PmAnalytics.InterpretationEval -> <repository-root>\tools\UniPM.PmAnalytics.InterpretationEval\bin\Release\net10.0\UniPM.PmAnalytics.InterpretationEval.dll
+  UniPM.Api.Tests -> <repository-root>\tests\UniPM.Api.Tests\bin\Release\net10.0\UniPM.Api.Tests.dll
+Test run for <repository-root>\tests\UniPM.Api.Tests\bin\Release\net10.0\UniPM.Api.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.11)
+[xUnit.net 00:00:01.58]   Discovering: UniPM.Api.Tests
+[xUnit.net 00:00:01.93]   Discovered:  UniPM.Api.Tests
+[xUnit.net 00:00:01.99]   Starting:    UniPM.Api.Tests
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: <repository-root>\server
+fail: Microsoft.Extensions.Diagnostics.HealthChecks.DefaultHealthCheckService[103]
+      Health check database with status Unhealthy completed after 2.5438ms with message 'Database connection string is not configured.'
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+[xUnit.net 00:00:05.18]   Finished:    UniPM.Api.Tests
+  Passed UniPM.Api.Tests.FoundationEndpointsTests.Responses_include_the_content_type_nosniff_header [3 s]
+
+Test Run Successful.
+Total tests: 1
+     Passed: 1
+ Total time: 6.8028 Seconds
