@@ -15,19 +15,25 @@ log="artifacts/nonfunctional-android/run-${api_level}.log"
   echo "api_level=${api_level}"
   echo "profile=${profile}"
   echo "screen_class=${screen_class}"
-  echo "device_release=$(adb shell getprop ro.build.version.release)"
-  echo "device_api=$(adb shell getprop ro.build.version.sdk)"
-  echo "screen_size=$(adb shell wm size)"
-  echo "density_dpi=$(adb shell getprop qemu.sf.lcd_density)"
-  flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/
-  adb install -r build/app/outputs/flutter-apk/app-debug.apk
-  launch_output=$(timeout 90s adb shell am start -W -n io.github.lucifron28.unipm/.MainActivity)
+  echo "Collecting emulator display metadata"
+  echo "device_release=$(timeout 30s adb shell getprop ro.build.version.release)"
+  echo "device_api=$(timeout 30s adb shell getprop ro.build.version.sdk)"
+  echo "screen_size=$(timeout 30s adb shell wm size)"
+  echo "density_dpi=$(timeout 30s adb shell getprop qemu.sf.lcd_density)"
+  echo "Building the debug APK"
+  timeout 15m flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/
+  echo "Installing the APK with bounded non-streaming ADB"
+  timeout 3m adb install --no-streaming -r build/app/outputs/flutter-apk/app-debug.apk
+  echo "Launching MainActivity"
+  launch_output=$(timeout 120s adb shell am start -W -n io.github.lucifron28.unipm/.MainActivity)
   printf '%s\n' "${launch_output}"
   printf '%s\n' "${launch_output}" | grep -q 'Status: ok'
 
+  echo "Capturing startup screenshot"
   sleep 5
-  adb shell screencap -p /sdcard/unipm-startup.png
-  adb pull /sdcard/unipm-startup.png "artifacts/nonfunctional-android/startup-${api_level}.png"
+  timeout 30s adb shell screencap -p /sdcard/unipm-startup.png
+  timeout 60s adb pull /sdcard/unipm-startup.png "artifacts/nonfunctional-android/startup-${api_level}.png"
   test -s "artifacts/nonfunctional-android/startup-${api_level}.png"
+  echo "Running focused app configuration tests"
   timeout 10m flutter test --device-id emulator-5554 --no-pub --reporter expanded test/app_config_test.dart
 } 2>&1 | tee "${log}"
