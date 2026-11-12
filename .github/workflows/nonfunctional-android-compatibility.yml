@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - codex/nonfunctional-testing-2026-11
+    paths-ignore:
+      - 'web/**'
+      - 'server/**'
+      - 'tests/**'
+      - 'reference/**'
   workflow_dispatch:
 
 permissions:
@@ -30,6 +35,12 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v6
 
+      - name: Enable KVM device access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
