@@ -68,7 +68,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            set -euo pipefail
+            bash -euo pipefail <<'ANDROID_CHECKS'
             cd mobile
             mkdir -p artifacts/nonfunctional-android
             {
@@ -98,6 +98,7 @@ jobs:
               adb pull /sdcard/unipm-startup.png artifacts/nonfunctional-android/startup-${{ matrix.api-level }}.png
               flutter test --device-id emulator-5554 --no-pub --reporter expanded
             } 2>&1 | tee artifacts/nonfunctional-android/run-${{ matrix.api-level }}.log
+            ANDROID_CHECKS
 
       - name: Upload Android evidence
         if: always()
