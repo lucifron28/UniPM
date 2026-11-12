@@ -366,6 +366,12 @@ if (metricsEnabled)
     app.UseOpenTelemetryPrometheusScrapingEndpoint();
 }
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.TryAdd("X-Content-Type-Options", "nosniff");
+    await next(context);
+});
+
 app.UseCors("UniPMWeb");
 app.UseAuthentication();
 app.UseAuthorization();

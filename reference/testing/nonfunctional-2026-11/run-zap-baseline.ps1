@@ -3,13 +3,16 @@ param(
     [string]$DatabaseName = "UniPM_Nonfunctional_2026_11_12",
     [string]$BaseUrl = "http://127.0.0.1:5254",
     [string]$ZapHome = "",
-    [string]$JavaHome = "C:\Program Files\Android\Android Studio\jbr"
+    [string]$JavaHome = "C:\Program Files\Android\Android Studio\jbr",
+    [string]$ReportTag = ""
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
 $artifactDirectory = Join-Path $repoRoot "artifacts\nonfunctional-2026-11\zap"
 $planPath = Join-Path $PSScriptRoot "zap-passive-plan.yaml"
+if ([string]::IsNullOrWhiteSpace($ReportTag)) { $ReportTag = Get-Date -Format "yyyy-MM-dd-HHmmss" }
+if ($ReportTag -notmatch "^[A-Za-z0-9][A-Za-z0-9._-]*$") { throw "ReportTag may contain only letters, digits, dot, underscore, and hyphen." }
 if (-not $ZapHome) { $ZapHome = Join-Path $repoRoot "artifacts\nonfunctional-2026-11\zap-install\ZAP_2.17.0" }
 $ZapHome = (Resolve-Path -LiteralPath $ZapHome).Path
 $zapCommand = Join-Path $ZapHome "zap.bat"
@@ -73,8 +76,10 @@ try {
     foreach ($extension in @("html", "json")) {
         $report = Get-ChildItem -LiteralPath $artifactDirectory -Filter ("unipm-passive-baseline-*." + $extension) -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
         if (-not $report) { throw "ZAP did not generate the expected $extension report." }
-        $reportName = $report.Name -replace "^unipm-passive-baseline-", "zap-report-"
-        Copy-Item -LiteralPath $report.FullName -Destination (Join-Path $PSScriptRoot $reportName) -Force
+        $reportName = "zap-report-$ReportTag.$extension"
+        $destination = Join-Path $PSScriptRoot $reportName
+        if (Test-Path -LiteralPath $destination) { throw "Refusing to overwrite existing report: $destination" }
+        Copy-Item -LiteralPath $report.FullName -Destination $destination
     }
 }
 finally {

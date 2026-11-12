@@ -1,0 +1,193 @@
+{
+	"@programName": "ZAP",
+	"@version": "2.17.0",
+	"@generated": "Fri, 13 Nov 2026 01:13:32",
+	"created": "2026-11-12T17:13:32.349620Z",
+	"insights":[
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.code.2xx",
+			"description": "Percentage of responses with status code 2xx",
+			"statistic": "6"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.code.4xx",
+			"description": "Percentage of responses with status code 4xx",
+			"statistic": "93"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.endpoint.ctype.application/json",
+			"description": "Percentage of endpoints with content type application/json",
+			"statistic": "3"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.endpoint.ctype.application/problem+json",
+			"description": "Percentage of endpoints with content type application/problem+json",
+			"statistic": "1"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.endpoint.method.DELETE",
+			"description": "Percentage of endpoints with method DELETE",
+			"statistic": "6"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.endpoint.method.GET",
+			"description": "Percentage of endpoints with method GET",
+			"statistic": "69"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.endpoint.method.POST",
+			"description": "Percentage of endpoints with method POST",
+			"statistic": "16"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.endpoint.method.PUT",
+			"description": "Percentage of endpoints with method PUT",
+			"statistic": "7"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://127.0.0.1:5254",
+			"key": "insight.endpoint.total",
+			"description": "Count of total endpoints",
+			"statistic": "190"
+		}
+	],
+	"site":[ 
+		{
+			"@name": "http://127.0.0.1:5254",
+			"@host": "127.0.0.1",
+			"@port": "5254",
+			"@ssl": "false",
+			"alerts": [ 
+				{
+					"pluginid": "10111",
+					"alertRef": "10111",
+					"alert": "Authentication Request Identified",
+					"name": "Authentication Request Identified",
+					"riskcode": "0",
+					"confidence": "1",
+					"riskdesc": "Informational (Low)",
+					"desc": "<p>The given request has been identified as an authentication request. The 'Other Info' field contains a set of key=value lines which identify any relevant fields. If the request is in a context which has an Authentication Method set to \"Auto-Detect\" then this rule will change the authentication to match the request identified.</p>",
+					"instances":[ 
+						{
+							"id": "1",
+							"uri": "http://127.0.0.1:5254/api/v1/admin/accounts",
+							"nodeName": "http:\/\/127.0.0.1:5254\/api\/v1\/admin\/accounts ()({displayName,email,role,initialPassword,isActive})",
+							"method": "POST",
+							"param": "email",
+							"attack": "",
+							"evidence": "initialPassword",
+							"otherinfo": "userParam=email\nuserValue=zaproxy@example.com\npasswordParam=initialPassword"
+						},
+						{
+							"id": "0",
+							"uri": "http://127.0.0.1:5254/api/v1/auth/login",
+							"nodeName": "http:\/\/127.0.0.1:5254\/api\/v1\/auth\/login ()({email,password})",
+							"method": "POST",
+							"param": "email",
+							"attack": "",
+							"evidence": "password",
+							"otherinfo": "userParam=email\nuserValue=zaproxy@example.com\npasswordParam=password"
+						}
+					],
+					"count": "2",
+					"systemic": false,
+					"solution": "<p>This is an informational alert rather than a vulnerability and so there is nothing to fix.</p>",
+					"otherinfo": "<p>userParam=email</p><p>userValue=zaproxy@example.com</p><p>passwordParam=initialPassword</p>",
+					"reference": "<p>https://www.zaproxy.org/docs/desktop/addons/authentication-helper/auth-req-id/</p>",
+					"cweid": "-1",
+					"wascid": "-1",
+					"sourceid": "38"
+				},
+				{
+					"pluginid": "10024",
+					"alertRef": "10024",
+					"alert": "Information Disclosure - Sensitive Information in URL",
+					"name": "Information Disclosure - Sensitive Information in URL",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The request appeared to contain sensitive information leaked in the URL. This can violate PCI and most organizational compliance policies. You can configure the list of strings for this check to add or remove values specific to your environment.</p>",
+					"instances":[ 
+						{
+							"id": "4",
+							"uri": "http://127.0.0.1:5254/api/v1/schedules/assignment-batches?year=year&assetCategory=&department=&pmCycle=&tracking=tracking&search=ZAP&progress=progress&building=&inspectorUserId=inspectorUserId&supervisorUserId=supervisorUserId&page=&pageSize=&overdueOnly=false",
+							"nodeName": "http:\/\/127.0.0.1:5254\/api\/v1\/schedules\/assignment-batches (assetCategory,building,department,inspectorUserId,overdueOnly,page,pageSize,pmCycle,progress,search,supervisorUserId,tracking,year)",
+							"method": "GET",
+							"param": "inspectorUserId",
+							"attack": "",
+							"evidence": "inspectorUserId",
+							"otherinfo": "The URL contains potentially sensitive information. The following string was found via the pattern: user\ninspectorUserId"
+						},
+						{
+							"id": "5",
+							"uri": "http://127.0.0.1:5254/api/v1/schedules/assignment-batches?year=year&assetCategory=&department=&pmCycle=&tracking=tracking&search=ZAP&progress=progress&building=&inspectorUserId=inspectorUserId&supervisorUserId=supervisorUserId&page=&pageSize=&overdueOnly=false",
+							"nodeName": "http:\/\/127.0.0.1:5254\/api\/v1\/schedules\/assignment-batches (assetCategory,building,department,inspectorUserId,overdueOnly,page,pageSize,pmCycle,progress,search,supervisorUserId,tracking,year)",
+							"method": "GET",
+							"param": "supervisorUserId",
+							"attack": "",
+							"evidence": "supervisorUserId",
+							"otherinfo": "The URL contains potentially sensitive information. The following string was found via the pattern: user\nsupervisorUserId"
+						},
+						{
+							"id": "2",
+							"uri": "http://127.0.0.1:5254/api/v1/schedules/assignment-options?search=ZAP&page=&pageSize=&selectedUserId=",
+							"nodeName": "http:\/\/127.0.0.1:5254\/api\/v1\/schedules\/assignment-options (page,pageSize,search,selectedUserId)",
+							"method": "GET",
+							"param": "selectedUserId",
+							"attack": "",
+							"evidence": "selectedUserId",
+							"otherinfo": "The URL contains potentially sensitive information. The following string was found via the pattern: user\nselectedUserId"
+						},
+						{
+							"id": "3",
+							"uri": "http://127.0.0.1:5254/api/v1/schedules/supervisor-assignment-options?search=ZAP&page=&pageSize=&selectedUserId=selectedUserId",
+							"nodeName": "http:\/\/127.0.0.1:5254\/api\/v1\/schedules\/supervisor-assignment-options (page,pageSize,search,selectedUserId)",
+							"method": "GET",
+							"param": "selectedUserId",
+							"attack": "",
+							"evidence": "selectedUserId",
+							"otherinfo": "The URL contains potentially sensitive information. The following string was found via the pattern: user\nselectedUserId"
+						}
+					],
+					"count": "4",
+					"systemic": true,
+					"solution": "<p>Do not pass sensitive information in URIs.</p>",
+					"otherinfo": "<p>The URL contains potentially sensitive information. The following string was found via the pattern: user</p><p>inspectorUserId</p>",
+					"reference": "",
+					"cweid": "598",
+					"wascid": "13",
+					"sourceid": "107"
+				}
+			]
+		}
+	],
+	"sequences":[
+	]
+
+}

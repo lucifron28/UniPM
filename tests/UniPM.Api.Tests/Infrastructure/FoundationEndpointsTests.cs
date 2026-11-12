@@ -29,6 +29,20 @@ public sealed class FoundationEndpointsTests : IClassFixture<FoundationEndpoints
     }
 
     [Fact]
+    public async Task Responses_include_the_content_type_nosniff_header()
+    {
+        foreach (var path in new[] { "/", "/api/info", "/health/live", "/health/ready", "/not-found" })
+        {
+            using var response = await _client.GetAsync(path);
+
+            Assert.True(
+                response.Headers.TryGetValues("X-Content-Type-Options", out var values),
+                $"Expected X-Content-Type-Options for {path}.");
+            Assert.Equal("nosniff", Assert.Single(values!));
+        }
+    }
+
+    [Fact]
     public async Task Api_info_route_returns_api_information_without_a_packaged_frontend()
     {
         var response = await _client.GetAsync("/api/info");
