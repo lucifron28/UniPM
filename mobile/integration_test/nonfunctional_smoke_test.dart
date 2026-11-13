@@ -9,7 +9,7 @@ const _smokePassword = String.fromEnvironment('UNIPM_SMOKE_PASSWORD');
 const _apiLevel = String.fromEnvironment('UNIPM_SMOKE_API');
 
 void main() {
-  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('synthetic authenticated field-work compatibility smoke', (
     tester,
@@ -18,6 +18,7 @@ void main() {
       fail('The generated synthetic development password was not provided.');
     }
 
+    debugPrint('SMOKE_CONTEXT android_api=$_apiLevel');
     app.main();
     await tester.pump();
     await _waitFor(
@@ -28,8 +29,6 @@ void main() {
     expect(find.text('Sign in'), findsNWidgets(2));
     expect(find.byType(TextFormField), findsNWidgets(2));
     _checkForFlutterRenderingErrors(tester, 'login');
-    await binding.convertFlutterSurfaceToImage();
-    await binding.takeScreenshot('android-api-$_apiLevel-login');
     debugPrint('SMOKE_RESULT login_screen=PASS');
 
     await tester.enterText(
@@ -47,7 +46,6 @@ void main() {
       timeout: const Duration(seconds: 60),
     );
     _checkForFlutterRenderingErrors(tester, 'authenticated dashboard');
-    await binding.takeScreenshot('android-api-$_apiLevel-dashboard');
     debugPrint('SMOKE_RESULT authenticated_navigation=PASS');
     debugPrint('SMOKE_RESULT dashboard_responsive_layout=PASS');
 
@@ -77,7 +75,6 @@ void main() {
     );
     expect(find.text(_syntheticAssetCode), findsOneWidget);
     _checkForFlutterRenderingErrors(tester, 'asset details');
-    await binding.takeScreenshot('android-api-$_apiLevel-asset-details');
     debugPrint('SMOKE_RESULT asset_lookup_and_details=PASS');
 
     final historyAction = find.byKey(const Key('view-asset-history'));
@@ -102,7 +99,6 @@ void main() {
     );
     expect(historyCards, findsAtLeastNWidgets(1));
     _checkForFlutterRenderingErrors(tester, 'maintenance history');
-    await binding.takeScreenshot('android-api-$_apiLevel-history');
     debugPrint('SMOKE_RESULT maintenance_history_display=PASS');
 
     await tester.pageBack();
@@ -115,7 +111,6 @@ void main() {
       timeout: const Duration(seconds: 45),
     );
     _checkForFlutterRenderingErrors(tester, 'PM schedule');
-    await binding.takeScreenshot('android-api-$_apiLevel-schedule');
     debugPrint('SMOKE_RESULT preventive_maintenance_schedule=PASS');
 
     final startInspection = find.byKey(const Key('start-pm'));
@@ -152,7 +147,6 @@ void main() {
     );
     await tester.ensureVisible(find.byKey(const Key('add-inspection-button')));
     _checkForFlutterRenderingErrors(tester, 'inspection-entry form');
-    await binding.takeScreenshot('android-api-$_apiLevel-inspection-form');
     await tester.tap(find.byKey(const Key('add-inspection-button')));
     await _waitFor(
       tester,
@@ -161,7 +155,6 @@ void main() {
       timeout: const Duration(seconds: 60),
     );
     _checkForFlutterRenderingErrors(tester, 'saved inspection entry');
-    await binding.takeScreenshot('android-api-$_apiLevel-inspection-saved');
     debugPrint('SMOKE_RESULT preventive_maintenance_inspection_entry=PASS');
     debugPrint('SMOKE_RESULT visible_layout_overflow=PASS');
     debugPrint(

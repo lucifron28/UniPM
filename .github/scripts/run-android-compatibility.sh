@@ -377,13 +377,14 @@ integration_status="running"
 export RUN_INTEGRATION_STATUS="$integration_status"
 integration_raw_log="$RUNNER_TEMP/unipm-android-integration-api-$api_level.raw.log"
 set +e
-UNIPM_ANDROID_ARTIFACTS_DIR="$PWD/$evidence_dir" timeout 30m flutter drive \
-  --driver=test_driver/nonfunctional_smoke_driver.dart \
-  --target=integration_test/nonfunctional_smoke_test.dart \
+timeout 30m flutter test \
+  --no-pub \
+  --reporter expanded \
   --device-id "$device_serial" \
   --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/ \
   --dart-define=UNIPM_SMOKE_PASSWORD="$UNIPM_DEV_USER_PASSWORD" \
   --dart-define=UNIPM_SMOKE_API="$api_level" \
+  integration_test/nonfunctional_smoke_test.dart \
   > "$integration_raw_log" 2>&1
 drive_rc=$?
 set -e
