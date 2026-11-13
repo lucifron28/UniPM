@@ -88,13 +88,20 @@ jobs:
             echo "ASPNETCORE_ENVIRONMENT=Development"
           } >> "$GITHUB_ENV"
 
+          docker build --pull \
+            --file .github/scripts/nonfunctional-sqlserver-fts.Dockerfile \
+            --tag unipm-sqlserver-2022-fts \
+            .github/scripts
+          docker image inspect unipm-sqlserver-2022-fts \
+            --format '{{.Id}}' > "$evidence_dir/sql-image-id.txt"
+
           docker run --detach \
             --name unipm-android-smoke-sql \
             --publish 1433:1433 \
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
             --env "MSSQL_SA_PASSWORD=$db_password" \
-            mcr.microsoft.com/mssql/server:2022-latest \
+            unipm-sqlserver-2022-fts \
             > "$evidence_dir/sql-container-id.txt"
 
           sqlcmd_path=""
@@ -131,9 +138,22 @@ jobs:
           fi
 
           docker exec unipm-android-smoke-sql "$sqlcmd_path" \
+            -S localhost -U sa -P "$db_password" -C -b -h -1 \
+            -Q "SELECT @@VERSION;" > "$evidence_dir/sqlserver-version.txt"
+          full_text_status="$(docker exec unipm-android-smoke-sql "$sqlcmd_path" \
+            -S localhost -U sa -P "$db_password" -C -b -h -1 -W \
+            -Q "SELECT CONVERT(varchar(10), SERVERPROPERTY('IsFullTextInstalled'));" \
+            | tr -d '[:space:]')"
+          echo "IsFullTextInstalled=$full_text_status" | tee "$evidence_dir/sqlserver-feature-check.txt"
+          if [[ "$full_text_status" != "1" ]]; then
+            echo "The SQL Server test image does not report Full-Text Search as installed." >&2
+            exit 1
+          fi
+
+          docker exec unipm-android-smoke-sql "$sqlcmd_path" \
             -S localhost -U sa -P "$db_password" -C -b \
             -Q "CREATE DATABASE UniPMAndroidSmoke; ALTER DATABASE UniPMAndroidSmoke SET COMPATIBILITY_LEVEL = 150;"
-          echo "SQL Server 2022 Developer started with a fresh synthetic test database (compatibility level 150)."
+          echo "SQL Server 2022 Developer with Full-Text Search started; fresh synthetic database compatibility level is 150."
 
       - name: Build API and seed synthetic development data
         shell: bash
