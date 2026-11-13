@@ -671,8 +671,6 @@ Future<void> _runAfterProcessRestart(
 
   final verifier = _SmokeServerVerifier();
   await verifier.signIn();
-  final offlineRemarks =
-      'Android compatibility smoke offline draft API $_apiLevel';
   final synchronizedForm = await _waitForServerFormWithInspectionRemarks(
     tester,
     verifier,
