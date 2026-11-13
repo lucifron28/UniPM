@@ -11,6 +11,10 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-197: Android compatibility follow-up](test-runs/TEST-197-nonfunctional-android-api29-workflow-followup-2026-11.md): API 29/API 34 sign-in, synthetic login, authenticated navigation, dashboard smoke, and asset search passed; both jobs failed at asset details. History/forms and offline/reconnect remain unverified.
+- [TEST-196: Android API 29 compatibility retest](test-runs/TEST-196-nonfunctional-android-api29-compatibility-retest-2026-11.md): Android 10 boot, install, sign-in UI, and configuration 4/4 passed; authenticated run timed out in the Flutter Driver handshake before login.
+- [TEST-195: Android compatibility workflow rerun](test-runs/TEST-195-nonfunctional-android-compatibility-rerun-2026-11.md): API 29 ADB loss prevented install; API 34 sign-in rendered, but authenticated smoke timed out before login.
+
 - [TEST-193: Android, web performance, and ZAP non-functional evidence](test-runs/TEST-193-nonfunctional-requirements-2026-11.md): 90 local API measurements and a passive ZAP report were executed; React build/tests and API 37 Flutter checks passed. API 29/API 34 and live mobile workflows were pending at TEST-193; see TEST-194 for the later emulator run and remaining limits.
 
 - [TEST-194: Android and security follow-up](test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md): API 29/API 34 CI build/install/process checks and four app-config tests passed, but screenshots show system/launcher not-responding dialogs; header alert absent after fix; 10 moderate development-only npm entries remain.
@@ -57,6 +61,9 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-197 | test-run | Android compatibility follow-up with on-device Flutter integration tests | executed | ci-executed | 937c59173caa57faf9fe1ed02ed6879691b6cba9 | [record](test-runs/TEST-197-nonfunctional-android-api29-workflow-followup-2026-11.md) | API 29/API 34 build, install, sign-in, login, navigation, dashboard and asset search passed; both profiles failed at asset details. |
+| TEST-196 | test-run | Android API 29 compatibility retest and Flutter Driver timeout | executed | ci-executed | 7b53e82126d2a6218bcacf92596285431f2740d8 | [record](test-runs/TEST-196-nonfunctional-android-api29-compatibility-retest-2026-11.md) | API 29 boot/install/sign-in/configuration passed; Flutter Driver timed out before login. |
+| TEST-195 | test-run | Android 10/API 29 and Android 14/API 34 compatibility workflow rerun | executed | ci-executed | 2fa502628a21e82686920a46680706b3ce0c68ba | [record](test-runs/TEST-195-nonfunctional-android-compatibility-rerun-2026-11.md) | API 29 ADB loss prevented installation; API 34 sign-in rendered but authenticated smoke timed out. |
 | TEST-193 | test-run | Non-functional Android, web performance, and ZAP evidence | executed | locally-executed | 53afe5708ca640b6fe7618589cbf3be1a1de6ae3 | [record](test-runs/TEST-193-nonfunctional-requirements-2026-11.md) | API performance and passive ZAP executed; React 278 and Flutter 198 suites passed; API 29/API 34 emulator execution remains pending. |
 | TEST-194 | test-run | Non-functional Android and security follow-up | executed | ci-executed | 530b5be36727698f3e66935e56e53c698e4df52b | [record](test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md) | API 29/API 34 jobs passed build/install/process/config checks but screenshots show system/launcher not-responding dialogs; header alert absent after remediation; 10 moderate development-only npm entries remain. |
 | TEST-172 | test-run | Schedule batch side panels | executed | locally-executed | `fde2bbc` | [record](test-runs/TEST-172-schedule-batch-panels.md) | 25 schedule workflow tests passed after one existing-expectation correction; type check passed. Browser visual verification unavailable. |

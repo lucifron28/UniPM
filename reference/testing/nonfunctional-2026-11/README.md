@@ -43,6 +43,10 @@ An earlier local Android 17/API 37 run passed 198/198 Flutter tests; the host su
 
 The sequence of earlier CI install/startup/screenshot failures and their helper logs is retained in `android-workflow-runs/` and summarized in the [Android matrix](android-compatibility.md). Those attempts are preserved, not counted as API 29/API 34 passes.
 
+### Android 10/API 29 compatibility retests
+
+[Run 43391036513](https://github.com/lucifron28/UniPM/actions/runs/43391036513) tested 7b53e82126d2a6218bcacf92596285431f2740d8. Android 10 booted, installed the APK, and showed the sign-in controls in the foreground hierarchy; the startup screenshot and 4/4 configuration tests passed. The authenticated Flutter Driver smoke timed out at request_data before login. [Run 43396819069](https://github.com/lucifron28/UniPM/actions/runs/43396819069), tested at 937c59173caa57faf9fe1ed02ed6879691b6cba9, used Flutter's device integration test path. API 29 and API 34 both installed, displayed sign-in, passed configuration checks, synthetic login, authenticated navigation, and dashboard smoke. Both then failed after selecting the DEMO-EL-001 search result because the asset-details control did not appear within 30 seconds. Maintenance history, inspection forms, offline persistence, and reconnect synchronization were not reached or executed. See the [Android matrix](android-compatibility.md), [TEST-196](../../evidence/test-runs/TEST-196-nonfunctional-android-api29-compatibility-retest-2026-11.md), and [TEST-197](../../evidence/test-runs/TEST-197-nonfunctional-android-api29-workflow-followup-2026-11.md). Artifacts: [API 29 first retest](https://github.com/lucifron28/UniPM/actions/runs/43391036513/artifacts/14022946828) · [API 29 follow-up](https://github.com/lucifron28/UniPM/actions/runs/43396819069/artifacts/14023631972).
+
 ## Web/API performance
 
 The local benchmark used five warm-up requests followed by 30 serial measurements per endpoint. Each timed request included reading its full HTTP response body. Every measured request returned HTTP 200; results are API latency, not browser page-render measurements.
@@ -91,7 +95,7 @@ npm run test:run
 npm run build
 ```
 
-Android workflow rerun and evidence retrieval commands are in [android-compatibility.md](android-compatibility.md). The latest actual run is [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992).
+Android workflow rerun and evidence retrieval commands are in [android-compatibility.md](android-compatibility.md). The latest actual Android compatibility run is [43396819069](https://github.com/lucifron28/UniPM/actions/runs/43396819069); see the results and limitations above.
 
 ## Evidence and boundaries
 
