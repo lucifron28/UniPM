@@ -19,6 +19,18 @@ screen_status="not_checked"
 launch_command_status="not_executed"
 ui_visible="false"
 application_pid=""
+device_serial="$(printenv ANDROID_SERIAL || true)"
+if [[ -z "$device_serial" ]]; then device_serial="emulator-5554"; fi
+export ANDROID_SERIAL="$device_serial"
+adb_readiness_status="not_executed"
+adb_recovery_attempts=0
+apk_build_status="not_executed"
+apk_install_status="not_executed"
+export RUN_ADB_READINESS_STATUS="$adb_readiness_status"
+export RUN_ADB_RECOVERY_ATTEMPTS="$adb_recovery_attempts"
+export RUN_ADB_DEVICE_SERIAL="$device_serial"
+export RUN_APK_BUILD_STATUS="$apk_build_status"
+export RUN_APK_INSTALL_STATUS="$apk_install_status"
 device_release=""
 device_api=""
 device_model=""
@@ -27,6 +39,59 @@ screen_density=""
 actual_viewport_dp=""
 expected_viewport_dp=""
 
+wait_for_android_device() {
+  local context="$1"
+  local attempt wait_rc state boot observed_devices
+  echo "Checking bounded ADB readiness: $context"
+  for attempt in $(seq 1 6); do
+    {
+      echo "attempt=$attempt serial=$device_serial"
+      wait_rc=0
+      timeout 5s adb -s "$device_serial" wait-for-device >> "$evidence_dir/adb-readiness.log" 2>&1 || wait_rc=$?
+      echo "wait_for_device_exit=$wait_rc"
+      state="$(timeout 5s adb -s "$device_serial" get-state 2>&1 || true)"
+      echo "adb_state=$state"
+      if [[ "$state" == "device" ]]; then
+        boot="$(timeout 5s adb -s "$device_serial" shell getprop sys.boot_completed 2>&1 | tr -d '\r' || true)"
+        echo "sys_boot_completed=$boot"
+        if [[ "$boot" == "1" ]]; then
+          adb_readiness_status="passed"
+          export RUN_ADB_READINESS_STATUS="$adb_readiness_status"
+          export RUN_ADB_RECOVERY_ATTEMPTS="$adb_recovery_attempts"
+          export RUN_ADB_DEVICE_SERIAL="$device_serial"
+          echo "adb_readiness=passed serial=$device_serial recovery_attempts=$adb_recovery_attempts"
+          return 0
+        fi
+      fi
+    } >> "$evidence_dir/adb-readiness.log" 2>&1
+
+    if [[ "$attempt" == "2" || "$attempt" == "4" || "$attempt" == "6" ]]; then
+      adb_recovery_attempts=$((adb_recovery_attempts + 1))
+      {
+        echo "bounded_recovery_attempt=$adb_recovery_attempts"
+        timeout 8s adb kill-server
+        timeout 8s adb start-server
+        timeout 8s adb connect 127.0.0.1:5555
+        timeout 8s adb devices -l
+      } >> "$evidence_dir/adb-readiness.log" 2>&1 || true
+      observed_devices="$(timeout 8s adb devices -l 2>&1 || true)"
+      printf '%s\n' "$observed_devices" >> "$evidence_dir/adb-readiness.log"
+      if grep -Eq '^127\.0\.0\.1:5555[[:space:]]+device([[:space:]]|$)' <<< "$observed_devices"; then
+        device_serial="127.0.0.1:5555"
+        export ANDROID_SERIAL="$device_serial"
+        export RUN_ADB_DEVICE_SERIAL="$device_serial"
+        echo "Using recovered ADB TCP transport $device_serial"
+      fi
+    fi
+    if [[ "$attempt" -lt 6 ]]; then sleep 5; fi
+  done
+  adb_readiness_status="failed"
+  export RUN_ADB_READINESS_STATUS="$adb_readiness_status"
+  export RUN_ADB_RECOVERY_ATTEMPTS="$adb_recovery_attempts"
+  export RUN_ADB_DEVICE_SERIAL="$device_serial"
+  echo "ADB did not report a boot-complete Android device after six readiness checks and $adb_recovery_attempts bounded recovery attempts." >&2
+  return 1
+}
 capture_diagnostics() {
   local exit_code="$1"
   trap - EXIT
@@ -36,16 +101,26 @@ capture_diagnostics() {
     export RUN_INTEGRATION_STATUS="$integration_status"
   fi
 
-  echo "Collecting final Android diagnostics (script exit=$exit_code)"
-  timeout 30s adb devices -l > "$evidence_dir/adb-devices.txt" 2>&1
-  timeout 30s adb shell dumpsys activity activities > "$evidence_dir/activity-activities.txt" 2>&1
-  timeout 30s adb shell dumpsys window windows > "$evidence_dir/window-state.txt" 2>&1
-  timeout 30s adb shell dumpsys cpuinfo > "$evidence_dir/cpuinfo.txt" 2>&1
-  timeout 30s adb shell dumpsys meminfo io.github.lucifron28.unipm > "$evidence_dir/app-meminfo.txt" 2>&1
-  timeout 45s adb logcat -b all -d -v threadtime > "$evidence_dir/logcat.txt" 2>&1
-  timeout 20s adb shell uiautomator dump /sdcard/unipm-final-window.xml > "$evidence_dir/uiautomator-final.log" 2>&1
-  timeout 20s adb pull /sdcard/unipm-final-window.xml "$evidence_dir/ui-final.xml" >> "$evidence_dir/uiautomator-final.log" 2>&1
-  timeout 60s adb exec-out screencap -p > "$evidence_dir/final-$api_level.png" 2> "$evidence_dir/final-screenshot.log"
+  echo "Collecting final Android and ADB diagnostics (script exit=$exit_code)"
+  timeout 10s adb version > "$evidence_dir/adb-version.txt" 2>&1
+  timeout 10s adb server-status > "$evidence_dir/adb-server-status.txt" 2>&1
+  timeout 10s adb devices -l > "$evidence_dir/adb-devices.txt" 2>&1
+  timeout 15s adb -s "$device_serial" get-state > "$evidence_dir/adb-selected-device-state.txt" 2>&1
+  timeout 20s adb -s "$device_serial" shell dumpsys activity activities > "$evidence_dir/activity-activities.txt" 2>&1
+  timeout 20s adb -s "$device_serial" shell dumpsys window windows > "$evidence_dir/window-state.txt" 2>&1
+  timeout 20s adb -s "$device_serial" shell dumpsys cpuinfo > "$evidence_dir/cpuinfo.txt" 2>&1
+  timeout 20s adb -s "$device_serial" shell dumpsys meminfo io.github.lucifron28.unipm > "$evidence_dir/app-meminfo.txt" 2>&1
+  timeout 30s adb -s "$device_serial" logcat -b all -d -v threadtime > "$evidence_dir/logcat.txt" 2>&1
+  timeout 15s adb -s "$device_serial" shell uiautomator dump /sdcard/unipm-final-window.xml > "$evidence_dir/uiautomator-final.log" 2>&1
+  timeout 15s adb -s "$device_serial" pull /sdcard/unipm-final-window.xml "$evidence_dir/ui-final.xml" >> "$evidence_dir/uiautomator-final.log" 2>&1
+  timeout 30s adb -s "$device_serial" exec-out screencap -p > "$evidence_dir/final-$api_level.png" 2> "$evidence_dir/final-screenshot.log"
+  if [[ "$exit_code" -ne 0 ]]; then
+    ADB_TRACE=all timeout 20s adb devices -l > "$evidence_dir/adb-transport-trace.txt" 2>&1
+    ps -eo pid,ppid,stat,%cpu,%mem,rss,args | grep -E '[q]emu-system|[e]mulator' > "$evidence_dir/emulator-process-on-failure.txt" || true
+    free -h > "$evidence_dir/host-memory-on-failure.txt" 2>&1
+    df -h / > "$evidence_dir/host-disk-on-failure.txt" 2>&1
+    timeout 20s sudo journalctl --dmesg --no-pager -n 200 > "$evidence_dir/host-kernel-tail.log" 2>&1 || true
+  fi
 
   if [[ -n "$RUNNER_TEMP" && -f "$RUNNER_TEMP/unipm-android-api.log" ]]; then
     cp "$RUNNER_TEMP/unipm-android-api.log" "$evidence_dir/api-server.log"
@@ -68,6 +143,11 @@ summary = {
     "logical_viewport_dp": os.environ.get("RUN_VIEWPORT_DP"),
     "expected_viewport_dp": os.environ.get("RUN_EXPECTED_VIEWPORT_DP"),
     "screen_profile_check": os.environ.get("RUN_SCREEN_STATUS"),
+    "adb_readiness_outcome": os.environ.get("RUN_ADB_READINESS_STATUS"),
+    "adb_recovery_attempts": int(os.environ.get("RUN_ADB_RECOVERY_ATTEMPTS", "0")),
+    "adb_device_serial": os.environ.get("RUN_ADB_DEVICE_SERIAL"),
+    "apk_build_outcome": os.environ.get("RUN_APK_BUILD_STATUS"),
+    "apk_install_outcome": os.environ.get("RUN_APK_INSTALL_STATUS"),
     "am_start_result": os.environ.get("RUN_LAUNCH_STATUS"),
     "visible_unipm_login_ui": os.environ.get("RUN_UI_VISIBLE") == "true",
     "startup_outcome": os.environ.get("RUN_STARTUP_STATUS"),
@@ -116,13 +196,14 @@ if [[ -n "$sdk" && -x "$sdk/emulator/emulator" ]]; then
   "$sdk/emulator/emulator" -accel-check > "$evidence_dir/emulator-accel-check.txt" 2>&1 || true
   cat "$evidence_dir/emulator-accel-check.txt"
 fi
-ps -eo pid,args | grep -E '[e]mulator.*(avd|accel)' > "$evidence_dir/emulator-process.txt" || true
+ps -eo pid,ppid,stat,%cpu,%mem,rss,args | grep -E '[q]emu-system|[e]mulator.*(avd|accel)' > "$evidence_dir/emulator-process.txt" || true
 
-device_release="$(timeout 30s adb shell getprop ro.build.version.release | tr -d '\r')"
-device_api="$(timeout 30s adb shell getprop ro.build.version.sdk | tr -d '\r')"
-device_model="$(timeout 30s adb shell getprop ro.product.model | tr -d '\r')"
-screen_size="$(timeout 30s adb shell wm size | tr -d '\r')"
-screen_density="$(timeout 30s adb shell wm density | tr -d '\r')"
+wait_for_android_device "initial emulator boot"
+device_release="$(timeout 15s adb -s "$device_serial" shell getprop ro.build.version.release | tr -d '\r')"
+device_api="$(timeout 15s adb -s "$device_serial" shell getprop ro.build.version.sdk | tr -d '\r')"
+device_model="$(timeout 15s adb -s "$device_serial" shell getprop ro.product.model | tr -d '\r')"
+screen_size="$(timeout 15s adb -s "$device_serial" shell wm size | tr -d '\r')"
+screen_density="$(timeout 15s adb -s "$device_serial" shell wm density | tr -d '\r')"
 export RUN_DEVICE_RELEASE="$device_release"
 export RUN_DEVICE_API="$device_api"
 export RUN_DEVICE_MODEL="$device_model"
@@ -171,22 +252,56 @@ if [[ "$device_api" != "$api_level" || "$device_release" != "$android_version" ]
 fi
 
 apk_path="build/app/outputs/flutter-apk/app-debug.apk"
-echo "Building the actual UniPM debug APK with the local synthetic API base address"
-timeout 15m flutter build apk \
-  --debug \
-  --target-platform android-x64 \
-  --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/
-test -s "$apk_path"
+if [[ ! -s "$apk_path" ]]; then
+  apk_build_status="failed"
+  export RUN_APK_BUILD_STATUS="$apk_build_status"
+  echo "The pre-emulator UniPM APK build did not produce a non-empty APK." >&2
+  exit 1
+fi
+apk_build_status="passed"
+export RUN_APK_BUILD_STATUS="$apk_build_status"
+echo "APK build passed before emulator startup."
+
+echo "Verifying emulator and ADB readiness before installation."
+wait_for_android_device "before APK installation"
 
 echo "Installing UniPM APK"
-timeout 8m adb install -r "$apk_path"
-timeout 30s adb shell pm path io.github.lucifron28.unipm
-application_pid="$(timeout 30s adb shell pidof io.github.lucifron28.unipm 2>/dev/null | tr -d '\r' || true)"
+apk_install_status="running"
+export RUN_APK_INSTALL_STATUS="$apk_install_status"
+install_succeeded="false"
+for install_attempt in 1 2; do
+  install_exit_code=0
+  timeout 8m adb -s "$device_serial" install -r "$apk_path" > "$evidence_dir/install-attempt-$install_attempt.log" 2>&1 || install_exit_code=$?
+  cat "$evidence_dir/install-attempt-$install_attempt.log"
+  if [[ "$install_exit_code" -eq 0 ]]; then
+    install_succeeded="true"
+    apk_install_status="passed"
+    export RUN_APK_INSTALL_STATUS="$apk_install_status"
+    break
+  fi
+  if [[ "$install_attempt" == "1" ]]; then
+    echo "APK install attempt 1 failed with exit $install_exit_code; trying one bounded ADB recovery." >&2
+    if wait_for_android_device "after first install failure"; then continue; fi
+  fi
+  apk_install_status="failed"
+  export RUN_APK_INSTALL_STATUS="$apk_install_status"
+  exit "$install_exit_code"
+done
+if [[ "$install_succeeded" != "true" ]]; then
+  apk_install_status="failed"
+  export RUN_APK_INSTALL_STATUS="$apk_install_status"
+  echo "UniPM APK installation did not succeed." >&2
+  exit 1
+fi
+wait_for_android_device "after APK installation"
+timeout 15s adb -s "$device_serial" shell pm path io.github.lucifron28.unipm
+application_pid="$(timeout 15s adb -s "$device_serial" shell pidof io.github.lucifron28.unipm 2>/dev/null | tr -d '\r' || true)"
 if [[ -z "$application_pid" ]]; then application_pid="not_running"; fi
 echo "pre_launch_process_id=$application_pid"
 
-timeout 30s adb logcat -c
-timeout 30s adb shell input keyevent 82 || true
+wait_for_android_device "before MainActivity launch"
+timeout 15s adb -s "$device_serial" logcat -c
+timeout 15s adb -s "$device_serial" shell input keyevent 82 || true
 echo "Launching UniPM MainActivity"
 set +e
 launch_output="$(timeout 120s adb shell am start -W -n io.github.lucifron28.unipm/.MainActivity 2>&1)"
@@ -206,14 +321,17 @@ echo "am_start_result=$launch_command_status"
 echo "Waiting for the actual UniPM login interface in the foreground window hierarchy"
 ui_visible=false
 for attempt in $(seq 1 20); do
+  if ! timeout 8s adb -s "$device_serial" get-state >/dev/null 2>&1; then
+    wait_for_android_device "login UI capture attempt $attempt"
+  fi
   rm -f "$evidence_dir/ui-login.xml"
-  if timeout 12s adb shell uiautomator dump /sdcard/unipm-login-window.xml \
+  if timeout 12s adb -s "$device_serial" shell uiautomator dump /sdcard/unipm-login-window.xml \
       > "$evidence_dir/uiautomator-startup.log" 2>&1; then
-    timeout 15s adb pull /sdcard/unipm-login-window.xml "$evidence_dir/ui-login.xml" \
+    timeout 15s adb -s "$device_serial" pull /sdcard/unipm-login-window.xml "$evidence_dir/ui-login.xml" \
       >> "$evidence_dir/uiautomator-startup.log" 2>&1 || true
   fi
 
-  timeout 30s adb exec-out screencap -p > "$evidence_dir/startup-login.png" \
+  timeout 30s adb -s "$device_serial" exec-out screencap -p > "$evidence_dir/startup-login.png" \
     2> "$evidence_dir/startup-screenshot.log" || true
 
   if [[ -s "$evidence_dir/ui-login.xml" ]] \
@@ -237,14 +355,15 @@ fi
 startup_status="passed"
 export RUN_STARTUP_STATUS="$startup_status"
 export RUN_UI_VISIBLE="$ui_visible"
-application_pid="$(timeout 30s adb shell pidof io.github.lucifron28.unipm | tr -d '\r')"
+application_pid="$(timeout 15s adb -s "$device_serial" shell pidof io.github.lucifron28.unipm | tr -d '\r')"
 echo "startup_status=$startup_status"
 echo "visible_login_controls=UniPM, Sign in, Use your UniPM field-work account."
 echo "app_process_id=$application_pid"
 
 echo "Running supplementary focused Flutter configuration tests on the emulator"
+wait_for_android_device "before Flutter configuration tests"
 timeout 10m flutter test \
-  --device-id emulator-5554 \
+  --device-id "$device_serial" \
   --no-pub \
   --reporter expanded \
   test/app_config_test.dart > "$evidence_dir/config-tests-$api_level.log" 2>&1
@@ -253,6 +372,7 @@ export RUN_CONFIG_TEST_STATUS="$configuration_test_status"
 cat "$evidence_dir/config-tests-$api_level.log"
 
 echo "Running authenticated, server-backed Flutter integration smoke"
+wait_for_android_device "before authenticated integration smoke"
 integration_status="running"
 export RUN_INTEGRATION_STATUS="$integration_status"
 integration_raw_log="$RUNNER_TEMP/unipm-android-integration-api-$api_level.raw.log"
@@ -260,7 +380,7 @@ set +e
 UNIPM_ANDROID_ARTIFACTS_DIR="$PWD/$evidence_dir" timeout 30m flutter drive \
   --driver=test_driver/nonfunctional_smoke_driver.dart \
   --target=integration_test/nonfunctional_smoke_test.dart \
-  --device-id emulator-5554 \
+  --device-id "$device_serial" \
   --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/ \
   --dart-define=UNIPM_SMOKE_PASSWORD="$UNIPM_DEV_USER_PASSWORD" \
   --dart-define=UNIPM_SMOKE_API="$api_level" \

@@ -190,6 +190,21 @@ jobs:
           fi
           echo "The Development API is ready on the local runner; the emulator will reach it through 10.0.2.2:5254."
 
+      - name: Build UniPM APK before emulator startup
+        working-directory: mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="artifacts/nonfunctional-android/api-${{ matrix.api-level }}"
+          mkdir -p "$evidence_dir"
+          echo "Building the real UniPM debug APK before the emulator starts."
+          timeout 15m flutter build apk \
+            --debug \
+            --target-platform android-x64 \
+            --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/ \
+            2>&1 | tee "$evidence_dir/apk-build.log"
+          test -s build/app/outputs/flutter-apk/app-debug.apk
+          echo "apk_build_outcome=passed" | tee "$evidence_dir/apk-build-status.txt"
       - name: Enable KVM where available
         shell: bash
         run: |
@@ -216,7 +231,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: ${{ matrix.profile }}
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -verbose
           disable-animations: true
           disable-linux-hw-accel: auto
           script: >-
