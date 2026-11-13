@@ -125,6 +125,16 @@ capture_diagnostics() {
   if [[ -n "$RUNNER_TEMP" && -f "$RUNNER_TEMP/unipm-android-api.log" ]]; then
     cp "$RUNNER_TEMP/unipm-android-api.log" "$evidence_dir/api-server.log"
   fi
+  if [[ -f "$evidence_dir/api-server.log" ]]; then
+    grep -E 'Request finished .*GET .*/api/v1/assets' \
+      "$evidence_dir/api-server.log" > "$evidence_dir/asset-api-status.log" || true
+  fi
+  if [[ "${RUN_FAILURE_STAGE:-}" == "asset-details" ]]; then
+    [[ -s "$evidence_dir/final-$api_level.png" ]] &&
+      cp "$evidence_dir/final-$api_level.png" "$evidence_dir/asset-details-failure.png"
+    [[ -s "$evidence_dir/ui-final.xml" ]] &&
+      cp "$evidence_dir/ui-final.xml" "$evidence_dir/asset-details-failure-window.xml"
+  fi
   RUN_EXIT_CODE="$exit_code" python3 - "$evidence_dir/summary.json" <<'PY'
 import json
 import os
@@ -152,6 +162,7 @@ summary = {
     "visible_unipm_login_ui": os.environ.get("RUN_UI_VISIBLE") == "true",
     "startup_outcome": os.environ.get("RUN_STARTUP_STATUS"),
     "authenticated_smoke_outcome": os.environ.get("RUN_INTEGRATION_STATUS"),
+    "failure_stage": os.environ.get("RUN_FAILURE_STAGE"),
     "flutter_configuration_test_outcome": os.environ.get("RUN_CONFIG_TEST_STATUS"),
     "workflow_script_exit_code": int(os.environ.get("RUN_EXIT_CODE", "1")),
     "tested_commit": os.environ.get("GITHUB_SHA"),
@@ -400,6 +411,9 @@ cat "$evidence_dir/integration-$api_level.log"
 if [[ "$drive_rc" -ne 0 ]]; then
   integration_status="failed"
   export RUN_INTEGRATION_STATUS="$integration_status"
+  if grep -Fq 'SMOKE_FAILURE stage=asset-details' "$evidence_dir/integration-$api_level.log"; then
+    export RUN_FAILURE_STAGE="asset-details"
+  fi
   exit "$drive_rc"
 fi
 integration_status="passed"

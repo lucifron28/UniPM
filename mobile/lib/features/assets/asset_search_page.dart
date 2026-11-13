@@ -259,6 +259,7 @@ class _AssetSearchPageState extends State<AssetSearchPage> {
             itemBuilder: (context, index) {
               final asset = _results[index];
               return AssetSummaryCard(
+                key: ValueKey('asset-search-result-' + asset.assetCode),
                 assetCode: asset.assetCode,
                 assetCategory: asset.assetCategory,
                 building: asset.building,

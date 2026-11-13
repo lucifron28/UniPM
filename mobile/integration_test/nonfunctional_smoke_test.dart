@@ -67,12 +67,31 @@ void main() {
       'synthetic asset search result',
       timeout: const Duration(seconds: 45),
     );
-    await tester.tap(find.text(_syntheticAssetCode).last);
-    await _waitFor(
-      tester,
-      find.byKey(const Key('asset-code')),
-      'asset details',
+    final assetSearchResult = find.byKey(
+      ValueKey('asset-search-result-' + _syntheticAssetCode),
     );
+    await tester.ensureVisible(assetSearchResult);
+    try {
+      await tester.tap(assetSearchResult);
+      await _waitFor(
+        tester,
+        find.text('Asset lookup'),
+        'asset lookup page after selecting a search result',
+        timeout: const Duration(seconds: 15),
+      );
+      debugPrint(
+        'SMOKE_SCREEN after_asset_tap=' +
+            _visibleTextSnapshot(tester).join(' | '),
+      );
+      await _waitFor(
+        tester,
+        find.byKey(const Key('asset-code')),
+        'asset details',
+      );
+    } catch (error) {
+      _logAssetDetailsFailure(tester, error);
+      rethrow;
+    }
     expect(find.text(_syntheticAssetCode), findsOneWidget);
     _checkForFlutterRenderingErrors(tester, 'asset details');
     debugPrint('SMOKE_RESULT asset_lookup_and_details=PASS');
@@ -163,6 +182,42 @@ void main() {
     debugPrint('SMOKE_RESULT reconnect_synchronization=NOT_EXECUTED');
     debugPrint('SMOKE_RESULT live_error_or_conflict_recovery=NOT_EXECUTED');
   });
+}
+
+List<String> _visibleTextSnapshot(WidgetTester tester) {
+  return tester
+      .widgetList<Text>(find.byType(Text))
+      .map((widget) => (widget.data ?? widget.textSpan?.toPlainText() ?? '').trim())
+      .where((value) => value.isNotEmpty)
+      .toList(growable: false);
+}
+
+void _logAssetDetailsFailure(WidgetTester tester, Object error) {
+  debugPrint('SMOKE_FAILURE stage=asset-details');
+  debugPrint(
+    'SMOKE_DIAGNOSTIC visible_text=' +
+        _visibleTextSnapshot(tester).join(' | '),
+  );
+  debugPrint(
+    'SMOKE_DIAGNOSTIC widget_counts'
+    ' asset_lookup_title=' +
+        find.text('Asset lookup').evaluate().length.toString() +
+        ' loading=' +
+        find.text('Finding asset...').evaluate().length.toString() +
+        ' asset_code=' +
+        find.byKey(const Key('asset-code')).evaluate().length.toString() +
+        ' invalid_qr=' +
+        find.text('Invalid QR').evaluate().length.toString() +
+        ' not_found=' +
+        find.text('Asset not found').evaluate().length.toString() +
+        ' lookup_error=' +
+        find.text('Unable to look up asset').evaluate().length.toString() +
+        ' search_page=' +
+        find.text('Search Assets').evaluate().length.toString(),
+  );
+  debugPrint(
+    'SMOKE_DIAGNOSTIC wait_error=' + error.toString().replaceAll('\n', ' '),
+  );
 }
 
 Future<void> _waitFor(

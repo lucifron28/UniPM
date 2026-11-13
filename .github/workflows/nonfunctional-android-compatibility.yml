@@ -86,6 +86,7 @@ jobs:
             echo "Jwt__SigningKey=$jwt_key"
             echo "UNIPM_DEV_SKIP_DEPARTMENT_HEAD_ACCOUNT=true"
             echo "ASPNETCORE_ENVIRONMENT=Development"
+            echo "Logging__LogLevel__Microsoft.AspNetCore.Hosting.Diagnostics=Information"
           } >> "$GITHUB_ENV"
 
           docker build --pull \
