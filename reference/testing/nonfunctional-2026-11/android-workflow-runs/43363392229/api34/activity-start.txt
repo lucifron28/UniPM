@@ -1,0 +1,7 @@
+Starting: Intent { cmp=io.github.lucifron28.unipm/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: io.github.lucifron28.unipm/.MainActivity
+TotalTime: 5424
+WaitTime: 5528
+Complete

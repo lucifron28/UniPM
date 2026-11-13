@@ -4,8 +4,9 @@ The test results are separate from the manuscript. Committed raw reports, measur
 
 ## Primary records and summaries
 
-- [TEST-193 original non-functional evidence](../../evidence/test-runs/TEST-193-nonfunctional-requirements-2026-11.md) — original API timings, initial passive ZAP scan, React suite/build, and supplemental API 37 tests. Preserved unchanged.
-- [TEST-194 Android/security follow-up](../../evidence/test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md) — exact API 29/API 34 Actions outcomes and screenshots; X-Content-Type-Options remediation and repeated ZAP scan; npm advisory classification.
+- [TEST-193 original non-functional evidence](../../evidence/test-runs/TEST-193-nonfunctional-requirements-2026-11.md) â€” original API timings, initial passive ZAP scan, React suite/build, and supplemental API 37 tests. Preserved unchanged.
+- [TEST-194 Android/security follow-up](../../evidence/test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md) â€” exact API 29/API 34 Actions outcomes and screenshots; X-Content-Type-Options remediation and repeated ZAP scan; npm advisory classification.
+- [TEST-195 Android compatibility rerun](../../evidence/test-runs/TEST-195-nonfunctional-android-compatibility-rerun-2026-11.md) â€” latest run 43363392229; API 29 ADB disconnect; API 34 visible sign-in screen, configuration tests passed, authenticated driver timed out.
 - [Android compatibility matrix](android-compatibility.md)
 - [Web performance method and results](web-performance.md)
 - [ZAP finding review](zap-findings.md)
@@ -46,3 +47,12 @@ These local logs are generated under the ignored `artifacts/nonfunctional-2026-1
 - Official ZAP ZIP, verified checksum, extracted tool, and runtime files: `artifacts/nonfunctional-2026-11/zap-install/` and `artifacts/nonfunctional-2026-11/zap/`
 
 No credentials or non-synthetic data are included in the committed reports, logs, or screenshots. Temporary synthetic-account credentials and the JWT signing key are excluded from Git and cleared after local runs.
+
+### GitHub Actions Android rerun 43363392229
+
+Run URL: https://github.com/lucifron28/UniPM/actions/runs/43363392229
+Tested commit: 2fa502628a21e82686920a46680706b3ce0c68ba
+
+- API 29 / Android 10 / Nexus 5: job 131681940613; artifact ID 14009432873; helper, summary, diagnostics, and full Actions job log under android-workflow-runs/43363392229/api29/. The final screenshot is empty because ADB lost the emulator before installation.
+- API 34 / Android 14 / Pixel 7 Pro: job 131681941121; helper, summary, integration timeout log, configuration test log, full Actions job log, and screenshots under android-workflow-runs/43363392229/api34/. The startup screenshot shows UniPM sign-in. The authenticated test timed out before credential entry.
+- SHA-256 hashes for all 54 downloaded run files (including zero-byte screenshots/logs) are recorded in `artifact-checksums.sha256`.

@@ -1,0 +1,23 @@
+{
+  "android_version": "14",
+  "api_level": 34,
+  "profile": "pixel_7_pro",
+  "screen_class": "large",
+  "device_release": "14",
+  "device_api": "34",
+  "device_model": "sdk_gphone64_x86_64",
+  "screen_size": "Physical size: 1440x3120",
+  "screen_density": "Physical density: 560",
+  "logical_viewport_dp": "411x891",
+  "expected_viewport_dp": "411x891",
+  "screen_profile_check": "passed",
+  "am_start_result": "status_ok",
+  "visible_unipm_login_ui": true,
+  "startup_outcome": "passed",
+  "authenticated_smoke_outcome": "failed",
+  "flutter_configuration_test_outcome": "passed",
+  "workflow_script_exit_code": 124,
+  "tested_commit": "2fa502628a21e82686920a46680706b3ce0c68ba",
+  "workflow_run_id": "43363392229",
+  "workflow_run_attempt": "1"
+}

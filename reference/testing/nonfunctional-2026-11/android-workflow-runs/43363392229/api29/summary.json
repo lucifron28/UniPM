@@ -1,0 +1,23 @@
+{
+  "android_version": "10",
+  "api_level": 29,
+  "profile": "Nexus 5",
+  "screen_class": "small",
+  "device_release": "10",
+  "device_api": "29",
+  "device_model": "Android SDK built for x86_64",
+  "screen_size": "Physical size: 1080x1920",
+  "screen_density": "Physical density: 480",
+  "logical_viewport_dp": "360x640",
+  "expected_viewport_dp": "360x640",
+  "screen_profile_check": "passed",
+  "am_start_result": null,
+  "visible_unipm_login_ui": false,
+  "startup_outcome": null,
+  "authenticated_smoke_outcome": null,
+  "flutter_configuration_test_outcome": null,
+  "workflow_script_exit_code": 1,
+  "tested_commit": "2fa502628a21e82686920a46680706b3ce0c68ba",
+  "workflow_run_id": "43363392229",
+  "workflow_run_attempt": "1"
+}

@@ -11,7 +11,7 @@ The GitHub Actions workflow defines two portrait configurations:
 
 Workflow execution used Ubuntu 24.04, Java 21, Flutter 3.47.1 stable, x86_64 Android emulators, software rendering, and no KVM acceleration. Exact source commit: `530b5be36727698f3e66935e56e53c698e4df52b`. Run: [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992), triggered 2026-11-12T20:06:20Z and completed successfully. In Asia/Manila the run occurred on 2026-11-13.
 
-## Results from the latest run
+## Previous completed startup run — 43296932992
 
 | Check | Android 10 / API 29 | Android 14 / API 34 |
 |---|---|---|
@@ -44,6 +44,27 @@ The earlier runs are retained in the evidence directory; they explain the workfl
 | [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992), `530b5be36727698f3e66935e56e53c698e4df52b` | Build, install, process check, screenshot capture, and four config tests completed; screenshot visually failed as described above | Build, install, process check, screenshot capture, and four config tests completed; screenshot visually failed as described above |
 
 Each earlier API helper log is retained under `android-workflow-runs/<run-id>/api29/` and `api34/`. The GitHub Actions run links remain the source for the corresponding workflow records.
+
+
+## Latest workflow rerun — 43363392229
+
+The rerun tested commit 2fa502628a21e82686920a46680706b3ce0c68ba and completed 2026-11-13T04:47:20Z with overall failure. See the TEST-195 record and the [full workflow run](https://github.com/lucifron28/UniPM/actions/runs/43363392229).
+
+| Check | Android 10 / API 29 — Nexus 5 small | Android 14 / API 34 — Pixel 7 Pro large |
+|---|---|---|
+| Emulator profile | Android 10, API 29; 1080×1920 px, 480 dpi; 360×640 dp. Screen-profile check passed. | Android 14, API 34; 1440×3120 px, 560 dpi; 411×891 dp. Screen-profile check passed. |
+| APK build | Passed; APK produced. | Passed in 336.2 s. |
+| Install / activity | Blocked: ADB reported device emulator-5554 not found before installation. | Install succeeded; MainActivity launch returned Status: ok. |
+| Visible screen | No app screen; final screenshot is empty. | Startup smoke passed: sign-in page and controls were visible. Screenshots are startup-login.png and final-34.png. |
+| App configuration tests | Not executed after ADB loss. | Passed 4/4. |
+| Authenticated integration | Not executed. | Failed/timed out after Flutter Driver connected and started the test; request_data stalled until exit code 124. The test did not log login_screen=PASS and did not submit credentials. |
+| Asset/history/forms and authenticated navigation | Not executed. | Not executed; the integration did not reach authentication. |
+| Offline drafts, reconnect sync, conflicts/errors | Not executed. | Not executed. |
+| Job conclusion | Failure. | Failure. |
+
+The API 34 screenshot verifies rendering of the sign-in page within its recorded 411×891 dp viewport only. It does not establish an authenticated or operational-page layout. API 29 was not installed or launched in this rerun. The earlier API 29 screenshot from run 43296932992 shows a System UI not-responding dialog; the previous API 34 launcher screenshot is superseded by the current visible sign-in screenshot.
+
+Full logs and artifacts for the rerun are retained in android-workflow-runs/43363392229/api29/ and api34/, including summaries, helper logs, Actions logs, emulator diagnostics, configuration test output, integration timeout output, and screenshots. Artifact links: [API 29](https://github.com/lucifron28/UniPM/actions/runs/43363392229/artifacts/14009432873) and [API 34](https://github.com/lucifron28/UniPM/actions/runs/43363392229).
 
 ## Supplemental Android 17 / API 37 smoke
 
@@ -81,4 +102,4 @@ gh run download 43296932992 --name android-api-29-evidence
 gh run download 43296932992 --name android-api-34-evidence
 ```
 
-Do not report the current startup/rendering evidence as full compatibility acceptance. A future run should produce a responsive UniPM screen before layout or authenticated-feature checks can be claimed.
+Do not report the current startup/rendering evidence as full compatibility acceptance. The current run confirms a visible API 34 sign-in screen but its automated authenticated smoke timed out before login. A future rerun should stabilize Flutter Driver request_data and restore API 29 emulator ADB connectivity before authenticated-feature acceptance can be claimed.
