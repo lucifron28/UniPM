@@ -4,7 +4,7 @@ The test results are separate from the manuscript. Committed raw reports, measur
 
 ## Primary records and summaries
 
-- [TEST-201 prepared Android follow-up](../../evidence/test-runs/TEST-201-android-compatibility-follow-up-prepared-2026-11.md) — review-only changes correct lazy History navigation, separate the online and offline synthetic fixtures, and prepare direct offline reachability plus a force-stop/restart and server-sync check; no build or test has executed because expiration of the repository execution limit is unverified.
+- [TEST-201 Android compatibility verification](../../evidence/test-runs/TEST-201-android-compatibility-follow-up-prepared-2026-11.md) — run 43468215938 tested db04aed6d6079a81d45b32b811750ef24c38643e; both emulator smoke steps failed with shell exit 1 after database/API/APK setup. Artifacts uploaded, but download was blocked by the GitHub account egress limit; assertion and root cause remain undetermined.
 - [TEST-200 Android smoke rerun](../../evidence/test-runs/TEST-200-nonfunctional-android-smoke-rerun-2026-11.md) — run 43444880972 passed asset details on both profiles; API 29 stopped at the lazy History selector and API 34 stopped at a completed-schedule fixture mismatch.
 - [TEST-193 original non-functional evidence](../../evidence/test-runs/TEST-193-nonfunctional-requirements-2026-11.md) â€” original API timings, initial passive ZAP scan, React suite/build, and supplemental API 37 tests. Preserved unchanged.
 - [TEST-194 Android/security follow-up](../../evidence/test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md) â€” exact API 29/API 34 Actions outcomes and screenshots; X-Content-Type-Options remediation and repeated ZAP scan; npm advisory classification.
@@ -59,6 +59,6 @@ Tested commit: 2fa502628a21e82686920a46680706b3ce0c68ba
 - API 34 / Android 14 / Pixel 7 Pro: job 131681941121; helper, summary, integration timeout log, configuration test log, full Actions job log, and screenshots under android-workflow-runs/43363392229/api34/. The startup screenshot shows UniPM sign-in. The authenticated test timed out before credential entry.
 - SHA-256 hashes for all 54 downloaded run files (including zero-byte screenshots/logs) are recorded in `artifact-checksums.sha256`.
 
-### Latest executed Android smoke — TEST-200 / run 43444880972
+### Latest executed Android smoke — TEST-201 / run 43468215938
 
-The [TEST-200 record](../../evidence/test-runs/TEST-200-nonfunctional-android-smoke-rerun-2026-11.md) links the exact API 29/API 34 jobs and artifacts. Prior evidence is preserved. TEST-201 is source-reviewed preparation only; its changes remain uncommitted/unpushed, with no run artifacts or executed status.
+The [TEST-201 record](../../evidence/test-runs/TEST-201-android-compatibility-follow-up-prepared-2026-11.md) links API 29 job 132032945952 and artifact 14061360039, plus API 34 job 132032945197 and artifact 14060386895. Both jobs passed database/API/APK setup and failed the emulator compatibility step with shell exit 1. Download was rejected with HTTP 503 for exceeding the account egress limit; screenshots, assertions and logs remain uninspected and the root cause is undetermined. TEST-198, TEST-199 and TEST-200 evidence is preserved.

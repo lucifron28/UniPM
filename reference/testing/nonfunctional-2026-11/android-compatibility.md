@@ -6,8 +6,8 @@ The GitHub Actions workflow defines two portrait configurations:
 
 | Requested profile | Emulator profile | Observed display | Logical viewport | Workflow job |
 |---|---|---:|---:|---|
-| Android 10 / API 29, small | Nexus 5 | 1080×1920 at 480 dpi | 360×640 dp | [latest API 29 job, run 43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972/job/131951621778) |
-| Android 14 / API 34, large | Pixel 7 Pro | 1440×3120 at 560 dpi | approximately 411×891 dp | [latest API 34 job, run 43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972/job/131951621446) |
+| Android 10 / API 29, small | Nexus 5 | 1080×1920 at 480 dpi | 360×640 dp | [latest TEST-201 API 29 job, run 43468215938](https://github.com/lucifron28/UniPM/actions/runs/43468215938/job/132032945952) |
+| Android 14 / API 34, large | Pixel 7 Pro | 1440×3120 at 560 dpi | approximately 411×891 dp | [latest TEST-201 API 34 job, run 43468215938](https://github.com/lucifron28/UniPM/actions/runs/43468215938/job/132032945197) |
 
 Initial matrix run: Ubuntu 24.04, Java 21, Flutter 3.47.1 stable, x86_64 software-rendered emulators, and no KVM acceleration. Exact source commit: 530b5be36727698f3e66935e56e53c698e4df52b. Run: [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992), triggered 2026-11-12T20:06:20Z and completed successfully. In Asia/Manila the run occurred on 2026-11-13.
 
@@ -99,7 +99,7 @@ Run [43396819069](https://github.com/lucifron28/UniPM/actions/runs/43396819069) 
 
 The final failure occurred after Android boot, install, UI rendering, and authenticated navigation, so it is a functional smoke failure rather than an ADB or installation blocker. Console evidence does not distinguish an app route/data problem from a selector mismatch; no cause is claimed. Artifacts: [API 29](https://github.com/lucifron28/UniPM/actions/runs/43396819069/artifacts/14023631972) · [API 34](https://github.com/lucifron28/UniPM/actions/runs/43396819069/artifacts/14023742476). The artifacts include screenshots, hierarchy dumps, ADB/emulator diagnostics, logcat, and test/backend output.
 
-## Latest verified field-work smoke — 43444880972
+## Previous executed field-work smoke — TEST-200 / 43444880972
 
 Run [43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972) tested `523cce1898956434c70d50ebb6b1142be459c7a8` on `codex/nonfunctional-testing-2026-11`. It is recorded in [TEST-200](../../evidence/test-runs/TEST-200-nonfunctional-android-smoke-rerun-2026-11.md). Each matrix job provisioned its own fresh ephemeral SQL database and synthetic fixture.
 
@@ -115,17 +115,28 @@ Run [43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972) 
 
 This run shows the earlier asset-details timeout did not persist: both API levels reached and passed the asset-details check. TEST-200 does not establish what caused the earlier timeout in run 43396819069. The confirmed TEST-200 failures are in test interaction and fixture selection; source evidence does not show a production defect. Full details and artifacts are linked from TEST-200.
 
-## Prepared follow-up — TEST-201, execution pending
+## TEST-201 executed follow-up — run 43468215938
 
-The current local changes are based on `22ec25cb37c19014779ff2968f4d2b4d7bb87773` on `codex/nonfunctional-testing-2026-11`. They remain uncommitted and unpushed. No build, local device test, or CI execution was started. The repository execution limit was reported as reached, and its expiration has not been verified; TEST-201 remains blocked pending permitted execution.
+Run [43468215938](https://github.com/lucifron28/UniPM/actions/runs/43468215938) tested commit db04aed6d6079a81d45b32b811750ef24c38643e on codex/nonfunctional-testing-2026-11. It was the single authorized workflow_dispatch and completed at 2026-11-13T17:12:04Z. The exact profiles were Android 10/API 29 on Nexus 5 and Android 14/API 34 on Pixel 7 Pro. The jobs used separate ephemeral SQL Server instances and synthetic fixtures.
 
-The reviewed test scrolls the lazy details list to History, checks HTTP 200 and the seeded DEMO-EL-001 inspection ID/remarks, and verifies the same record is rendered on the history page. It uses `DEMO-EL-003` and its assigned Due schedule for an online Start → save → reopen → edit → backend verify → reopen workflow. Offline creation uses the separate synthetic `DEMO-FE-003` fixture and its eligible November 2026 schedule. Both API jobs provision isolated fresh databases, and each fixture's PM group must have no pre-existing Draft.
+| Check | Android 10 / API 29 — Nexus 5 | Android 14 / API 34 — Pixel 7 Pro |
+|---|---|---|
+| Ephemeral database, API build and synthetic seed | PASSED | PASSED |
+| UniPM APK build | PASSED | PASSED |
+| Emulator compatibility and functional smoke workflow step | FAILED — shell process exited 1; exact assertion unavailable | FAILED — shell process exited 1; exact assertion unavailable |
+| Installation, startup, sign-in/configuration and authenticated workflows | BLOCKED — sub-step result cannot be inspected | BLOCKED — sub-step result cannot be inspected |
+| Asset details, history, schedule and online inspection form lifecycle | BLOCKED — sub-step result cannot be inspected | BLOCKED — sub-step result cannot be inspected |
+| Offline draft persistence before reconnection and synchronization | BLOCKED — sub-step result cannot be inspected | BLOCKED — sub-step result cannot be inspected |
+| Controlled synchronization conflict | NOT EXECUTED | NOT EXECUTED |
+| Screenshot, widget, API and emulator evidence inspection | BLOCKED — artifact download account egress limit | BLOCKED — artifact download account egress limit |
+| Job result | FAILED | FAILED |
 
-The runner toggles airplane mode/Wi-Fi/data only after a test marker, and the emulator must fail a direct `/health/ready` request before offline work begins. The app creates and locally verifies a Draft plus inspection while offline; the runner force-stops it, confirms the process is absent, then launches a second integration phase while still offline. After reconnection, HTTP 200 and same-account sign-in are required before the test checks the server Draft, row, remarks, asset/schedule IDs, inspector, Completed schedule, cleared sync banner, and reopened form. Authentication is memory-only, so the test verifies the local queue before restart and the resulting server state after restart/reconnection; it does not claim an authenticated local-cache screen check between cold start and reconnection.
+The workflow uploaded [API 29 evidence](https://github.com/lucifron28/UniPM/actions/runs/43468215938/artifacts/14061360039) and [API 34 evidence](https://github.com/lucifron28/UniPM/actions/runs/43468215938/artifacts/14060386895). Download of the API 29 artifact was rejected with HTTP 503 “Egress is over the account limit.” The API 34 artifact was not downloaded through another path. Consequently, the exact failing assertion, screenshot, widget tree, API status, and emulator condition remain unavailable, and the root cause is undetermined. The only confirmed failure detail is that the named emulator compatibility step exited 1 on both profiles. No production code was changed and no rerun was dispatched.
 
-Every uncaught failure emits Flutter widget/render diagnostics before the test waits for runner capture. The runner captures the in-app screenshot and Android window hierarchy before teardown, and preserves per-phase logs, API request statuses, logcat, connectivity snapshots, and network-toggle outcomes. The controlled synchronization-conflict scenario remains NOT EXECUTED.
+The source review confirms that TEST-201 uses the lazily scrolled History action and checks the seeded acknowledged record; it uses DEMO-EL-003 for online Start/save/reopen/edit/server verification and separate DEMO-FE-003 for offline work. Each job has an isolated seeded database. After force-stop, the second phase remains offline, reads the encrypted persisted snapshot for the synthetic user, checks the Draft, row and two pending writes, and only then requests reconnection. The runner gates restoration on that check. The run result does not establish that these UI checks were reached.
 
-TEST-201 is source-reviewed only; all prepared checks remain NOT EXECUTED. Update this matrix with the exact commit, workflow run, profile-specific outcomes, and artifact links only after permitted execution. Android compatibility remains incomplete until the required workflows pass on both API 29 and API 34. Live conflict recovery must be reported separately.
+Compatibility remains incomplete. TEST-201 has no evidence-backed pass for either Android profile, and the exact failure cause is not established. The prior TEST-198, TEST-199 and TEST-200 records and artifacts remain unchanged. No live synchronization-conflict behavior was executed.
+
 ## Supplemental Android 17 / API 37 smoke
 
 A separate local smoke used an Android 17/API 37 emulator and synthetic development data. This evidence is supplemental and does not replace API 29/API 34 results.
@@ -145,7 +156,7 @@ Details, logs references, and actual screenshots are in [the API 37 smoke record
 
 ## Compatibility boundary and reproduction
 
-`mobile/android/app/build.gradle.kts` relies on Flutter's Android SDK defaults; with Flutter 3.47.1, the resolved minimum SDK is API 24, and compile/target SDK are API 36. Both requested APIs are above the installation minimum, and the CI run directly confirms APK installation on both. However, neither captured startup image showed the application interface. Therefore no API 29/API 34 claim is made for layout fit, authentication, asset lookup, inspection entry, persistence, synchronization, history or conflict handling.
+`mobile/android/app/build.gradle.kts` relies on Flutter's Android SDK defaults; with Flutter 3.47.1, the resolved minimum SDK is API 24, and compile/target SDK are API 36. An earlier CI run (43296932992) recorded APK installation on both requested API levels, but that does not verify installation or UI behavior in TEST-201. TEST-201's emulator compatibility step failed on both profiles, and artifact egress restrictions prevented inspection of startup screenshots and test logs. No API 29/API 34 claim is made for TEST-201 layout fit, authentication, asset lookup, inspection entry, persistence, synchronization, history or conflict handling.
 
 To repeat the workflow after pushing this branch:
 
@@ -162,5 +173,5 @@ gh run download 43296932992 --name android-api-29-evidence
 gh run download 43296932992 --name android-api-34-evidence
 ```
 
-Do not report these results as full Android compatibility acceptance. TEST-200 confirms install, login, authenticated navigation, dashboard, asset search, and asset details on both requested profiles. It also confirms API 34 history/schedule behavior and identifies a test-side lazy-list failure on API 29 plus a completed-schedule fixture mismatch for API 34 form entry. API 29 history, inspection form save/reopen, offline persistence, and reconnection synchronization remain unverified. TEST-201's reviewed changes remain uncommitted and unexecuted; no API 29/API 34 pass may be claimed until the required workflows actually pass on both profiles.
+Do not report these results as full Android compatibility acceptance. TEST-200 verified install, login, authenticated navigation, dashboard, asset search and asset details on both profiles; it also verified API 34 history and schedule display and identified test-side History navigation and fixture-selection issues. TEST-201 failed in the emulator smoke step on both profiles, and artifact downloads were blocked by the account egress limit. The accessible evidence does not establish which functional checks ran or passed in TEST-201, so history, forms, offline persistence and synchronization remain unverified. Do not claim compatibility passed or assign a root cause.
 
