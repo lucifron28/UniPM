@@ -142,7 +142,7 @@ jobs:
             -Q "SELECT @@VERSION;" > "$evidence_dir/sqlserver-version.txt"
           full_text_status="$(docker exec unipm-android-smoke-sql "$sqlcmd_path" \
             -S localhost -U sa -P "$db_password" -C -b -h -1 -W \
-            -Q "SELECT CONVERT(varchar(10), SERVERPROPERTY('IsFullTextInstalled'));" \
+            -Q "SET NOCOUNT ON; SELECT CONVERT(varchar(10), SERVERPROPERTY('IsFullTextInstalled'));" \
             | tr -d '[:space:]')"
           echo "IsFullTextInstalled=$full_text_status" | tee "$evidence_dir/sqlserver-feature-check.txt"
           if [[ "$full_text_status" != "1" ]]; then
