@@ -95,16 +95,36 @@ void main() {
       find.byKey(const Key('asset-search-input')),
       _syntheticAssetCode,
     );
-    await _waitFor(
-      tester,
-      find.text(_syntheticAssetCode),
-      'synthetic asset search result',
-      timeout: const Duration(seconds: 45),
-    );
     final assetSearchResult = find.byKey(
       ValueKey('asset-search-result-' + _syntheticAssetCode),
     );
-    await tester.ensureVisible(assetSearchResult);
+    try {
+      await _waitFor(
+        tester,
+        assetSearchResult,
+        'synthetic asset search result card',
+        timeout: const Duration(seconds: 45),
+      );
+      await tester.ensureVisible(assetSearchResult);
+    } catch (error) {
+      debugPrint('SMOKE_FAILURE stage=asset-search-result');
+      debugPrint(
+        'SMOKE_DIAGNOSTIC asset_search_visible_text=' +
+            _visibleTextSnapshot(tester).join(' | '),
+      );
+      debugPrint(
+        'SMOKE_DIAGNOSTIC result_card_key_count=' +
+            assetSearchResult.evaluate().length.toString() +
+            ' search_page_count=' +
+            find.text('Search Assets').evaluate().length.toString() +
+            ' search_input_count=' +
+            find.byKey(const Key('asset-search-input')).evaluate().length.toString() +
+            ' wait_error=' +
+            error.toString().replaceAll('\n', ' '),
+      );
+      debugPrint('SMOKE_CAPTURE_SCREEN=asset-search-result');
+      rethrow;
+    }
     try {
       await tester.tap(assetSearchResult);
       await _waitFor(

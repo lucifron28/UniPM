@@ -453,6 +453,8 @@ while true; do
       capture_stage="dashboard-search"
     elif grep -Fq 'SMOKE_CAPTURE_SCREEN=asset-details' "$integration_raw_log"; then
       capture_stage="asset-details"
+    elif grep -Fq 'SMOKE_CAPTURE_SCREEN=asset-search-result' "$integration_raw_log"; then
+      capture_stage="asset-search-result"
     fi
   fi
   if [[ -n "$capture_stage" ]]; then
@@ -495,6 +497,8 @@ if [[ "$drive_rc" -ne 0 ]]; then
   export RUN_INTEGRATION_STATUS="$integration_status"
   if grep -Fq 'SMOKE_FAILURE stage=asset-details' "$evidence_dir/integration-$api_level.log"; then
     export RUN_FAILURE_STAGE="asset-details"
+  elif grep -Fq 'SMOKE_FAILURE stage=asset-search-result' "$evidence_dir/integration-$api_level.log"; then
+    export RUN_FAILURE_STAGE="asset-search-result"
   elif grep -Fq 'SMOKE_FAILURE stage=dashboard-search' "$evidence_dir/integration-$api_level.log"; then
     export RUN_FAILURE_STAGE="dashboard-search"
   fi
