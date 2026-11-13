@@ -6,7 +6,7 @@ This evidence set records local synthetic-data performance and passive security 
 
 | Area | Outcome |
 |---|---|
-| Android 10/API 29 and Android 14/API 34 | Both CI jobs built and installed the debug APK, confirmed the `MainActivity` process, and passed four app-configuration tests. The screenshots show Android system/launcher “isn't responding” dialogs over blank screens. Visual startup verification therefore failed; login and authenticated feature checks were not executed on these profiles. See the [Android matrix](android-compatibility.md). |
+| Android 10/API 29 and Android 14/API 34 | The initial startup run showed system/launcher not-responding dialogs. The latest executed smoke ([run 43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972), TEST-200) passed install, login, dashboard, search, and asset details on both. API 29 then failed at the test's lazy History selector; API 34 passed history and schedule but the test expected Start/Resume on an asset with a completed schedule. Offline/reconnect was not executed. TEST-201's test/runner corrections are source-reviewed, uncommitted, and unexecuted because the repository execution limit's expiration is unverified; see the [Android matrix](android-compatibility.md) and TEST-201. |
 | Supplemental Android 17/API 37 | Local synthetic-account smoke passed login/navigation, asset search/details, and display of two maintenance-history records. PM form-list loading timed out; offline/reconnect synchronization and live conflict recovery were not executed. This is not evidence for API 29/API 34. |
 | Web/API performance | Executed on the actual local ASP.NET Core API with synthetic SQL Server data: 30 sequential measurements per endpoint, all HTTP 200. React tests/build also passed. |
 | OWASP ZAP | Authorized unauthenticated passive scan repeated after the header fix. The initial missing-header alert is absent from the after-fix report; two informational alert types remain. |
@@ -19,7 +19,9 @@ These outcomes are bounded evidence, not a production load test, a complete mobi
 - Original API performance, first ZAP report, and mobile test source: `53afe5708ca640b6fe7618589cbf3be1a1de6ae3`
 - Response-header remediation: `31da92eb73fa7df8dafaaf378624390ed034010b`
 - Web dependency remediation: `77e23526c9ef906c6157bfe70d0c45769e7d029b`
-- Latest Android workflow source: `530b5be36727698f3e66935e56e53c698e4df52b`
+- Initial Android matrix source: `530b5be36727698f3e66935e56e53c698e4df52b`
+- Latest executed Android smoke: run `43444880972`, commit `523cce1898956434c70d50ebb6b1142be459c7a8`
+- Prepared, unexecuted Android follow-up is based on branch commit `22ec25cb37c19014779ff2968f4d2b4d7bb87773`; its local changes have not been pushed or run.
 - Work branch: `codex/nonfunctional-testing-2026-11`
 - Test window: 2026-11-12 through 2026-11-13 UTC/Asia/Manila
 - Host for local API checks: Windows 11 10.0.26200 x64; 16 logical CPUs; 15.4 GiB RAM
@@ -46,6 +48,7 @@ The sequence of earlier CI install/startup/screenshot failures and their helper 
 ### Android 10/API 29 compatibility retests
 
 [Run 43391036513](https://github.com/lucifron28/UniPM/actions/runs/43391036513) tested 7b53e82126d2a6218bcacf92596285431f2740d8. Android 10 booted, installed the APK, and showed the sign-in controls in the foreground hierarchy; the startup screenshot and 4/4 configuration tests passed. The authenticated Flutter Driver smoke timed out at request_data before login. [Run 43396819069](https://github.com/lucifron28/UniPM/actions/runs/43396819069), tested at 937c59173caa57faf9fe1ed02ed6879691b6cba9, used Flutter's device integration test path. API 29 and API 34 both installed, displayed sign-in, passed configuration checks, synthetic login, authenticated navigation, and dashboard smoke. Both then failed after selecting the DEMO-EL-001 search result because the asset-details control did not appear within 30 seconds. Maintenance history, inspection forms, offline persistence, and reconnect synchronization were not reached or executed. See the [Android matrix](android-compatibility.md), [TEST-196](../../evidence/test-runs/TEST-196-nonfunctional-android-api29-compatibility-retest-2026-11.md), and [TEST-197](../../evidence/test-runs/TEST-197-nonfunctional-android-api29-workflow-followup-2026-11.md). Artifacts: [API 29 first retest](https://github.com/lucifron28/UniPM/actions/runs/43391036513/artifacts/14022946828) · [API 29 follow-up](https://github.com/lucifron28/UniPM/actions/runs/43396819069/artifacts/14023631972).
+The subsequent [run 43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972), recorded in [TEST-200](../../evidence/test-runs/TEST-200-nonfunctional-android-smoke-rerun-2026-11.md), tested `523cce1898956434c70d50ebb6b1142be459c7a8`. It passed through asset details on both profiles. API 29 stopped at a test-side lazy History selector, before calling the history endpoint. API 34 opened history and displayed the expected seeded history category, then reached the schedule. Both inspection-form save/reopen and offline/reconnection checks remained unexecuted. TEST-201 corrects the History back-navigation path, keeps online form lifecycle checks on `DEMO-EL-003`, and prepares offline creation on `DEMO-FE-003` with a direct backend reachability check and a runner-controlled force-stop/cold-start between integration phases. The restart flow must reconnect and sign in before checking the restored queue's server state because authentication is memory-only. These changes remain uncommitted and unexecuted; no TEST-201 result is counted.
 
 ## Web/API performance
 
@@ -95,10 +98,10 @@ npm run test:run
 npm run build
 ```
 
-Android workflow rerun and evidence retrieval commands are in [android-compatibility.md](android-compatibility.md). The latest actual Android compatibility run is [43396819069](https://github.com/lucifron28/UniPM/actions/runs/43396819069); see the results and limitations above.
+Android workflow rerun and evidence retrieval commands are in [android-compatibility.md](android-compatibility.md). The latest executed Android compatibility run is [43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972). TEST-201 remains source-reviewed only; execution was not attempted because the prior repository execution limit has not been confirmed expired.
 
 ## Evidence and boundaries
 
 Committed artifacts, log sources, screenshots, and checksums are indexed in [evidence-index.md](evidence-index.md) and [artifact-checksums.sha256](artifact-checksums.sha256). The Android run artifacts are checked into `android-workflow-runs/`; GitHub run links supply the remote run metadata.
 
-Do not present these results as production testing, load-capacity evidence, a browser-render performance result, full Android workflow acceptance, authenticated ZAP coverage, active security testing, or complete security certification. Android API 29/API 34 interface rendering and authenticated functions remain incomplete as of this run.
+Do not present these results as production testing, load-capacity evidence, a browser-render performance result, full Android workflow acceptance, authenticated ZAP coverage, active security testing, or complete security certification. Android API 29/API 34 history and inspection form coverage, offline persistence, and reconnection synchronization remain incomplete as of the latest executed run, TEST-200. The separately prepared TEST-201 checks are not executed evidence.

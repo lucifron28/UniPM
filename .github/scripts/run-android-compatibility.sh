@@ -19,6 +19,20 @@ screen_status="not_checked"
 launch_command_status="not_executed"
 ui_visible="false"
 application_pid=""
+integration_test_pid=""
+captured_failure_stage=""
+prepare_phase_status="not_executed"
+restart_phase_status="not_executed"
+process_restart_status="not_executed"
+offline_persistence_before_reconnect_status="not_executed"
+process_after_force_stop_status="not_checked"
+offline_backend_unreachable_status="not_checked"
+smoke_user_id=""
+process_before_restart=""
+process_after_restart=""
+network_toggle_status="not_requested"
+offline_network_status="not_requested"
+online_network_status="not_requested"
 device_serial="$(printenv ANDROID_SERIAL || true)"
 if [[ -z "$device_serial" ]]; then device_serial="emulator-5554"; fi
 export ANDROID_SERIAL="$device_serial"
@@ -31,6 +45,17 @@ export RUN_ADB_RECOVERY_ATTEMPTS="$adb_recovery_attempts"
 export RUN_ADB_DEVICE_SERIAL="$device_serial"
 export RUN_APK_BUILD_STATUS="$apk_build_status"
 export RUN_APK_INSTALL_STATUS="$apk_install_status"
+export RUN_NETWORK_TOGGLE_STATUS="$network_toggle_status"
+export RUN_OFFLINE_NETWORK_STATUS="$offline_network_status"
+export RUN_ONLINE_NETWORK_STATUS="$online_network_status"
+export RUN_PREPARE_PHASE_STATUS="$prepare_phase_status"
+export RUN_RESTART_PHASE_STATUS="$restart_phase_status"
+export RUN_PROCESS_RESTART_STATUS="$process_restart_status"
+export RUN_OFFLINE_PERSISTENCE_BEFORE_RECONNECT_STATUS="$offline_persistence_before_reconnect_status"
+export RUN_PROCESS_AFTER_FORCE_STOP_STATUS="$process_after_force_stop_status"
+export RUN_OFFLINE_BACKEND_UNREACHABLE="$offline_backend_unreachable_status"
+export RUN_PROCESS_BEFORE_RESTART="$process_before_restart"
+export RUN_PROCESS_AFTER_RESTART="$process_after_restart"
 device_release=""
 device_api=""
 device_model=""
@@ -92,6 +117,40 @@ wait_for_android_device() {
   echo "ADB did not report a boot-complete Android device after six readiness checks and $adb_recovery_attempts bounded recovery attempts." >&2
   return 1
 }
+network_toggle_log="$evidence_dir/emulator-network-toggle.log"
+run_network_command() {
+  local label="$1"
+  shift
+  local status=0
+  timeout 15s adb -s "$device_serial" shell "$@" >> "$network_toggle_log" 2>&1 || status=$?
+  echo "${label}_exit=$status" >> "$network_toggle_log"
+  return "$status"
+}
+toggle_emulator_network() {
+  local mode="$1"
+  local required_failure=0
+  {
+    echo "network_request=$mode"
+    date -u +"captured_at_utc=%Y-%m-%dT%H:%M:%SZ"
+  } >> "$network_toggle_log"
+  if [[ "$mode" == "offline" ]]; then
+    if ! run_network_command airplane_mode_on settings put global airplane_mode_on 1; then required_failure=1; fi
+    if ! run_network_command airplane_broadcast_off am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true; then required_failure=1; fi
+    if ! run_network_command wifi_disable svc wifi disable; then required_failure=1; fi
+    run_network_command data_disable svc data disable || true
+  else
+    if ! run_network_command airplane_mode_off settings put global airplane_mode_on 0; then required_failure=1; fi
+    if ! run_network_command airplane_broadcast_on am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false; then required_failure=1; fi
+    run_network_command data_enable svc data enable || true
+    if ! run_network_command wifi_enable svc wifi enable; then required_failure=1; fi
+  fi
+  sleep 2
+  timeout 20s adb -s "$device_serial" shell dumpsys connectivity \
+    > "$evidence_dir/connectivity-$mode.txt" 2>> "$network_toggle_log" || required_failure=1
+  echo "network_toggle_${mode}=$([[ "$required_failure" -eq 0 ]] && echo passed || echo failed)" \
+    | tee -a "$network_toggle_log"
+  return "$required_failure"
+}
 capture_diagnostics() {
   local exit_code="$1"
   trap - EXIT
@@ -107,6 +166,7 @@ capture_diagnostics() {
   timeout 10s adb devices -l > "$evidence_dir/adb-devices.txt" 2>&1
   timeout 15s adb -s "$device_serial" get-state > "$evidence_dir/adb-selected-device-state.txt" 2>&1
   timeout 20s adb -s "$device_serial" shell dumpsys activity activities > "$evidence_dir/activity-activities.txt" 2>&1
+  timeout 20s adb -s "$device_serial" shell dumpsys connectivity > "$evidence_dir/connectivity-final.txt" 2>&1
   timeout 20s adb -s "$device_serial" shell dumpsys window windows > "$evidence_dir/window-state.txt" 2>&1
   timeout 20s adb -s "$device_serial" shell dumpsys cpuinfo > "$evidence_dir/cpuinfo.txt" 2>&1
   timeout 20s adb -s "$device_serial" shell dumpsys meminfo io.github.lucifron28.unipm > "$evidence_dir/app-meminfo.txt" 2>&1
@@ -167,8 +227,19 @@ summary = {
     "visible_unipm_login_ui": os.environ.get("RUN_UI_VISIBLE") == "true",
     "startup_outcome": os.environ.get("RUN_STARTUP_STATUS"),
     "authenticated_smoke_outcome": os.environ.get("RUN_INTEGRATION_STATUS"),
+    "prepare_phase_outcome": os.environ.get("RUN_PREPARE_PHASE_STATUS"),
+    "restart_phase_outcome": os.environ.get("RUN_RESTART_PHASE_STATUS"),
+    "application_process_restart_outcome": os.environ.get("RUN_PROCESS_RESTART_STATUS"),
+    "offline_draft_persistence_before_reconnection": os.environ.get("RUN_OFFLINE_PERSISTENCE_BEFORE_RECONNECT_STATUS"),
+    "process_absent_after_force_stop": os.environ.get("RUN_PROCESS_AFTER_FORCE_STOP_STATUS"),
+    "offline_backend_unreachable_check": os.environ.get("RUN_OFFLINE_BACKEND_UNREACHABLE"),
+    "process_before_restart": os.environ.get("RUN_PROCESS_BEFORE_RESTART"),
+    "process_after_restart": os.environ.get("RUN_PROCESS_AFTER_RESTART"),
     "failure_stage": os.environ.get("RUN_FAILURE_STAGE"),
     "flutter_configuration_test_outcome": os.environ.get("RUN_CONFIG_TEST_STATUS"),
+    "emulator_network_toggle_outcome": os.environ.get("RUN_NETWORK_TOGGLE_STATUS"),
+    "emulator_offline_transition_outcome": os.environ.get("RUN_OFFLINE_NETWORK_STATUS"),
+    "emulator_reconnection_outcome": os.environ.get("RUN_ONLINE_NETWORK_STATUS"),
     "workflow_script_exit_code": int(os.environ.get("RUN_EXIT_CODE", "1")),
     "tested_commit": os.environ.get("GITHUB_SHA"),
     "workflow_run_id": os.environ.get("GITHUB_RUN_ID"),
@@ -429,82 +500,264 @@ configuration_test_status="passed"
 export RUN_CONFIG_TEST_STATUS="$configuration_test_status"
 cat "$evidence_dir/config-tests-$api_level.log"
 
-echo "Running authenticated, server-backed Flutter integration smoke"
-wait_for_android_device "before authenticated integration smoke"
-integration_status="running"
-export RUN_INTEGRATION_STATUS="$integration_status"
-integration_raw_log="$RUNNER_TEMP/unipm-android-integration-api-$api_level.raw.log"
-set +e
-timeout 30m flutter test \
-  --no-pub \
-  --reporter expanded \
-  --device-id "$device_serial" \
-  --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/ \
-  --dart-define=UNIPM_SMOKE_PASSWORD="$UNIPM_DEV_USER_PASSWORD" \
-  --dart-define=UNIPM_SMOKE_API="$api_level" \
-  integration_test/nonfunctional_smoke_test.dart \
-  > "$integration_raw_log" 2>&1 &
-integration_test_pid=$!
-captured_failure_stage=""
-while true; do
-  capture_stage=""
-  if [[ -s "$integration_raw_log" ]]; then
-    if grep -Fq 'SMOKE_CAPTURE_SCREEN=dashboard-search' "$integration_raw_log"; then
-      capture_stage="dashboard-search"
-    elif grep -Fq 'SMOKE_CAPTURE_SCREEN=asset-details' "$integration_raw_log"; then
-      capture_stage="asset-details"
-    elif grep -Fq 'SMOKE_CAPTURE_SCREEN=asset-search-result' "$integration_raw_log"; then
-      capture_stage="asset-search-result"
+run_integration_phase() {
+  local phase="$1"
+  local phase_raw_log="$RUNNER_TEMP/unipm-android-integration-api-$api_level-$phase.raw.log"
+  local phase_safe_log="$evidence_dir/integration-$api_level-$phase.log"
+  local phase_exit=0
+  local last_captured_failure_stage=""
+  local offline_network_request_seen="false"
+  local online_network_request_seen="false"
+  local restart_login_observed="false"
+
+  wait_for_android_device "before integration phase $phase" || return $?
+  : > "$phase_raw_log" || return $?
+  echo "Running server-backed integration phase $phase on API $api_level"
+  timeout 30m flutter test \
+    --no-pub \
+    --reporter expanded \
+    --device-id "$device_serial" \
+    --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5254/ \
+    --dart-define=UNIPM_SMOKE_PASSWORD="$UNIPM_DEV_USER_PASSWORD" \
+    --dart-define=UNIPM_SMOKE_API="$api_level" \
+    --dart-define=UNIPM_SMOKE_PHASE="$phase" \
+    --dart-define=UNIPM_SMOKE_USER_ID="$smoke_user_id" \
+    integration_test/nonfunctional_smoke_test.dart \
+    > "$phase_raw_log" 2>&1 &
+  integration_test_pid=$!
+
+  while true; do
+    if [[ "$phase" == "prepare" && "$offline_network_request_seen" != "true" ]] \
+        && grep -Fq 'SMOKE_NETWORK_REQUEST=offline' "$phase_raw_log" 2>/dev/null; then
+      offline_network_request_seen="true"
+      if toggle_emulator_network offline; then
+        network_toggle_status="passed"
+        offline_network_status="passed"
+      else
+        network_toggle_status="failed"
+        offline_network_status="failed"
+        echo "The requested offline network transition did not complete cleanly." >&2
+      fi
+      export RUN_NETWORK_TOGGLE_STATUS="$network_toggle_status"
+      export RUN_OFFLINE_NETWORK_STATUS="$offline_network_status"
     fi
-  fi
-  if [[ -n "$capture_stage" ]]; then
-    failure_screenshot="$evidence_dir/$capture_stage-failure.png"
-    failure_window="$evidence_dir/$capture_stage-failure-window.xml"
-    echo "Capturing Android screen and window hierarchy for integration failure stage $capture_stage."
-    timeout 30s adb -s "$device_serial" exec-out screencap -p \
-      > "$failure_screenshot" 2> "$evidence_dir/$capture_stage-failure-screenshot.log" || true
-    if [[ -s "$failure_screenshot" ]]; then
+    if [[ "$phase" == "prepare" ]] \
+        && grep -Fq 'SMOKE_RESULT backend_disconnected=PASS' "$phase_raw_log" 2>/dev/null; then
+      offline_backend_unreachable_status="passed"
+      export RUN_OFFLINE_BACKEND_UNREACHABLE="$offline_backend_unreachable_status"
+    fi
+    if [[ "$phase" == "restart" ]] \
+        && grep -Fq 'SMOKE_RESTARTED_LOGIN=PASS' "$phase_raw_log" 2>/dev/null \
+        && [[ "$restart_login_observed" != "true" ]]; then
+      restart_login_observed="true"
+      timeout 20s adb -s "$device_serial" shell dumpsys connectivity \
+        > "$evidence_dir/connectivity-after-cold-start-offline.txt" 2>&1 || true
+      process_after_restart="$(timeout 15s adb -s "$device_serial" shell pidof io.github.lucifron28.unipm 2>/dev/null | tr -d '\r' || true)"
+      if [[ -n "$process_after_restart" ]]; then
+        process_restart_status="passed"
+      else
+        process_restart_status="failed"
+      fi
+      export RUN_PROCESS_AFTER_RESTART="$process_after_restart"
+      export RUN_PROCESS_RESTART_STATUS="$process_restart_status"
+      echo "process_after_restart=$process_after_restart"
+      echo "application_process_restart=$process_restart_status"
+    fi
+    if [[ "$phase" == "restart" ]] \
+        && grep -Fq 'SMOKE_RESULT offline_draft_persistence_after_restart_before_reconnect=PASS' "$phase_raw_log" 2>/dev/null; then
+      offline_persistence_before_reconnect_status="passed"
+      export RUN_OFFLINE_PERSISTENCE_BEFORE_RECONNECT_STATUS="$offline_persistence_before_reconnect_status"
+    fi
+    if [[ "$phase" == "restart" && "$online_network_request_seen" != "true" ]] \
+        && grep -Fq 'SMOKE_NETWORK_REQUEST=online' "$phase_raw_log" 2>/dev/null; then
+      online_network_request_seen="true"
+      if [[ "$offline_persistence_before_reconnect_status" != "passed" ]]; then
+        echo "Refusing to reconnect before post-restart offline Draft persistence is verified." >&2
+      elif toggle_emulator_network online; then
+        online_network_status="passed"
+        if [[ "$network_toggle_status" == "failed" ]]; then
+          network_toggle_status="partial"
+        else
+          network_toggle_status="passed"
+        fi
+      else
+        network_toggle_status="failed"
+        online_network_status="failed"
+        echo "The requested online network transition did not complete cleanly." >&2
+      fi
+      export RUN_NETWORK_TOGGLE_STATUS="$network_toggle_status"
+      export RUN_ONLINE_NETWORK_STATUS="$online_network_status"
+    fi
+
+    local capture_stage=""
+    if [[ -s "$phase_raw_log" ]]; then
+      capture_stage="$(grep -oE 'SMOKE_CAPTURE_SCREEN=[A-Za-z0-9_-]+' "$phase_raw_log" \
+        | tail -n 1 | cut -d= -f2 || true)"
+    fi
+    if [[ -n "$capture_stage" && "$capture_stage" != "$last_captured_failure_stage" ]]; then
+      local failure_screenshot="$evidence_dir/$capture_stage-failure.png"
+      local failure_window="$evidence_dir/$capture_stage-failure-window.xml"
+      echo "Capturing Android screen and window hierarchy for integration failure stage $capture_stage."
+      timeout 30s adb -s "$device_serial" exec-out screencap -p \
+        > "$failure_screenshot" 2> "$evidence_dir/$capture_stage-failure-screenshot.log" || true
       timeout 15s adb -s "$device_serial" shell uiautomator dump "/sdcard/unipm-$capture_stage-failure.xml" \
         > "$evidence_dir/$capture_stage-failure-uiautomator.log" 2>&1 || true
       timeout 15s adb -s "$device_serial" pull "/sdcard/unipm-$capture_stage-failure.xml" "$failure_window" \
         >> "$evidence_dir/$capture_stage-failure-uiautomator.log" 2>&1 || true
-      captured_failure_stage="$capture_stage"
-      break
+      if [[ -s "$failure_screenshot" || -s "$failure_window" ]]; then
+        captured_failure_stage="$capture_stage"
+        last_captured_failure_stage="$capture_stage"
+        export RUN_FAILURE_STAGE="$captured_failure_stage"
+      fi
     fi
-  fi
-  if ! kill -0 "$integration_test_pid" 2>/dev/null; then
-    break
-  fi
-  sleep 0.25
-done
-wait "$integration_test_pid"
-drive_rc=$?
-set -e
-if [[ -n "$captured_failure_stage" ]]; then
-  export RUN_FAILURE_STAGE="$captured_failure_stage"
-fi
-python3 - "$integration_raw_log" "$evidence_dir/integration-$api_level.log" "$UNIPM_DEV_USER_PASSWORD" <<'PY'
+    if ! kill -0 "$integration_test_pid" 2>/dev/null; then break; fi
+    sleep 0.25
+  done
+
+  set +e
+  wait "$integration_test_pid"
+  phase_exit=$?
+  set -e
+
+  python3 - "$phase_raw_log" "$phase_safe_log" "$UNIPM_DEV_USER_PASSWORD" "$evidence_dir" "$api_level" "$phase" <<'PY'
 from pathlib import Path
+import re
 import sys
 
-raw_path, safe_path, password = sys.argv[1:]
+raw_path, safe_path, password, evidence_dir, api_level, phase = sys.argv[1:]
 text = Path(raw_path).read_text(encoding="utf-8", errors="replace")
-Path(safe_path).write_text(text.replace(password, "[REDACTED]"), encoding="utf-8")
+safe_text = text.replace(password, "[REDACTED]")
+Path(safe_path).write_text(safe_text, encoding="utf-8")
+diagnostics = re.findall(
+    r"SMOKE_WIDGET_DIAGNOSTICS_BEGIN stage=.*?SMOKE_WIDGET_DIAGNOSTICS_END stage=.*?(?:\n|$)",
+    safe_text,
+    flags=re.DOTALL,
+)
+if diagnostics:
+    output = Path(evidence_dir) / f"flutter-widget-diagnostics-api-{api_level}-{phase}.log"
+    output.write_text("\n".join(diagnostics), encoding="utf-8")
 PY
-cat "$evidence_dir/integration-$api_level.log"
-if [[ "$drive_rc" -ne 0 ]]; then
+
+  : > "$evidence_dir/integration-$api_level.log"
+  for completed_phase in prepare restart; do
+    completed_log="$evidence_dir/integration-$api_level-$completed_phase.log"
+    if [[ -s "$completed_log" ]]; then cat "$completed_log" >> "$evidence_dir/integration-$api_level.log"; fi
+  done
+  cat "$phase_safe_log"
+
+  if [[ "$phase_exit" -ne 0 ]]; then
+    integration_status="failed"
+    export RUN_INTEGRATION_STATUS="$integration_status"
+    if grep -Fq 'SMOKE_FAILURE stage=' "$phase_safe_log"; then
+      export RUN_FAILURE_STAGE="$(grep -oE 'SMOKE_FAILURE stage=[A-Za-z0-9_-]+' \
+        "$phase_safe_log" | tail -n 1 | cut -d= -f2 || true)"
+    fi
+    return "$phase_exit"
+  fi
+
+  if [[ "$phase" == "prepare" ]]; then
+    if ! grep -Fq 'SMOKE_PHASE_COMPLETE=offline-pending-restart' "$phase_safe_log"; then
+      echo "The prepare phase exited without its offline pending-work completion marker." >&2
+      return 1
+    fi
+    prepare_phase_status="passed"
+    export RUN_PREPARE_PHASE_STATUS="$prepare_phase_status"
+  else
+    restart_phase_status="passed"
+    export RUN_RESTART_PHASE_STATUS="$restart_phase_status"
+  fi
+
+  if [[ "$phase" == "prepare" ]]; then
+    smoke_user_id="$(grep -oE 'SMOKE_TEST_USER_ID=[0-9a-fA-F-]{36}' "$phase_safe_log" \
+      | tail -n 1 | cut -d= -f2 || true)"
+    if [[ ! "$smoke_user_id" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+      echo "The prepare phase did not emit the synthetic smoke user ID needed to inspect the offline snapshot after restart." >&2
+      return 1
+    fi
+  fi
+}
+
+integration_status="running"
+export RUN_INTEGRATION_STATUS="$integration_status"
+timeout 20s adb -s "$device_serial" shell dumpsys connectivity \
+  > "$evidence_dir/connectivity-before-smoke.txt" 2>&1 || true
+
+if run_integration_phase prepare; then
+  :
+else
+  phase_rc=$?
   integration_status="failed"
   export RUN_INTEGRATION_STATUS="$integration_status"
-  if grep -Fq 'SMOKE_FAILURE stage=asset-details' "$evidence_dir/integration-$api_level.log"; then
-    export RUN_FAILURE_STAGE="asset-details"
-  elif grep -Fq 'SMOKE_FAILURE stage=asset-search-result' "$evidence_dir/integration-$api_level.log"; then
-    export RUN_FAILURE_STAGE="asset-search-result"
-  elif grep -Fq 'SMOKE_FAILURE stage=dashboard-search' "$evidence_dir/integration-$api_level.log"; then
-    export RUN_FAILURE_STAGE="dashboard-search"
-  fi
-  exit "$drive_rc"
+  exit "$phase_rc"
 fi
+
+if [[ "$offline_backend_unreachable_status" != "passed" ]]; then
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  echo "The test did not verify that the backend became unreachable before saving the offline Draft." >&2
+  exit 1
+fi
+if [[ "$offline_network_status" != "passed" ]]; then
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  echo "The emulator network transition to offline did not complete successfully." >&2
+  exit 1
+fi
+
+process_before_restart="$(timeout 15s adb -s "$device_serial" shell pidof io.github.lucifron28.unipm 2>/dev/null | tr -d '\r' || true)"
+export RUN_PROCESS_BEFORE_RESTART="$process_before_restart"
+echo "process_before_restart=$process_before_restart"
+timeout 15s adb -s "$device_serial" shell am force-stop io.github.lucifron28.unipm \
+  > "$evidence_dir/force-stop-before-restart.log" 2>&1
+sleep 2
+process_after_force_stop="$(timeout 15s adb -s "$device_serial" shell pidof io.github.lucifron28.unipm 2>/dev/null | tr -d '\r' || true)"
+echo "process_after_force_stop=$process_after_force_stop"
+if [[ -z "$process_after_force_stop" ]]; then
+  process_after_force_stop_status="absent"
+else
+  process_after_force_stop_status="present"
+fi
+export RUN_PROCESS_AFTER_FORCE_STOP_STATUS="$process_after_force_stop_status"
+if [[ -n "$process_after_force_stop" ]]; then
+  process_restart_status="failed"
+  export RUN_PROCESS_RESTART_STATUS="$process_restart_status"
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  export RUN_FAILURE_STAGE="offline-process-restart"
+  echo "The application process remained alive after the force-stop request." >&2
+  exit 1
+fi
+timeout 20s adb -s "$device_serial" shell dumpsys connectivity \
+  > "$evidence_dir/connectivity-before-process-restart.txt" 2>&1 || true
+
+if run_integration_phase restart; then
+  :
+else
+  phase_rc=$?
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  exit "$phase_rc"
+fi
+
+if [[ "$process_restart_status" != "passed" ]]; then
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  echo "The runner did not observe a new application process after the force-stop." >&2
+  exit 1
+fi
+if [[ "$offline_persistence_before_reconnect_status" != "passed" ]]; then
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  echo "The runner did not observe local offline Draft persistence verification before reconnection." >&2
+  exit 1
+fi
+if [[ "$online_network_status" != "passed" ]]; then
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  echo "The emulator network reconnection did not complete successfully." >&2
+  exit 1
+fi
+
 integration_status="passed"
 export RUN_INTEGRATION_STATUS="$integration_status"
-
 echo "Smoke and supplementary checks completed for API $api_level."

@@ -4,6 +4,8 @@ The test results are separate from the manuscript. Committed raw reports, measur
 
 ## Primary records and summaries
 
+- [TEST-201 prepared Android follow-up](../../evidence/test-runs/TEST-201-android-compatibility-follow-up-prepared-2026-11.md) — review-only changes correct lazy History navigation, separate the online and offline synthetic fixtures, and prepare direct offline reachability plus a force-stop/restart and server-sync check; no build or test has executed because expiration of the repository execution limit is unverified.
+- [TEST-200 Android smoke rerun](../../evidence/test-runs/TEST-200-nonfunctional-android-smoke-rerun-2026-11.md) — run 43444880972 passed asset details on both profiles; API 29 stopped at the lazy History selector and API 34 stopped at a completed-schedule fixture mismatch.
 - [TEST-193 original non-functional evidence](../../evidence/test-runs/TEST-193-nonfunctional-requirements-2026-11.md) â€” original API timings, initial passive ZAP scan, React suite/build, and supplemental API 37 tests. Preserved unchanged.
 - [TEST-194 Android/security follow-up](../../evidence/test-runs/TEST-194-nonfunctional-android-security-followup-2026-11.md) â€” exact API 29/API 34 Actions outcomes and screenshots; X-Content-Type-Options remediation and repeated ZAP scan; npm advisory classification.
 - [TEST-195 Android compatibility rerun](../../evidence/test-runs/TEST-195-nonfunctional-android-compatibility-rerun-2026-11.md) â€” latest run 43363392229; API 29 ADB disconnect; API 34 visible sign-in screen, configuration tests passed, authenticated driver timed out.
@@ -56,3 +58,7 @@ Tested commit: 2fa502628a21e82686920a46680706b3ce0c68ba
 - API 29 / Android 10 / Nexus 5: job 131681940613; artifact ID 14009432873; helper, summary, diagnostics, and full Actions job log under android-workflow-runs/43363392229/api29/. The final screenshot is empty because ADB lost the emulator before installation.
 - API 34 / Android 14 / Pixel 7 Pro: job 131681941121; helper, summary, integration timeout log, configuration test log, full Actions job log, and screenshots under android-workflow-runs/43363392229/api34/. The startup screenshot shows UniPM sign-in. The authenticated test timed out before credential entry.
 - SHA-256 hashes for all 54 downloaded run files (including zero-byte screenshots/logs) are recorded in `artifact-checksums.sha256`.
+
+### Latest executed Android smoke — TEST-200 / run 43444880972
+
+The [TEST-200 record](../../evidence/test-runs/TEST-200-nonfunctional-android-smoke-rerun-2026-11.md) links the exact API 29/API 34 jobs and artifacts. Prior evidence is preserved. TEST-201 is source-reviewed preparation only; its changes remain uncommitted/unpushed, with no run artifacts or executed status.
