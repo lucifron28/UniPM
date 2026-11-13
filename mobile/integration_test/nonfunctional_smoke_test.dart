@@ -247,7 +247,11 @@ void main() {
     debugPrint('SMOKE_RESULT maintenance_history_display=PASS');
 
     await tester.pageBack();
-    await _waitFor(tester, find.text('Asset found'), 'return to asset details');
+    await _waitFor(
+      tester,
+      historyAction,
+      'return from maintenance history to asset details',
+    );
     await tester.pageBack();
     await _waitFor(
       tester,
@@ -310,7 +314,11 @@ void main() {
       timeout: const Duration(seconds: 45),
     );
     expect(find.byKey(const Key('resume-pm')), findsNothing);
-    await _scrollUntilVisible(tester, startInspection);
+    await _bringButtonIntoViewAndVerifyHitTest(
+      tester,
+      startInspection,
+      'Start Inspection',
+    );
     expect(
       tester.widget<FilledButton>(startInspection).onPressed,
       isNotNull,
@@ -359,13 +367,12 @@ void main() {
     );
 
     setStage('pm-form-reopen');
-    await tester.pageBack();
-    await _waitFor(tester, find.text('Asset found'), 'return to PM asset details');
     final resumeInspection = find.byKey(const Key('resume-pm'));
+    await tester.pageBack();
     await _waitFor(
       tester,
       resumeInspection,
-      'Resume Inspection action for the saved Draft',
+      'return to asset details with Resume Inspection for the saved Draft',
       timeout: const Duration(seconds: 45),
     );
     await _scrollUntilVisible(tester, resumeInspection);
@@ -413,8 +420,8 @@ void main() {
     await tester.pageBack();
     await _waitFor(
       tester,
-      find.text('Asset found'),
-      'return to PM asset details after edit',
+      resumeInspection,
+      'return to asset details with Resume Inspection after edit',
     );
     await _scrollUntilVisible(tester, resumeInspection);
     await tester.tap(resumeInspection);
@@ -436,7 +443,7 @@ void main() {
     await tester.pageBack();
     await _waitFor(
       tester,
-      find.text('Asset found'),
+      resumeInspection,
       'return to asset details after online form edit',
     );
     await tester.pageBack();
@@ -476,7 +483,11 @@ void main() {
       'eligible offline-fixture Start action for $_offlineAssetCode',
       timeout: const Duration(seconds: 45),
     );
-    await _scrollUntilVisible(tester, offlineStart);
+    await _bringButtonIntoViewAndVerifyHitTest(
+      tester,
+      offlineStart,
+      'Offline fixture Start Inspection',
+    );
     expect(tester.widget<FilledButton>(offlineStart).onPressed, isNotNull);
     debugPrint(
       'SMOKE_FIXTURE offline_asset=$_offlineAssetCode schedule=$_offlineScheduleId '
@@ -849,6 +860,38 @@ Future<void> _scrollUntilVisible(WidgetTester tester, Finder target) async {
     240,
     scrollable: find.byWidget(verticalScrollables.first.widget),
     maxScrolls: 18,
+  );
+}
+
+Future<void> _bringButtonIntoViewAndVerifyHitTest(
+  WidgetTester tester,
+  Finder button,
+  String description,
+) async {
+  await tester.ensureVisible(button);
+  await tester.pump();
+
+  final buttonBounds = tester.getRect(button);
+  final renderViewBounds = Offset.zero & tester.binding.renderViews.single.size;
+  expect(
+    buttonBounds.left >= renderViewBounds.left &&
+        buttonBounds.top >= renderViewBounds.top &&
+        buttonBounds.right <= renderViewBounds.right &&
+        buttonBounds.bottom <= renderViewBounds.bottom,
+    isTrue,
+    reason:
+        '$description must be fully inside the rendered viewport before tapping. '
+        'Button bounds: $buttonBounds; viewport bounds: $renderViewBounds.',
+  );
+
+  final buttonRenderObject = tester.renderObject(button);
+  final hitTest = tester.hitTestOnBinding(buttonBounds.center);
+  expect(
+    hitTest.path.any(
+      (entry) => identical(entry.target, buttonRenderObject),
+    ),
+    isTrue,
+    reason: 'The visible $description center must hit the button before tapping.',
   );
 }
 
