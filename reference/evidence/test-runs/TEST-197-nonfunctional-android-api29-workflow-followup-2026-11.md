@@ -33,7 +33,8 @@ The workflow changed the integration invocation to flutter test --no-pub --repor
 | Dashboard smoke | PASSED — marker emitted without Flutter rendering errors. | PASSED — same. |
 | Asset search | PASSED — DEMO-EL-001 appeared and was selected. | PASSED — same. |
 | Asset details | FAILED — no expected asset-code control within 30 seconds. | FAILED — same. |
-| History, inspection forms, offline persistence, reconnect | NOT EXECUTED after failure / not part of this smoke. | NOT EXECUTED after failure / not part of this smoke. |
+| Maintenance history / inspection forms | NOT EXECUTED after the asset-details failure. | NOT EXECUTED after the asset-details failure. |
+| Offline draft persistence / reconnect synchronization | NOT EXECUTED; not part of this device smoke. | NOT EXECUTED; not part of this device smoke. |
 
 The emulator and ADB remained available through the failing step, so this is a functional smoke failure rather than an infrastructure or installation blocker. Console evidence does not distinguish route/data behavior from a selector mismatch; the cause remains undetermined. History and inspection forms were not reached. The test did not toggle networking, persist an offline draft, or verify synchronization.
 
