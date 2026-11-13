@@ -126,14 +126,18 @@ capture_diagnostics() {
     cp "$RUNNER_TEMP/unipm-android-api.log" "$evidence_dir/api-server.log"
   fi
   if [[ -f "$evidence_dir/api-server.log" ]]; then
-    grep -E 'Request finished .*GET .*/api/v1/assets' \
+    grep -E 'Request finished HTTP/1\.1 .*\/api\/v1\/' \
+      "$evidence_dir/api-server.log" > "$evidence_dir/api-request-status.log" || true
+    grep -E 'Request finished HTTP/1\.1 .*\/api\/v1\/assets' \
       "$evidence_dir/api-server.log" > "$evidence_dir/asset-api-status.log" || true
   fi
   if [[ "${RUN_FAILURE_STAGE:-}" == "asset-details" ]]; then
-    [[ -s "$evidence_dir/final-$api_level.png" ]] &&
+    if [[ ! -s "$evidence_dir/asset-details-failure.png" && -s "$evidence_dir/final-$api_level.png" ]]; then
       cp "$evidence_dir/final-$api_level.png" "$evidence_dir/asset-details-failure.png"
-    [[ -s "$evidence_dir/ui-final.xml" ]] &&
+    fi
+    if [[ ! -s "$evidence_dir/asset-details-failure-window.xml" && -s "$evidence_dir/ui-final.xml" ]]; then
       cp "$evidence_dir/ui-final.xml" "$evidence_dir/asset-details-failure-window.xml"
+    fi
   fi
   RUN_EXIT_CODE="$exit_code" python3 - "$evidence_dir/summary.json" <<'PY'
 import json
@@ -159,6 +163,7 @@ summary = {
     "apk_build_outcome": os.environ.get("RUN_APK_BUILD_STATUS"),
     "apk_install_outcome": os.environ.get("RUN_APK_INSTALL_STATUS"),
     "am_start_result": os.environ.get("RUN_LAUNCH_STATUS"),
+    "launcher_anr_recovery_attempts": int(os.environ.get("RUN_LAUNCHER_ANR_RECOVERY_ATTEMPTS", "0")),
     "visible_unipm_login_ui": os.environ.get("RUN_UI_VISIBLE") == "true",
     "startup_outcome": os.environ.get("RUN_STARTUP_STATUS"),
     "authenticated_smoke_outcome": os.environ.get("RUN_INTEGRATION_STATUS"),
@@ -319,9 +324,9 @@ launch_output="$(timeout 120s adb shell am start -W -n io.github.lucifron28.unip
 launch_rc=$?
 set -e
 printf '%s\n' "$launch_output" | tee "$evidence_dir/activity-start.txt"
-if [[ "$launch_rc" -eq 0 ]] && printf '%s\n' "$launch_output" | grep -Fq 'Status: ok'; then
+if printf '%s\n' "$launch_output" | grep -Fq 'Status: ok'; then
   launch_command_status="status_ok"
-elif [[ "$launch_rc" -eq 124 ]]; then
+elif [[ "$launch_rc" -eq 124 ]] || printf '%s\n' "$launch_output" | grep -Fq 'Status: timeout'; then
   launch_command_status="timeout_waiting_for_activity_manager"
 else
   launch_command_status="exit_$launch_rc"
@@ -331,6 +336,8 @@ echo "am_start_result=$launch_command_status"
 
 echo "Waiting for the actual UniPM login interface in the foreground window hierarchy"
 ui_visible=false
+launcher_anr_recovery_attempts=0
+export RUN_LAUNCHER_ANR_RECOVERY_ATTEMPTS="$launcher_anr_recovery_attempts"
 for attempt in $(seq 1 20); do
   if ! timeout 8s adb -s "$device_serial" get-state >/dev/null 2>&1; then
     wait_for_android_device "login UI capture attempt $attempt"
@@ -344,6 +351,41 @@ for attempt in $(seq 1 20); do
 
   timeout 30s adb -s "$device_serial" exec-out screencap -p > "$evidence_dir/startup-login.png" \
     2> "$evidence_dir/startup-screenshot.log" || true
+
+  if [[ -s "$evidence_dir/ui-login.xml" ]] \
+      && grep -Fq "Pixel Launcher isn't responding" "$evidence_dir/ui-login.xml" \
+      && [[ "$launcher_anr_recovery_attempts" -lt 1 ]]; then
+    launcher_anr_recovery_attempts=$((launcher_anr_recovery_attempts + 1))
+    export RUN_LAUNCHER_ANR_RECOVERY_ATTEMPTS="$launcher_anr_recovery_attempts"
+    launcher_process_id="$(timeout 10s adb -s "$device_serial" shell pidof io.github.lucifron28.unipm 2>/dev/null | tr -d '\r' || true)"
+    wait_center="$(python3 - "$evidence_dir/ui-login.xml" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if node.attrib.get("resource-id") != "android:id/aerr_wait":
+        continue
+    bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    if bounds:
+        x1, y1, x2, y2 = (int(value) for value in bounds.groups())
+        print((x1 + x2) // 2, (y1 + y2) // 2)
+        break
+PY
+)"
+    if [[ -n "$launcher_process_id" && -n "$wait_center" ]]; then
+      cp "$evidence_dir/startup-login.png" "$evidence_dir/launcher-anr-before-wait.png"
+      cp "$evidence_dir/ui-login.xml" "$evidence_dir/launcher-anr-before-wait-window.xml"
+      read -r wait_x wait_y <<< "$wait_center"
+      echo "Pixel Launcher ANR is covering UniPM startup while the app process remains alive; tapping Android Wait at $wait_x,$wait_y."
+      timeout 10s adb -s "$device_serial" shell input tap "$wait_x" "$wait_y" \
+        > "$evidence_dir/launcher-anr-wait-action.log" 2>&1 || true
+      sleep 3
+      continue
+    fi
+    echo "Pixel Launcher ANR was detected, but its Wait control or the UniPM process was unavailable; retaining the startup failure." >&2
+  fi
 
   if [[ -s "$evidence_dir/ui-login.xml" ]] \
       && grep -Fq 'Sign in' "$evidence_dir/ui-login.xml" \
@@ -360,6 +402,11 @@ if [[ "$ui_visible" != true ]]; then
   startup_status="failed"
   export RUN_STARTUP_STATUS="$startup_status"
   export RUN_UI_VISIBLE="$ui_visible"
+  if [[ -s "$evidence_dir/ui-login.xml" ]] && grep -Fq "Pixel Launcher isn't responding" "$evidence_dir/ui-login.xml"; then
+    export RUN_FAILURE_STAGE="android-launcher-anr"
+    cp "$evidence_dir/startup-login.png" "$evidence_dir/launcher-anr-failure.png"
+    cp "$evidence_dir/ui-login.xml" "$evidence_dir/launcher-anr-failure-window.xml"
+  fi
   echo "UniPM login controls were not verified in a responsive foreground UI; process presence and screenshot bytes are insufficient." >&2
   exit 1
 fi
@@ -396,9 +443,44 @@ timeout 30m flutter test \
   --dart-define=UNIPM_SMOKE_PASSWORD="$UNIPM_DEV_USER_PASSWORD" \
   --dart-define=UNIPM_SMOKE_API="$api_level" \
   integration_test/nonfunctional_smoke_test.dart \
-  > "$integration_raw_log" 2>&1
+  > "$integration_raw_log" 2>&1 &
+integration_test_pid=$!
+captured_failure_stage=""
+while true; do
+  capture_stage=""
+  if [[ -s "$integration_raw_log" ]]; then
+    if grep -Fq 'SMOKE_CAPTURE_SCREEN=dashboard-search' "$integration_raw_log"; then
+      capture_stage="dashboard-search"
+    elif grep -Fq 'SMOKE_CAPTURE_SCREEN=asset-details' "$integration_raw_log"; then
+      capture_stage="asset-details"
+    fi
+  fi
+  if [[ -n "$capture_stage" ]]; then
+    failure_screenshot="$evidence_dir/$capture_stage-failure.png"
+    failure_window="$evidence_dir/$capture_stage-failure-window.xml"
+    echo "Capturing Android screen and window hierarchy for integration failure stage $capture_stage."
+    timeout 30s adb -s "$device_serial" exec-out screencap -p \
+      > "$failure_screenshot" 2> "$evidence_dir/$capture_stage-failure-screenshot.log" || true
+    if [[ -s "$failure_screenshot" ]]; then
+      timeout 15s adb -s "$device_serial" shell uiautomator dump "/sdcard/unipm-$capture_stage-failure.xml" \
+        > "$evidence_dir/$capture_stage-failure-uiautomator.log" 2>&1 || true
+      timeout 15s adb -s "$device_serial" pull "/sdcard/unipm-$capture_stage-failure.xml" "$failure_window" \
+        >> "$evidence_dir/$capture_stage-failure-uiautomator.log" 2>&1 || true
+      captured_failure_stage="$capture_stage"
+      break
+    fi
+  fi
+  if ! kill -0 "$integration_test_pid" 2>/dev/null; then
+    break
+  fi
+  sleep 0.25
+done
+wait "$integration_test_pid"
 drive_rc=$?
 set -e
+if [[ -n "$captured_failure_stage" ]]; then
+  export RUN_FAILURE_STAGE="$captured_failure_stage"
+fi
 python3 - "$integration_raw_log" "$evidence_dir/integration-$api_level.log" "$UNIPM_DEV_USER_PASSWORD" <<'PY'
 from pathlib import Path
 import sys
@@ -413,6 +495,8 @@ if [[ "$drive_rc" -ne 0 ]]; then
   export RUN_INTEGRATION_STATUS="$integration_status"
   if grep -Fq 'SMOKE_FAILURE stage=asset-details' "$evidence_dir/integration-$api_level.log"; then
     export RUN_FAILURE_STAGE="asset-details"
+  elif grep -Fq 'SMOKE_FAILURE stage=dashboard-search' "$evidence_dir/integration-$api_level.log"; then
+    export RUN_FAILURE_STAGE="dashboard-search"
   fi
   exit "$drive_rc"
 fi

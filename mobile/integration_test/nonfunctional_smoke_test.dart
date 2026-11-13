@@ -50,7 +50,41 @@ void main() {
     debugPrint('SMOKE_RESULT dashboard_responsive_layout=PASS');
 
     final searchAction = find.byKey(const Key('search-assets'));
-    await tester.ensureVisible(searchAction);
+    final dashboardScrollable = find.descendant(
+      of: find.byType(RefreshIndicator),
+      matching: find.byType(Scrollable),
+    );
+    final dashboardText = _visibleTextSnapshot(tester).join(' | ');
+    debugPrint(
+      'SMOKE_DIAGNOSTIC dashboard_search_key_count=${searchAction.evaluate().length} '
+      'dashboard_scrollable_count=${dashboardScrollable.evaluate().length} '
+      'dashboard_text=$dashboardText',
+    );
+    try {
+      await tester.scrollUntilVisible(
+        searchAction,
+        240,
+        scrollable: dashboardScrollable.first,
+        maxScrolls: 12,
+      );
+      debugPrint('SMOKE_RESULT dashboard_search_action_visible=PASS');
+    } catch (error) {
+      debugPrint('SMOKE_FAILURE stage=dashboard-search');
+      debugPrint(
+        'SMOKE_DIAGNOSTIC dashboard_visible_text=' +
+            _visibleTextSnapshot(tester).join(' | '),
+      );
+      debugPrint(
+        'SMOKE_DIAGNOSTIC dashboard_search_key_count=' +
+            searchAction.evaluate().length.toString() +
+            ' scrollables=' +
+            dashboardScrollable.evaluate().length.toString() +
+            ' error=' +
+            error.toString().replaceAll('\n', ' '),
+      );
+      debugPrint('SMOKE_CAPTURE_SCREEN=dashboard-search');
+      rethrow;
+    }
     await tester.tap(searchAction);
     await _waitFor(
       tester,
@@ -218,6 +252,7 @@ void _logAssetDetailsFailure(WidgetTester tester, Object error) {
   debugPrint(
     'SMOKE_DIAGNOSTIC wait_error=' + error.toString().replaceAll('\n', ' '),
   );
+  debugPrint('SMOKE_CAPTURE_SCREEN=asset-details');
 }
 
 Future<void> _waitFor(
