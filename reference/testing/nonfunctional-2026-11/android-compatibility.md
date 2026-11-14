@@ -6,8 +6,8 @@ The GitHub Actions workflow defines two portrait configurations:
 
 | Requested profile | Emulator profile | Observed display | Logical viewport | Workflow job |
 |---|---|---:|---:|---|
-| Android 10 / API 29, small | Nexus 5 | 1080×1920 at 480 dpi | 360×640 dp | [latest TEST-201 API 29 job, run 43565671645](https://github.com/lucifron28/UniPM/actions/runs/43565671645/job/132358863068) |
-| Android 14 / API 34, large | Pixel 7 Pro | 1440×3120 at 560 dpi | 411×891 dp | [latest TEST-201 API 34 job, run 43565671645](https://github.com/lucifron28/UniPM/actions/runs/43565671645/job/132358863365) |
+| Android 10 / API 29, small | Nexus 5 | 1080×1920 at 480 dpi | 360×640 dp | [latest TEST-201 API 29 job, run 43574384452](https://github.com/lucifron28/UniPM/actions/runs/43574384452/job/132385321984) |
+| Android 14 / API 34, large | Pixel 7 Pro | 1440×3120 at 560 dpi | 411×891 dp | [latest TEST-201 API 34 job, run 43574384452](https://github.com/lucifron28/UniPM/actions/runs/43574384452/job/132385322306) |
 
 Initial matrix run: Ubuntu 24.04, Java 21, Flutter 3.47.1 stable, x86_64 software-rendered emulators, and no KVM acceleration. Exact source commit: 530b5be36727698f3e66935e56e53c698e4df52b. Run: [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992), triggered 2026-11-12T20:06:20Z and completed successfully. In Asia/Manila the run occurred on 2026-11-13.
 
@@ -192,7 +192,7 @@ gh run download 43296932992 --name android-api-29-evidence
 gh run download 43296932992 --name android-api-34-evidence
 ```
 
-Do not report these results as full Android compatibility acceptance. The latest TEST-201 run is 43565671645 on commit 58b17b355aa02425c2610076c76800b3d0413693. It passed history on API 34, but failed the test helper viewport check before API 29 asset selection and before API 34 PM schedule UI. Form lifecycle, offline persistence after restart, and reconnection synchronization remain incomplete; no production defect was confirmed.
+Do not report Run 43565671645 as full Android compatibility acceptance. That run passed history on API 34, but failed the test-helper viewport check before API 29 asset selection and before API 34 PM schedule UI. Form lifecycle, offline persistence after restart, and reconnection synchronization remained incomplete; no production defect was confirmed. The subsequent Run 43574384452 outcomes are recorded below.
 
 ## Prepared TEST-201 lazy-list correction — source commit b3e82c43e78789d582656a44084db2a34b6df9c2 (later exercised in Run 43565671645)
 
@@ -243,3 +243,26 @@ Both API logs contain 32 requests and no non-2xx status. API 34 history returned
 - API 34 job [132358863365](https://github.com/lucifron28/UniPM/actions/runs/43565671645/job/132358863365), artifact [14102302153](https://github.com/lucifron28/UniPM/actions/runs/43565671645/artifacts/14102302153). Failure screenshot: online-inspection-dashboard-pm-schedule-failure.png.
 
 Both artifacts include integration output, widget/render diagnostics, Android window hierarchy, API statuses, backend logs, emulator logcat, and the runner summary. The raw files remain in the ignored artifacts/nonfunctional-android/run-43565671645/ directory. No application or integration-test source was changed for this run. The smallest next correction is test-only: use the target control’s actual scrollable ancestor or verify and tap the control against the render viewport when it is already visibly hit-testable. The run authorization is consumed; no rerun was launched.
+
+## TEST-201 authorized matrix — run 43574384452
+
+The single authorized push-triggered execution tested commit `ba58b4f2a7bde7889c59b62fb25b7748741eb4e8` on `codex/nonfunctional-testing-2026-11`. [Run 43574384452](https://github.com/lucifron28/UniPM/actions/runs/43574384452) ran from 2026-11-14T08:08:39Z to 2026-11-14T08:19:00Z; both jobs failed before the requested functional workflows. Both runner-level Bash syntax checks, APK builds/installations, and emulator profile checks passed. Each matrix job used a separately created ephemeral SQL Server database and fresh synthetic seed; scenario fixture eligibility was not reached or revalidated.
+
+| Required check | Android 10/API 29 — Nexus 5 | Android 14/API 34 — Pixel 7 Pro |
+|---|---|---|
+| APK installation and startup | PASSED — installed; login UI was visible after `am start` timed out | BLOCKED — installed; Pixel Launcher ANR covered startup and no responsive UniPM login UI was verified |
+| Flutter configuration tests | PASSED — 4/4 | NOT EXECUTED |
+| Authenticated login, dashboard, asset search/details | FAILED before login at test helper viewport lookup | NOT EXECUTED |
+| Maintenance history and return navigation | NOT EXECUTED | NOT EXECUTED |
+| PM schedule display | NOT EXECUTED | NOT EXECUTED |
+| Inspection form open/save/reopen/edit/server state | NOT EXECUTED | NOT EXECUTED |
+| Offline draft persistence after app restart | NOT EXECUTED | NOT EXECUTED |
+| Reconnection, synchronization and server-state verification | NOT EXECUTED | NOT EXECUTED |
+| Controlled synchronization conflict | NOT EXECUTED | NOT EXECUTED |
+| Workflow job | FAILED | FAILED — launcher infrastructure block |
+
+API 29 failed at `VisibleScrollInteraction._viewportFor` (`visible_scroll_interaction.dart:322`) before credential entry. Its captured tree shows the login `SingleChildScrollView` uses `_SingleChildViewport`/`RenderSingleChildViewport`; the helper expects a `RenderViewport` and cannot derive this viewport. No authenticated/API request was sent (`api-request-status.log` and `asset-api-status.log` are empty). The captured sign-in screenshot and widget/render diagnostics confirm a test-helper defect. The focused preflight's five cases did not cover `SingleChildScrollView`.
+
+API 34 failed before test execution after the runner's activity-start timeout and recovery attempt. The Pixel Launcher system dialog remained in front; logcat records an ANR for `com.google.android.apps.nexuslauncher` caused by `Input dispatching timed out (Application does not have a focused window)`. The UniPM process remained present but its login UI was not responsive/verified. No API request was sent. This is an emulator/launcher infrastructure failure, not a confirmed application failure.
+
+Artifacts: API 29 job [132385321984](https://github.com/lucifron28/UniPM/actions/runs/43574384452/job/132385321984), [artifact 14105902796](https://github.com/lucifron28/UniPM/actions/runs/43574384452/artifacts/14105902796); API 34 job [132385322306](https://github.com/lucifron28/UniPM/actions/runs/43574384452/job/132385322306), [artifact 14105947591](https://github.com/lucifron28/UniPM/actions/runs/43574384452/artifacts/14105947591). The artifacts retain failure screenshots, widget diagnostics where integration ran, Android window hierarchy, API/backend logs, emulator logcat and per-profile `summary.json`. Local raw downloads remain ignored under `artifacts/nonfunctional-android/run-43574384452/`. No production defect was confirmed. A focused test-helper correction for `RenderSingleChildViewport` and an additional `SingleChildScrollView` preflight case are justified; API 34 needs infrastructure follow-up under a separately authorized run. Android compatibility remains incomplete.

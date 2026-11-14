@@ -6,7 +6,7 @@ This evidence set records local synthetic-data performance and passive security 
 
 | Area | Outcome |
 |---|---|
-| Android 10/API 29 and Android 14/API 34 | Latest TEST-201 run [43565671645](https://github.com/lucifron28/UniPM/actions/runs/43565671645), commit 58b17b355aa02425c2610076c76800b3d0413693: both profiles passed install/startup/authentication/configuration. API 29 failed before asset selection because the test helper used a scroll viewport that excluded the visible Search Assets control. API 34 passed history, then failed at the same helper before PM schedule UI. Form lifecycle is incomplete; offline persistence/reconnect sync were not executed. Compatibility remains incomplete. See the [matrix](android-compatibility.md) and [TEST-201](../../evidence/test-runs/TEST-201-android-compatibility-follow-up-prepared-2026-11.md). |
+| Android 10/API 29 and Android 14/API 34 | Latest TEST-201 run [43574384452](https://github.com/lucifron28/UniPM/actions/runs/43574384452), commit `ba58b4f2a7bde7889c59b62fb25b7748741eb4e8`: API 29 installed and displayed sign-in, then the test helper failed to resolve the login page's `SingleChildScrollView` viewport before authentication. API 34 installed but a Pixel Launcher ANR blocked responsive startup. History, PM schedule, form lifecycle, offline persistence/restart, and synchronization were not executed. Compatibility remains incomplete. See the [matrix](android-compatibility.md) and [TEST-201](../../evidence/test-runs/TEST-201-android-compatibility-follow-up-prepared-2026-11.md). |
 | Supplemental Android 17/API 37 | Local synthetic-account smoke passed login/navigation, asset search/details, and display of two maintenance-history records. PM form-list loading timed out; offline/reconnect synchronization and live conflict recovery were not executed. This is not evidence for API 29/API 34. |
 | Web/API performance | Executed on the actual local ASP.NET Core API with synthetic SQL Server data: 30 sequential measurements per endpoint, all HTTP 200. React tests/build also passed. |
 | OWASP ZAP | Authorized unauthenticated passive scan repeated after the header fix. The initial missing-header alert is absent from the after-fix report; two informational alert types remain. |
@@ -20,8 +20,8 @@ These outcomes are bounded evidence, not a production load test, a complete mobi
 - Response-header remediation: `31da92eb73fa7df8dafaaf378624390ed034010b`
 - Web dependency remediation: `77e23526c9ef906c6157bfe70d0c45769e7d029b`
 - Initial Android matrix source: `530b5be36727698f3e66935e56e53c698e4df52b`
-- Latest executed Android compatibility run: 43565671645, commit 58b17b355aa02425c2610076c76800b3d0413693
-- TEST-201 prepared integration source was exercised by run 43565671645; its test-side viewport failure and incomplete workflows are recorded in the run evidence.
+- Latest executed Android compatibility run: 43574384452, commit `ba58b4f2a7bde7889c59b62fb25b7748741eb4e8`
+- TEST-201 Run 5 found an uncovered test-helper case (`SingleChildScrollView`/`RenderSingleChildViewport`) on API 29 and a Pixel Launcher ANR on API 34. See the run evidence for exact per-profile outcomes and artifact links.
 - Work branch: `codex/nonfunctional-testing-2026-11`
 - Test window: 2026-11-12 through 2026-11-14 UTC/Asia-Manila
 - Host for local API checks: Windows 11 10.0.26200 x64; 16 logical CPUs; 15.4 GiB RAM
@@ -98,10 +98,10 @@ npm run test:run
 npm run build
 ```
 
-Android workflow run history and evidence links are in [android-compatibility.md](android-compatibility.md). The latest run is [43565671645](https://github.com/lucifron28/UniPM/actions/runs/43565671645), tested commit 58b17b355aa02425c2610076c76800b3d0413693. Both jobs failed at test-side scroll-viewport validation. API 34 history passed; API 29 history was not reached. PM schedule UI, full form lifecycle, offline persistence after restart, and reconnection synchronization remain incomplete. The prior 43548924029 run and the blocked e8f0 preflight remain in the history.
+Android workflow run history and evidence links are in [android-compatibility.md](android-compatibility.md). The latest run is [43574384452](https://github.com/lucifron28/UniPM/actions/runs/43574384452), tested commit `ba58b4f2a7bde7889c59b62fb25b7748741eb4e8`. API 29 failed before authentication due to an uncovered test-helper viewport type; API 34 was blocked by a Pixel Launcher ANR. PM schedule UI, full form lifecycle, offline persistence after restart, and reconnection synchronization remain unexecuted in this run. The prior 43565671645, 43548924029, and blocked e8f0 preflight remain in the history.
 
 ## Evidence and boundaries
 
-Committed artifacts, log sources, screenshots, and checksums are indexed in [evidence-index.md](evidence-index.md) and [artifact-checksums.sha256](artifact-checksums.sha256). Earlier Android run artifacts are checked into android-workflow-runs; the latest TEST-201 raw logs and screenshots are preserved in its GitHub artifacts and in the ignored local run folder, not committed.
+Committed artifacts, log sources, screenshots, and checksums are indexed in [evidence-index.md](evidence-index.md) and [artifact-checksums.sha256](artifact-checksums.sha256). Earlier Android run artifacts are checked into android-workflow-runs; Run 43574384452 logs and screenshots are preserved in the GitHub artifacts and the ignored local run folder, not committed.
 
-Do not present these results as production testing, load-capacity evidence, a browser-render performance result, full Android workflow acceptance, authenticated ZAP coverage, active security testing, or complete security certification. Android API 29/API 34 functional workflows remain incomplete. The latest run identifies a test helper viewport mismatch and preserves failure-time screenshots/logs; it does not establish all PM, form, offline, or synchronization requirements.
+Do not present these results as production testing, load-capacity evidence, a browser-render performance result, full Android workflow acceptance, authenticated ZAP coverage, active security testing, or complete security certification. Android API 29/API 34 functional workflows remain incomplete. Run 43574384452 identifies a test-helper viewport mismatch on API 29 and a launcher infrastructure block on API 34; it does not establish PM, form, offline, or synchronization behavior.

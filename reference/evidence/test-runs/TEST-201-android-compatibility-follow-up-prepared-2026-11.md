@@ -199,3 +199,35 @@ The runner summary marks emulator network toggling as not requested, offline per
 - API 34 job [132358863365](https://github.com/lucifron28/UniPM/actions/runs/43565671645/job/132358863365); artifact [android-api-34-evidence, 3,544,108 bytes](https://github.com/lucifron28/UniPM/actions/runs/43565671645/artifacts/14102302153). Reviewed files: online-inspection-dashboard-pm-schedule-failure.png, online-inspection-dashboard-pm-schedule-failure-window.xml, integration-34-prepare.log, api-request-status.log, api-server.log, logcat.txt, and summary.json.
 
 The smallest justified follow-up is test-only: select the actual vertical Scrollable ancestor of search-assets, or use the already-visible-on-screen tap helper after checking hit-test bounds against the render viewport. Keep the existing history and form assertions. No correction or rerun is included here; the single-run authorization has been consumed. TEST-198, TEST-199, TEST-200, and all earlier TEST-201 run records remain preserved. Android compatibility is incomplete.
+
+## Run 5 — authorized TEST-201 matrix on helper commit ba58b4f
+
+The requested single push-triggered matrix was run on branch `codex/nonfunctional-testing-2026-11`, testing commit `ba58b4f2a7bde7889c59b62fb25b7748741eb4e8`. Run [43574384452](https://github.com/lucifron28/UniPM/actions/runs/43574384452) started at 2026-11-14T08:08:39Z and completed at 2026-11-14T08:19:00Z with an overall failure. No additional run was dispatched. Each job created a fresh ephemeral SQL Server database and seeded synthetic data; fixture state was isolated between API 29 and API 34. Since both jobs failed before fixture assertions or functional API calls, runtime fixture eligibility was not revalidated in this execution.
+
+- Android 10/API 29, Nexus 5, 360×640 dp: job [132385321984](https://github.com/lucifron28/UniPM/actions/runs/43574384452/job/132385321984); artifact [android-api-29-evidence, 1,249,569 bytes](https://github.com/lucifron28/UniPM/actions/runs/43574384452/artifacts/14105902796).
+- Android 14/API 34, Pixel 7 Pro, 411×891 dp: job [132385322306](https://github.com/lucifron28/UniPM/actions/runs/43574384452/job/132385322306); artifact [android-api-34-evidence, 1,366,852 bytes](https://github.com/lucifron28/UniPM/actions/runs/43574384452/artifacts/14105947591).
+
+| Check | Android 10 / API 29 — Nexus 5 | Android 14 / API 34 — Pixel 7 Pro |
+|---|---|---|
+| Linux runner Bash syntax preflight, build and APK installation | PASSED | PASSED |
+| Emulator profile | PASSED — 360×640 dp | PASSED — 411×891 dp |
+| App startup and visible sign-in UI | PASSED after an `am start` timeout; login screen was visible and captured | BLOCKED — `am start` timed out and a Pixel Launcher ANR covered startup; responsive UniPM login UI was not verified |
+| Flutter configuration tests | PASSED — 4/4 | NOT EXECUTED — startup was blocked |
+| Authenticated login, navigation, dashboard, asset search/details | FAILED before authentication | NOT EXECUTED |
+| Maintenance history and return navigation | NOT EXECUTED | NOT EXECUTED |
+| PM schedule display | NOT EXECUTED | NOT EXECUTED |
+| Inspection form entry, save, reopen, edit and backend verification | NOT EXECUTED | NOT EXECUTED |
+| Offline draft creation and local persistence after restart | NOT EXECUTED | NOT EXECUTED |
+| Reconnection, synchronization and server-state verification | NOT EXECUTED | NOT EXECUTED |
+| Controlled synchronization conflict | NOT EXECUTED | NOT EXECUTED |
+| Job | FAILED — test-helper error | FAILED — emulator launcher ANR |
+
+### Run 5 failure diagnosis
+
+**API 29 — confirmed integration-test helper defect.** The test reached the sign-in screen (`login_screen=PASS`) but failed before entering credentials or sending a login request. The first error was `Could not find a RenderViewport under the selected Scrollable: Scrollable(AxisDirection.down) viewport=unknown.` The stack identifies `VisibleScrollInteraction._viewportFor` in `visible_scroll_interaction.dart:322`, called by `scrollUntilVisible` while `_startAuthenticatedSession` attempted to interact with the login page. The captured widget tree shows that the sign-in page uses `SingleChildScrollView`, backed by the private `_SingleChildViewport` widget and public `RenderSingleChildViewport`; the helper recognizes `Viewport`/`ShrinkWrappingViewport` but does not resolve this render object. This escaped the focused five-test preflight because it did not exercise a `SingleChildScrollView`. The test failed before authenticated navigation, asset lookup, or any functional API request. `api-request-status.log` and `asset-api-status.log` are empty. The failure-time screenshot shows UniPM's sign-in form; widget/render diagnostics and Android window hierarchy are in the artifact. This is a test-helper defect, not evidence of a production defect.
+
+**API 34 — emulator/system launcher block.** APK build/install and profile validation passed, but `am start` timed out. The runner attempted launcher recovery and captured a system dialog reading “Pixel Launcher isn't responding.” The Android hierarchy identifies the system dialog, and logcat records `am_anr` for `com.google.android.apps.nexuslauncher` with `Input dispatching timed out (Application does not have a focused window)`. The runner reported that the UniPM process remained alive, but the login controls were not available in a responsive foreground UI. The job stopped before configuration tests, authenticated smoke, or functional API requests. The API request-status file is empty. This is an emulator/launcher infrastructure failure; it does not establish a UniPM app crash or compatibility defect.
+
+Both profiles used separate fresh synthetic databases, and no prior run's fixture mutations carried into this run. The scenario-specific fixture assertions were not reached. API 29's logcat, screenshots, widget/render dump and hierarchy, API/backend logs, and summary are preserved in its artifact; API 34's launcher ANR screenshots, hierarchy, logcat, API/backend logs, and summary are preserved in its artifact. The raw downloads remain under the ignored `artifacts/nonfunctional-android/run-43574384452/api-29/` and `api-34/` directories.
+
+The smallest justified correction is test-only: teach the helper to derive the clipped viewport from `RenderSingleChildViewport` (while preserving owning-scrollable selection, ancestor clipping, hit-testing, and attempt bounds) and add a focused `SingleChildScrollView` case. The API 34 environment issue should be reported as infrastructure until a separately authorized run can establish otherwise. No production defect was confirmed. PM schedule, history, inspection form lifecycle, offline persistence, and synchronization remain unverified on both profiles; Android compatibility is not complete.
