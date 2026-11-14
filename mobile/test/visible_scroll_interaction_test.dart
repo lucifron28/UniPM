@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/auth/auth_models.dart';
+import 'package:mobile/auth/auth_repository.dart';
+import 'package:mobile/auth/session_controller.dart';
+import 'package:mobile/features/auth/login_page.dart';
 
 import '../integration_test/support/visible_scroll_interaction.dart';
 
@@ -44,6 +48,51 @@ void main() {
         );
 
         expect(tapped, isTrue);
+      },
+    );
+  }
+
+  for (final viewport in <({String profile, Size size})>[
+    (profile: 'API 29 login viewport', size: Size(360, 640)),
+    (profile: 'API 34 login viewport', size: Size(411, 891)),
+  ]) {
+    testWidgets(
+      'scrolls and submits the real login page at ${viewport.profile}',
+      (tester) async {
+        _setLogicalViewport(tester, viewport.size);
+        final gateway = _FakeAuthGateway();
+        final controller = SessionController(gateway);
+        addTearDown(controller.dispose);
+
+        await tester.pumpWidget(
+          MaterialApp(home: LoginPage(controller: controller)),
+        );
+
+        final emailField = find.byType(TextFormField).at(0);
+        await VisibleScrollInteraction.scrollUntilVisible(
+          tester,
+          emailField,
+          description: 'login email field',
+        );
+        await tester.enterText(emailField, 'inspector@example.test');
+
+        final passwordField = find.byType(TextFormField).at(1);
+        await VisibleScrollInteraction.scrollUntilVisible(
+          tester,
+          passwordField,
+          description: 'login password field',
+        );
+        await tester.enterText(passwordField, 'synthetic-password');
+
+        await VisibleScrollInteraction.tapAfterScrolling(
+          tester,
+          find.widgetWithText(FilledButton, 'Sign in'),
+          'login sign-in button',
+        );
+        await tester.pumpAndSettle();
+
+        expect(gateway.loginCalls, 1);
+        expect(controller.status, SessionStatus.authenticated);
       },
     );
   }
@@ -221,4 +270,27 @@ void _setLogicalViewport(WidgetTester tester, Size size) {
   tester.view.physicalSize = size;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+class _FakeAuthGateway implements AuthGateway {
+  static const _user = AuthUser(
+    id: '11111111-1111-4111-8111-111111111111',
+    email: 'inspector@example.test',
+    displayName: 'Synthetic Inspector',
+    roles: ['Inspector'],
+  );
+
+  var loginCalls = 0;
+
+  @override
+  Future<AuthUser> currentUser() async => _user;
+
+  @override
+  Future<LoginResult> login(String email, String password) async {
+    loginCalls++;
+    return const LoginResult(accessToken: 'synthetic-token', user: _user);
+  }
+
+  @override
+  Future<void> logout() async {}
 }

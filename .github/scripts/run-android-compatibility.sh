@@ -38,11 +38,13 @@ if [[ -z "$device_serial" ]]; then device_serial="emulator-5554"; fi
 export ANDROID_SERIAL="$device_serial"
 adb_readiness_status="not_executed"
 adb_recovery_attempts=0
+android14_system_ui_readiness_status="not_applicable"
 apk_build_status="not_executed"
 apk_install_status="not_executed"
 export RUN_ADB_READINESS_STATUS="$adb_readiness_status"
 export RUN_ADB_RECOVERY_ATTEMPTS="$adb_recovery_attempts"
 export RUN_ADB_DEVICE_SERIAL="$device_serial"
+export RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS="$android14_system_ui_readiness_status"
 export RUN_APK_BUILD_STATUS="$apk_build_status"
 export RUN_APK_INSTALL_STATUS="$apk_install_status"
 export RUN_NETWORK_TOGGLE_STATUS="$network_toggle_status"
@@ -115,6 +117,136 @@ wait_for_android_device() {
   export RUN_ADB_RECOVERY_ATTEMPTS="$adb_recovery_attempts"
   export RUN_ADB_DEVICE_SERIAL="$device_serial"
   echo "ADB did not report a boot-complete Android device after six readiness checks and $adb_recovery_attempts bounded recovery attempts." >&2
+  return 1
+}
+wait_for_android14_system_ui() {
+  [[ "$api_level" == "34" ]] || return 0
+
+  local readiness_log="$evidence_dir/android14-system-ui-readiness.log"
+  local attempt boot_snapshot boot_completed boot_animation
+  local home_resolution home_component launcher_package home_launch_output
+  local snapshot launcher_pid resumed_line focus_line ui_dump_status stable_attempts=0
+  local window_xml="$evidence_dir/android14-readiness-window.xml"
+
+  android14_system_ui_readiness_status="checking"
+  export RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS="$android14_system_ui_readiness_status"
+  printf 'android14_system_ui_readiness_started_utc=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    > "$readiness_log"
+
+  # sys.boot_completed alone can precede a stopped boot animation or a ready
+  # launcher, so require both boot properties under a bounded poll.
+  boot_completed=""
+  boot_animation=""
+  for attempt in $(seq 1 6); do
+    boot_snapshot="$(timeout 4s adb -s "$device_serial" shell \
+      'printf "sys_boot_completed="; getprop sys.boot_completed; printf "boot_animation="; getprop init.svc.bootanim' \
+      2>&1 | tr -d '\r' || true)"
+    printf 'boot_check_attempt=%s\n%s\n' "$attempt" "$boot_snapshot" >> "$readiness_log"
+    boot_completed="$(sed -n 's/^sys_boot_completed=//p' <<< "$boot_snapshot" | head -n 1)"
+    boot_animation="$(sed -n 's/^boot_animation=//p' <<< "$boot_snapshot" | head -n 1)"
+    if [[ "$boot_completed" == "1" && "$boot_animation" == "stopped" ]]; then
+      break
+    fi
+    if [[ "$attempt" -lt 6 ]]; then sleep 2; fi
+  done
+  if [[ "$boot_completed" != "1" || "$boot_animation" != "stopped" ]]; then
+    android14_system_ui_readiness_status="blocked_boot_not_settled"
+    startup_status="blocked"
+    export RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS="$android14_system_ui_readiness_status"
+    export RUN_STARTUP_STATUS="$startup_status"
+    export RUN_FAILURE_STAGE="android14-boot-readiness"
+    echo "Android 14 boot did not settle: sys.boot_completed=$boot_completed init.svc.bootanim=$boot_animation" \
+      | tee -a "$readiness_log" >&2
+    return 1
+  fi
+
+  home_resolution="$(timeout 8s adb -s "$device_serial" shell \
+    cmd package resolve-activity --brief -a android.intent.action.MAIN \
+      -c android.intent.category.HOME 2>&1 | tr -d '\r' || true)"
+  printf 'home_activity_resolution:\n%s\n' "$home_resolution" >> "$readiness_log"
+  home_component="$(grep -E '^[[:alnum:]_.]+/[[:alnum:]_.$]+' <<< "$home_resolution" | tail -n 1 || true)"
+  if [[ -z "$home_component" ]]; then
+    android14_system_ui_readiness_status="blocked_home_activity_unresolved"
+    startup_status="blocked"
+    export RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS="$android14_system_ui_readiness_status"
+    export RUN_STARTUP_STATUS="$startup_status"
+    export RUN_FAILURE_STAGE="android14-home-activity-unresolved"
+    echo "Could not resolve the Android 14 HOME activity before launching UniPM." \
+      | tee -a "$readiness_log" >&2
+    return 1
+  fi
+  launcher_package="${home_component%%/*}"
+
+  home_launch_output="$(timeout 12s adb -s "$device_serial" shell \
+    am start -W -a android.intent.action.MAIN -c android.intent.category.HOME 2>&1 || true)"
+  printf 'home_activity_start:\n%s\n' "$home_launch_output" >> "$readiness_log"
+
+  for attempt in $(seq 1 6); do
+    snapshot="$(timeout 7s adb -s "$device_serial" shell \
+      "printf 'sys_boot_completed='; getprop sys.boot_completed
+       printf 'boot_animation='; getprop init.svc.bootanim
+       printf 'launcher_pid='; pidof '$launcher_package' || true
+       printf 'resumed_activity='; dumpsys activity activities | grep -m1 mResumedActivity || true
+       printf 'current_focus='; dumpsys window windows | grep -m1 mCurrentFocus || true
+       rm -f /sdcard/unipm-android14-readiness.xml
+       if uiautomator dump /sdcard/unipm-android14-readiness.xml >/dev/null 2>&1; then printf 'ui_dump_status=passed\\n'; else printf 'ui_dump_status=failed\\n'; fi
+       printf 'ui_hierarchy_begin\\n'; cat /sdcard/unipm-android14-readiness.xml 2>/dev/null || true
+       printf '\\nui_hierarchy_end\\n'" 2>&1 | tr -d '\r' || true)"
+    printf 'readiness_poll_attempt=%s\n%s\n' "$attempt" "$snapshot" >> "$readiness_log"
+
+    if grep -Eiq "isn.t responding|is not responding|Application Not Responding|android:id/aerr_(wait|close)" \
+      <<< "$snapshot"; then
+      printf '%s\n' "$snapshot" \
+        | sed -n '/^ui_hierarchy_begin$/,/^ui_hierarchy_end$/p' \
+        | sed '1d;$d' > "$window_xml"
+      android14_system_ui_readiness_status="blocked_system_anr_dialog"
+      startup_status="blocked"
+      export RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS="$android14_system_ui_readiness_status"
+      export RUN_STARTUP_STATUS="$startup_status"
+      export RUN_FAILURE_STAGE="android14-system-anr-dialog"
+      echo "Android 14 readiness found a system application-not-responding dialog before UniPM launch." \
+        | tee -a "$readiness_log" >&2
+      return 1
+    fi
+
+    launcher_pid="$(sed -n 's/^launcher_pid=//p' <<< "$snapshot" | head -n 1)"
+    resumed_line="$(grep -m1 '^resumed_activity=' <<< "$snapshot" || true)"
+    focus_line="$(grep -m1 '^current_focus=' <<< "$snapshot" || true)"
+    ui_dump_status="$(sed -n 's/^ui_dump_status=//p' <<< "$snapshot" | head -n 1)"
+    if [[ -n "$launcher_pid" ]] \
+      && grep -Fq "resumed_activity=" <<< "$resumed_line" \
+      && grep -Fq "$launcher_package" <<< "$resumed_line" \
+      && grep -Fq "$launcher_package" <<< "$focus_line" \
+      && [[ "$ui_dump_status" == "passed" ]] \
+      && grep -Fq '<hierarchy' <<< "$snapshot"; then
+      stable_attempts=$((stable_attempts + 1))
+      if [[ "$stable_attempts" -ge 2 ]]; then
+        printf '%s\n' "$snapshot" \
+          | sed -n '/^ui_hierarchy_begin$/,/^ui_hierarchy_end$/p' \
+          | sed '1d;$d' > "$window_xml"
+        android14_system_ui_readiness_status="passed"
+        export RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS="$android14_system_ui_readiness_status"
+        echo "android14_system_ui_readiness=passed launcher=$home_component stable_focus_samples=$stable_attempts" \
+          | tee -a "$readiness_log"
+        return 0
+      fi
+    else
+      stable_attempts=0
+    fi
+
+    if [[ "$attempt" -lt 6 ]]; then sleep 2; fi
+  done
+
+  printf '%s\n' "$snapshot" \
+    | sed -n '/^ui_hierarchy_begin$/,/^ui_hierarchy_end$/p' \
+    | sed '1d;$d' > "$window_xml"
+  android14_system_ui_readiness_status="blocked_launcher_not_responsive"
+  startup_status="blocked"
+  export RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS="$android14_system_ui_readiness_status"
+  export RUN_STARTUP_STATUS="$startup_status"
+  export RUN_FAILURE_STAGE="android14-launcher-not-responsive"
+  echo "Android 14 HOME did not hold a resumed, focused launcher window for two bounded readiness samples." \
+    | tee -a "$readiness_log" >&2
   return 1
 }
 network_toggle_log="$evidence_dir/emulator-network-toggle.log"
@@ -218,6 +350,7 @@ summary = {
     "expected_viewport_dp": os.environ.get("RUN_EXPECTED_VIEWPORT_DP"),
     "screen_profile_check": os.environ.get("RUN_SCREEN_STATUS"),
     "adb_readiness_outcome": os.environ.get("RUN_ADB_READINESS_STATUS"),
+    "android14_system_ui_readiness_outcome": os.environ.get("RUN_ANDROID14_SYSTEM_UI_READINESS_STATUS"),
     "adb_recovery_attempts": int(os.environ.get("RUN_ADB_RECOVERY_ATTEMPTS", "0")),
     "adb_device_serial": os.environ.get("RUN_ADB_DEVICE_SERIAL"),
     "apk_build_outcome": os.environ.get("RUN_APK_BUILD_STATUS"),
@@ -387,6 +520,7 @@ if [[ -z "$application_pid" ]]; then application_pid="not_running"; fi
 echo "pre_launch_process_id=$application_pid"
 
 wait_for_android_device "before MainActivity launch"
+wait_for_android14_system_ui || exit 1
 timeout 15s adb -s "$device_serial" logcat -c
 timeout 15s adb -s "$device_serial" shell input keyevent 82 || true
 echo "Launching UniPM MainActivity"

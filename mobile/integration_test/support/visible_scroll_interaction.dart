@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Scrolls test UI through the scrollable that owns the target and taps only
@@ -309,18 +310,10 @@ class VisibleScrollInteraction {
   }
 
   static Finder _viewportFor(WidgetTester tester, Finder scrollable) {
-    final viewports = find
-        .descendant(
-          of: scrollable,
-          matching: find.byWidgetPredicate(
-            (widget) => widget is Viewport || widget is ShrinkWrappingViewport,
-          ),
-        )
-        .evaluate()
-        .toList(growable: false);
+    final viewports = _viewportElements(scrollable);
     if (viewports.isEmpty) {
       fail(
-        'Could not find a RenderViewport under the selected Scrollable: '
+        'Could not find a RenderAbstractViewport under the selected Scrollable: '
         '${_describeScrollable(tester, scrollable)}.',
       );
     }
@@ -370,16 +363,19 @@ class VisibleScrollInteraction {
   }
 
   static Finder? _viewportForDescription(Finder scrollable) {
-    final viewports = find
-        .descendant(
-          of: scrollable,
-          matching: find.byWidgetPredicate(
-            (widget) => widget is Viewport || widget is ShrinkWrappingViewport,
-          ),
-        )
-        .evaluate()
-        .toList(growable: false);
+    final viewports = _viewportElements(scrollable);
     if (viewports.isEmpty) return null;
     return find.byWidget(viewports.first.widget);
   }
+
+  static List<Element> _viewportElements(Finder scrollable) => find
+      .descendant(
+        of: scrollable,
+        matching: find.byElementPredicate(
+          (element) => element.renderObject is RenderAbstractViewport,
+          description: 'RenderAbstractViewport',
+        ),
+      )
+      .evaluate()
+      .toList(growable: false);
 }
