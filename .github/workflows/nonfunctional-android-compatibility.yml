@@ -40,6 +40,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v6
 
+      - name: Validate Android runner Bash syntax
+        shell: bash
+        run: bash -n .github/scripts/run-android-compatibility.sh
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
