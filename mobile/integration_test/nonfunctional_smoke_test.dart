@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:http/http.dart' as http;
@@ -13,6 +12,8 @@ import 'package:mobile/features/preventive_maintenance/preventive_maintenance_mo
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'package:mobile/features/preventive_maintenance/pm_cycle_presentation.dart';
 import 'package:mobile/main.dart' as app;
+
+import 'support/visible_scroll_interaction.dart';
 
 const _syntheticInspectorEmail = 'inspector@unipm.local';
 const _syntheticAssetCode = 'DEMO-EL-001';
@@ -309,7 +310,11 @@ Future<void> _runOnlineInspectionScenario(
     isNotNull,
     reason: 'The fixture schedule must have an enabled Start action.',
   );
-  await tester.tap(startInspection);
+  await _tapAfterScrolling(
+    tester,
+    startInspection,
+    'Start Inspection for $_inspectionAssetCode',
+  );
   await _waitFor(
     tester,
     find.byKey(const Key('new-inspection-date')),
@@ -343,7 +348,7 @@ Future<void> _runOnlineInspectionScenario(
     description: 'Save inspection',
   );
   expect(tester.widget<FilledButton>(addInspection).onPressed, isNotNull);
-  await tester.tap(addInspection);
+  await _tapAfterScrolling(tester, addInspection, 'Save inspection');
   await _waitFor(
     tester,
     find.text('Inspection Recorded'),
@@ -386,7 +391,11 @@ Future<void> _runOnlineInspectionScenario(
   );
   expect(find.byKey(const Key('start-pm')), findsNothing);
   expect(tester.widget<FilledButton>(resumeInspection).onPressed, isNotNull);
-  await tester.tap(resumeInspection);
+  await _tapAfterScrolling(
+    tester,
+    resumeInspection,
+    'Resume Inspection for the saved Draft',
+  );
   final inspectionRemarks = find.byKey(
     Key('inspection-remarks-' + onlineInspection.id),
   );
@@ -418,7 +427,11 @@ Future<void> _runOnlineInspectionScenario(
     tester.widget<FilledButton>(saveOnlineInspection).onPressed,
     isNotNull,
   );
-  await tester.tap(saveOnlineInspection);
+  await _tapAfterScrolling(
+    tester,
+    saveOnlineInspection,
+    'Save edited inspection row',
+  );
   final editedOnlineForm = await _waitForServerInspectionRemarks(
     tester,
     serverVerifier,
@@ -448,7 +461,11 @@ Future<void> _runOnlineInspectionScenario(
   );
   expect(find.byKey(const Key('start-pm')), findsNothing);
   expect(tester.widget<FilledButton>(resumeInspection).onPressed, isNotNull);
-  await tester.tap(resumeInspection);
+  await _tapAfterScrolling(
+    tester,
+    resumeInspection,
+    'Resume Inspection after editing the saved Draft',
+  );
   final editedInspectionRemarks = find.byKey(
     Key('inspection-remarks-' + onlineInspection.id),
   );
@@ -548,7 +565,11 @@ Future<void> _runOfflineDraftScenario(
     tester.widget<FilledButton>(addOfflineInspection).onPressed,
     isNotNull,
   );
-  await tester.tap(addOfflineInspection);
+  await _tapAfterScrolling(
+    tester,
+    addOfflineInspection,
+    'Save offline inspection',
+  );
   await _waitFor(
     tester,
     find.text('Saved on this device'),
@@ -759,7 +780,11 @@ Future<void> _runAfterProcessRestart(
   );
   expect(find.byKey(const Key('start-pm')), findsNothing);
   expect(tester.widget<FilledButton>(resumeAfterSync).onPressed, isNotNull);
-  await tester.tap(resumeAfterSync);
+  await _tapAfterScrolling(
+    tester,
+    resumeAfterSync,
+    'Resume Inspection after the offline Draft synced',
+  );
   final reopenedRemarks = find.byWidgetPredicate(
     (widget) =>
         widget is TextField && widget.controller?.text == offlineRemarks,
@@ -910,192 +935,51 @@ Future<void> Function(WidgetTester tester) _captureSmokeFailures(
 
 enum _ScrollDirection { up, down }
 
-Finder _activeVerticalScrollable(WidgetTester tester) {
-  final scaffolds = find.byType(Scaffold).evaluate().toList(growable: false);
-  if (scaffolds.isEmpty) {
-    fail('Cannot scroll because the active screen has no Scaffold.');
-  }
-  final activeScaffold = find.byWidget(scaffolds.last.widget);
-  Finder scrollableScope = activeScaffold;
-  final refreshIndicators = find
-      .descendant(of: activeScaffold, matching: find.byType(RefreshIndicator))
-      .evaluate()
-      .toList(growable: false);
-  if (refreshIndicators.length == 1) {
-    scrollableScope = find.byWidget(refreshIndicators.single.widget);
-  }
-
-  final verticalScrollables = find
-      .descendant(
-        of: scrollableScope,
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is Scrollable &&
-              widget.axisDirection == AxisDirection.down,
-        ),
-      )
-      .evaluate()
-      .toList(growable: false);
-  if (verticalScrollables.length != 1) {
-    fail(
-      'Expected one downward scrollable in the active page; found ' +
-          verticalScrollables.length.toString() +
-          '. Visible text: ' +
-          _visibleTextSnapshot(tester).take(8).join(' | '),
-    );
-  }
-  return find.byWidget(verticalScrollables.single.widget);
-}
-
 Future<void> _scrollUntilVisible(
   WidgetTester tester,
   Finder target, {
   required String description,
   _ScrollDirection direction = _ScrollDirection.down,
-}) async {
-  final scrollable = _activeVerticalScrollable(tester);
-  final viewportBounds = tester.getRect(scrollable);
-  if (viewportBounds.height <= 0) {
-    fail('The active vertical scrollable has no viewport for $description.');
-  }
-
-  var effectiveDirection = direction;
-  if (target.evaluate().length == 1) {
-    final targetBounds = tester.getRect(target);
-    if (targetBounds.bottom <= viewportBounds.top) {
-      effectiveDirection = _ScrollDirection.up;
-    } else if (targetBounds.top >= viewportBounds.bottom) {
-      effectiveDirection = _ScrollDirection.down;
-    }
-  }
-  final delta = viewportBounds.height * 0.55;
-  final signedDelta = effectiveDirection == _ScrollDirection.down
-      ? delta
-      : -delta;
-  const maxScrolls = 24;
-
-  try {
-    await tester.scrollUntilVisible(
-      target,
-      signedDelta,
-      scrollable: scrollable,
-      maxScrolls: maxScrolls,
-    );
-  } catch (error) {
-    fail(
-      'Could not build and scroll $description into view after $maxScrolls ' +
-          'bounded scroll attempts. Target matches: ' +
-          target.evaluate().length.toString() +
-          '; scrollable bounds: $viewportBounds; visible text: ' +
-          _visibleTextSnapshot(tester).take(8).join(' | ') +
-          '; scroll error: ' +
-          error.toString().replaceAll('\n', ' '),
-    );
-  }
-  await tester.pump();
-  _verifyHitTestPosition(
-    tester,
-    target,
-    description,
-    viewportBounds: viewportBounds,
-  );
-}
+  Finder? scrollable,
+}) => VisibleScrollInteraction.scrollUntilVisible(
+  tester,
+  target,
+  description: description,
+  scrollable: scrollable,
+  towardEnd: direction == _ScrollDirection.down,
+);
 
 Future<void> _tapAfterScrolling(
   WidgetTester tester,
   Finder target,
   String description, {
   _ScrollDirection direction = _ScrollDirection.down,
-}) async {
-  await _scrollUntilVisible(
-    tester,
-    target,
-    description: description,
-    direction: direction,
-  );
-  await tester.tap(target);
-}
+  Finder? scrollable,
+}) => VisibleScrollInteraction.tapAfterScrolling(
+  tester,
+  target,
+  description,
+  scrollable: scrollable,
+  towardEnd: direction == _ScrollDirection.down,
+);
 
 Future<void> _tapVisibleOnScreen(
   WidgetTester tester,
   Finder target,
   String description,
-) async {
-  final renderViewBounds = Offset.zero & tester.binding.renderViews.single.size;
-  _verifyHitTestPosition(
-    tester,
-    target,
-    description,
-    viewportBounds: renderViewBounds,
-  );
-  await tester.tap(target);
-}
+) => VisibleScrollInteraction.tapVisibleOnScreen(tester, target, description);
 
 void _verifyVisibleOnScreen(
   WidgetTester tester,
   Finder target,
   String description,
-) {
-  final matches = target.evaluate().toList(growable: false);
-  if (matches.length != 1) {
-    fail('$description must match one built widget; found ${matches.length}.');
-  }
-  final targetBounds = tester.getRect(target);
-  final renderViewBounds = Offset.zero & tester.binding.renderViews.single.size;
-  if (!renderViewBounds.contains(targetBounds.center)) {
-    fail(
-      '$description is not visible in the rendered viewport. '
-      'Target bounds: $targetBounds; viewport bounds: $renderViewBounds.',
-    );
-  }
-}
+) => VisibleScrollInteraction.verifyVisible(tester, target, description);
 
 void _verifyHitTestPosition(
   WidgetTester tester,
   Finder target,
-  String description, {
-  required Rect viewportBounds,
-}) {
-  final matches = target.evaluate().toList(growable: false);
-  if (matches.length != 1) {
-    fail(
-      '$description must be built exactly once before interaction; '
-      'found ${matches.length} widgets.',
-    );
-  }
-  final targetBounds = tester.getRect(target);
-  final renderViewBounds = Offset.zero & tester.binding.renderViews.single.size;
-  final center = targetBounds.center;
-  if (!targetBounds.overlaps(viewportBounds) ||
-      !viewportBounds.contains(center) ||
-      !renderViewBounds.contains(center)) {
-    fail(
-      '$description center is outside its visible scroll viewport. '
-      'Target bounds: $targetBounds; scroll viewport: $viewportBounds; '
-      'render viewport: $renderViewBounds.',
-    );
-  }
-
-  final hitTest = tester.hitTestOnBinding(center);
-  var hitTargetSubtree = false;
-  void inspectTargetSubtree(Element element) {
-    if (element is RenderObjectElement &&
-        hitTest.path.any(
-          (entry) => identical(entry.target, element.renderObject),
-        )) {
-      hitTargetSubtree = true;
-    }
-    element.visitChildren(inspectTargetSubtree);
-  }
-
-  inspectTargetSubtree(matches.single);
-  if (!hitTargetSubtree) {
-    fail(
-      '$description is inside the viewport but its center does not hit the '
-      'target widget. Center: $center; target bounds: $targetBounds.',
-    );
-  }
-}
+  String description,
+) => VisibleScrollInteraction.verifyTapReady(tester, target, description);
 
 Future<PreventiveMaintenanceForm> _waitForServerInspectionRemarks(
   WidgetTester tester,
@@ -1143,12 +1027,7 @@ Future<void> _openAssetFromDashboard(
   await _tapAfterScrolling(tester, searchAction, 'Open asset search');
   final searchInput = find.byKey(const Key('asset-search-input'));
   await _waitFor(tester, searchInput, 'asset search input');
-  _verifyHitTestPosition(
-    tester,
-    searchInput,
-    'Asset search input',
-    viewportBounds: Offset.zero & tester.binding.renderViews.single.size,
-  );
+  _verifyHitTestPosition(tester, searchInput, 'Asset search input');
   await tester.enterText(searchInput, assetCode);
   final result = find.byKey(ValueKey('asset-search-result-$assetCode'));
   await _waitFor(
