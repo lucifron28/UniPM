@@ -6,8 +6,8 @@ The GitHub Actions workflow defines two portrait configurations:
 
 | Requested profile | Emulator profile | Observed display | Logical viewport | Workflow job |
 |---|---|---:|---:|---|
-| Android 10 / API 29, small | Nexus 5 | 1080×1920 at 480 dpi | 360×640 dp | [latest TEST-201 API 29 job, run 43468215938](https://github.com/lucifron28/UniPM/actions/runs/43468215938/job/132032945952) |
-| Android 14 / API 34, large | Pixel 7 Pro | 1440×3120 at 560 dpi | approximately 411×891 dp | [latest TEST-201 API 34 job, run 43468215938](https://github.com/lucifron28/UniPM/actions/runs/43468215938/job/132032945197) |
+| Android 10 / API 29, small | Nexus 5 | 1080×1920 at 480 dpi | 360×640 dp | [latest TEST-201 API 29 job, run 43548924029](https://github.com/lucifron28/UniPM/actions/runs/43548924029/job/132306614108) |
+| Android 14 / API 34, large | Pixel 7 Pro | 1440×3120 at 560 dpi | 411×891 dp | [latest TEST-201 API 34 job, run 43548924029](https://github.com/lucifron28/UniPM/actions/runs/43548924029/job/132306613827) |
 
 Initial matrix run: Ubuntu 24.04, Java 21, Flutter 3.47.1 stable, x86_64 software-rendered emulators, and no KVM acceleration. Exact source commit: 530b5be36727698f3e66935e56e53c698e4df52b. Run: [43296932992](https://github.com/lucifron28/UniPM/actions/runs/43296932992), triggered 2026-11-12T20:06:20Z and completed successfully. In Asia/Manila the run occurred on 2026-11-13.
 
@@ -115,27 +115,46 @@ Run [43444880972](https://github.com/lucifron28/UniPM/actions/runs/43444880972) 
 
 This run shows the earlier asset-details timeout did not persist: both API levels reached and passed the asset-details check. TEST-200 does not establish what caused the earlier timeout in run 43396819069. The confirmed TEST-200 failures are in test interaction and fixture selection; source evidence does not show a production defect. Full details and artifacts are linked from TEST-200.
 
-## TEST-201 executed follow-up — run 43468215938
+## TEST-201 initial execution — run 43468215938
 
 Run [43468215938](https://github.com/lucifron28/UniPM/actions/runs/43468215938) tested commit db04aed6d6079a81d45b32b811750ef24c38643e on codex/nonfunctional-testing-2026-11. It was the single authorized workflow_dispatch and completed at 2026-11-13T17:12:04Z. The exact profiles were Android 10/API 29 on Nexus 5 and Android 14/API 34 on Pixel 7 Pro. The jobs used separate ephemeral SQL Server instances and synthetic fixtures.
 
 | Check | Android 10 / API 29 — Nexus 5 | Android 14 / API 34 — Pixel 7 Pro |
 |---|---|---|
 | Ephemeral database, API build and synthetic seed | PASSED | PASSED |
-| UniPM APK build | PASSED | PASSED |
-| Emulator compatibility and functional smoke workflow step | FAILED — shell process exited 1; exact assertion unavailable | FAILED — shell process exited 1; exact assertion unavailable |
-| Installation, startup, sign-in/configuration and authenticated workflows | BLOCKED — sub-step result cannot be inspected | BLOCKED — sub-step result cannot be inspected |
-| Asset details, history, schedule and online inspection form lifecycle | BLOCKED — sub-step result cannot be inspected | BLOCKED — sub-step result cannot be inspected |
-| Offline draft persistence before reconnection and synchronization | BLOCKED — sub-step result cannot be inspected | BLOCKED — sub-step result cannot be inspected |
-| Controlled synchronization conflict | NOT EXECUTED | NOT EXECUTED |
-| Screenshot, widget, API and emulator evidence inspection | BLOCKED — artifact download account egress limit | BLOCKED — artifact download account egress limit |
+| UniPM APK build/install, startup, visible login and configuration tests | PASSED; configuration 4/4 | PASSED; configuration 4/4 |
+| Integration-test compile/load | FAILED — duplicate `offlineRemarks` declaration in one scope | FAILED — same compile error |
+| Authenticated functional assertions | NOT EXECUTED | NOT EXECUTED |
+| Asset details, history, schedule, forms and offline/reconnect | NOT EXECUTED | NOT EXECUTED |
 | Job result | FAILED | FAILED |
 
-The workflow uploaded [API 29 evidence](https://github.com/lucifron28/UniPM/actions/runs/43468215938/artifacts/14061360039) and [API 34 evidence](https://github.com/lucifron28/UniPM/actions/runs/43468215938/artifacts/14060386895). Download of the API 29 artifact was rejected with HTTP 503 “Egress is over the account limit.” The API 34 artifact was not downloaded through another path. Consequently, the exact failing assertion, screenshot, widget tree, API status, and emulator condition remain unavailable, and the root cause is undetermined. The only confirmed failure detail is that the named emulator compatibility step exited 1 on both profiles. No production code was changed and no rerun was dispatched.
+The workflow uploaded [API 29 evidence](https://github.com/lucifron28/UniPM/actions/runs/43468215938/artifacts/14061360039) and [API 34 evidence](https://github.com/lucifron28/UniPM/actions/runs/43468215938/artifacts/14060386895). Initial artifact retrieval was blocked by HTTP 503 account egress, but a later supported retrieval confirmed the duplicate-local compilation error recorded in TEST-201. No functional smoke assertion ran in this execution.
 
 The source review confirms that TEST-201 uses the lazily scrolled History action and checks the seeded acknowledged record; it uses DEMO-EL-003 for online Start/save/reopen/edit/server verification and separate DEMO-FE-003 for offline work. Each job has an isolated seeded database. After force-stop, the second phase remains offline, reads the encrypted persisted snapshot for the synthetic user, checks the Draft, row and two pending writes, and only then requests reconnection. The runner gates restoration on that check. The run result does not establish that these UI checks were reached.
 
-Compatibility remains incomplete. TEST-201 has no evidence-backed pass for either Android profile, and the exact failure cause is not established. The prior TEST-198, TEST-199 and TEST-200 records and artifacts remain unchanged. No live synchronization-conflict behavior was executed.
+The compile failure was corrected in the next TEST-201 source revision. Its later execution history and the TEST-200 findings remain in the TEST-201 record; TEST-198, TEST-199 and TEST-200 source records and artifacts are unchanged.
+
+## TEST-201 controlled interaction rerun — run 43548924029
+
+Run [43548924029](https://github.com/lucifron28/UniPM/actions/runs/43548924029) was the single manual workflow dispatch authorized for commit `9bbbe0b69ed23689d12c9a2603588d9e244787e5` on `codex/nonfunctional-testing-2026-11`. It started at 2026-11-14T02:55:41Z and completed at 2026-11-14T03:07:06Z. Each profile used a separate ephemeral SQL Server/API and synthetic data. Both jobs passed setup, database/API seed, APK build, emulator startup/profile check, install, visible login and four configuration tests. Both uploaded artifacts, then failed in the emulator compatibility/functional smoke step.
+
+| Check | Android 10 / API 29 — Nexus 5, 360×640 dp | Android 14 / API 34 — Pixel 7 Pro, 411×891 dp |
+|---|---|---|
+| Build/install/startup/sign-in/configuration tests | PASSED; configuration 4/4 | PASSED; configuration 4/4 |
+| Synthetic login, authenticated navigation, dashboard, asset search and asset details | PASSED | PASSED |
+| History API, seeded acknowledged inspection and visible history record | PASSED — HTTP 200; expected ID and remarks matched | PASSED — HTTP 200; expected ID and remarks matched |
+| Return from history to asset details | PASSED; test proceeded to the next dashboard scenario | FAILED at the test-side wait for `view-asset-history`; screenshot shows the app already returned to the details route |
+| PM schedule display | FAILED at the test-side wait for the `PM cycle:` summary; schedule/form reads returned 200, but the UI assertion was not observed | NOT EXECUTED after the history-return assertion failure |
+| Inspection form entry, save, reopen, edit and server verification | NOT EXECUTED | NOT EXECUTED |
+| Offline draft creation and persistence through app restart | NOT EXECUTED | NOT EXECUTED |
+| Reconnection, synchronization and server-state verification | NOT EXECUTED | NOT EXECUTED |
+| Controlled synchronization conflict | NOT EXECUTED; scenario is not implemented in this smoke | NOT EXECUTED; scenario is not implemented in this smoke |
+| Job conclusion | FAILED | FAILED |
+
+- API 29 job [132306614108](https://github.com/lucifron28/UniPM/actions/runs/43548924029/job/132306614108), artifact [android-api-29-evidence](https://github.com/lucifron28/UniPM/actions/runs/43548924029/artifacts/14095748055) (1,245,429 bytes). Reviewed failure screenshot: `dashboard-pm-schedule-failure.png`; widget diagnostics and Android window hierarchy are in the artifact.
+- API 34 job [132306613827](https://github.com/lucifron28/UniPM/actions/runs/43548924029/job/132306613827), artifact [android-api-34-evidence](https://github.com/lucifron28/UniPM/actions/runs/43548924029/artifacts/14095218129) (3,359,541 bytes). Reviewed failure screenshot: `asset-history-failure.png`; widget diagnostics and Android window hierarchy are in the artifact.
+
+Both failures are test-side lazy-list visibility errors, not confirmed app failures. On API 29, the test waited for a PM summary before scrolling the details `ListView`; the asset screen and HTTP 200 reads were present, while the PM list child was not yet built. On API 34, the pageBack navigation succeeded, but the test waited for the History control without scrolling the current details list; the control below the visible completed-schedule content was not built. The failures and screenshots were captured before teardown. No UniPM crash/ANR or failed API status was found. Form save/reopen/edit, offline persistence, app restart, reconnection/sync and conflict handling remain unverified. Raw artifact copies are under ignored `artifacts/nonfunctional-android/run-43548924029/`; no raw artifacts were committed.
 
 ## Supplemental Android 17 / API 37 smoke
 
@@ -156,7 +175,7 @@ Details, logs references, and actual screenshots are in [the API 37 smoke record
 
 ## Compatibility boundary and reproduction
 
-`mobile/android/app/build.gradle.kts` relies on Flutter's Android SDK defaults; with Flutter 3.47.1, the resolved minimum SDK is API 24, and compile/target SDK are API 36. An earlier CI run (43296932992) recorded APK installation on both requested API levels, but that does not verify installation or UI behavior in TEST-201. TEST-201's emulator compatibility step failed on both profiles, and artifact egress restrictions prevented inspection of startup screenshots and test logs. No API 29/API 34 claim is made for TEST-201 layout fit, authentication, asset lookup, inspection entry, persistence, synchronization, history or conflict handling.
+`mobile/android/app/build.gradle.kts` relies on Flutter's Android SDK defaults; with Flutter 3.47.1, the resolved minimum SDK is API 24, and compile/target SDK are API 36. Run 43548924029 verified build/install, visible login, configuration tests, authenticated navigation, asset details and history display on both requested Android profiles. The two jobs then stopped at test-side lazy-list waits: API 29 PM-summary visibility and API 34 history-control visibility. No claim is made for PM schedule UI completion on API 29, inspection form behavior, offline persistence, process restart, reconnection synchronization or conflict handling.
 
 To repeat the workflow after pushing this branch:
 
@@ -173,5 +192,5 @@ gh run download 43296932992 --name android-api-29-evidence
 gh run download 43296932992 --name android-api-34-evidence
 ```
 
-Do not report these results as full Android compatibility acceptance. TEST-200 verified install, login, authenticated navigation, dashboard, asset search and asset details on both profiles; it also verified API 34 history and schedule display and identified test-side History navigation and fixture-selection issues. TEST-201 failed in the emulator smoke step on both profiles, and artifact downloads were blocked by the account egress limit. The accessible evidence does not establish which functional checks ran or passed in TEST-201, so history, forms, offline persistence and synchronization remain unverified. Do not claim compatibility passed or assign a root cause.
+Do not report these results as full Android compatibility acceptance. The latest TEST-201 run 43548924029 established history display on both profiles and identified two test-side lazy-list waits. The API 29 PM schedule display assertion failed before the UI content was scrolled into view; API 34 history return reached the details route, but its History control wait failed before scrolling. Forms, offline persistence after restart and reconnection synchronization were not executed. No production defect is confirmed, and Android compatibility is not complete.
 

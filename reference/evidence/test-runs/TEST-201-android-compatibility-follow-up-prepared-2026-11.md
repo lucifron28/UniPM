@@ -3,8 +3,8 @@ id: TEST-201
 type: test-run
 title: Android compatibility verification; follow-up failed in test interactions
 status: executed
-recordedAtUtc: 2026-11-13T18:04:35Z
-testedCommit: e15c428b155c2f0ef4bf1807806a3763e4b9557f
+recordedAtUtc: 2026-11-14T03:07:06Z
+testedCommit: 9bbbe0b69ed23689d12c9a2603588d9e244787e5
 sourceBranch: codex/nonfunctional-testing-2026-11
 evidenceLevel: ci-executed
 ---
@@ -81,6 +81,38 @@ Evidence is in the API 34 artifact: integration-34-prepare.log, api-request-stat
 
 Both profiles’ emulator logs were reviewed; no app crash or ANR was found. Auth, asset, QR, schedule, form-list, and history reads recorded for the reached scenarios returned HTTP 200. No inspection form was created by the failed API 34 tap.
 
+### Run 3 — authorized API 29/API 34 interaction rerun
+
+[Run 43548924029](https://github.com/lucifron28/UniPM/actions/runs/43548924029) was manually dispatched once on 2026-11-14. It tested `9bbbe0b69ed23689d12c9a2603588d9e244787e5` on `codex/nonfunctional-testing-2026-11`, started at 2026-11-14T02:55:41Z and completed at 2026-11-14T03:07:06Z. It ran the full workflow matrix on separate ephemeral databases: Android 10/API 29 (Nexus 5, 360×640 dp) and Android 14/API 34 (Pixel 7 Pro, 411×891 dp).
+
+- API 29 job [132306614108](https://github.com/lucifron28/UniPM/actions/runs/43548924029/job/132306614108); artifact [android-api-29-evidence](https://github.com/lucifron28/UniPM/actions/runs/43548924029/artifacts/14095748055) (1,245,429 bytes).
+- API 34 job [132306613827](https://github.com/lucifron28/UniPM/actions/runs/43548924029/job/132306613827); artifact [android-api-34-evidence](https://github.com/lucifron28/UniPM/actions/runs/43548924029/artifacts/14095218129) (3,359,541 bytes).
+- Both jobs passed Flutter setup/package resolution, isolated SQL Server/API seed, APK build, emulator profile checks, install/startup, visible sign-in, and the four app-configuration tests. Both uploaded their evidence artifacts. Both job conclusions were failure at `Run emulator compatibility and functional smoke checks`.
+
+## Run 3 profile outcomes
+
+| Check | Android 10 / API 29, Nexus 5 | Android 14 / API 34, Pixel 7 Pro |
+|---|---|---|
+| Build, install, startup, visible sign-in, configuration tests | PASSED; configuration 4/4 | PASSED; configuration 4/4 |
+| Synthetic login, authenticated navigation, dashboard, asset search/details | PASSED | PASSED |
+| History API and seeded acknowledged record | PASSED — HTTP 200; inspection 34000000-0000-4000-8000-000000000001 and expected remarks matched | PASSED — HTTP 200; same seeded inspection and remarks |
+| Visible maintenance-history record | PASSED | PASSED |
+| Return from history to asset details | PASSED — test continued to the next dashboard scenario | FAILED at the test wait for the History action; screenshot shows the app already returned to Asset lookup/details |
+| PM schedule display | FAILED at test wait for the `PM cycle:` summary; schedule/form reads returned HTTP 200, but the UI summary was not built in the current viewport | NOT EXECUTED after the history-return wait failure |
+| Inspection form entry, save, reopen, edit, server verification | NOT EXECUTED | NOT EXECUTED |
+| Offline draft creation and local persistence before reconnect | NOT EXECUTED | NOT EXECUTED |
+| App restart, offline snapshot verification, reconnection and server synchronization | NOT EXECUTED | NOT EXECUTED |
+| Controlled synchronization conflict | NOT EXECUTED; no conflict scenario is implemented in this smoke | NOT EXECUTED; no conflict scenario is implemented in this smoke |
+| Job conclusion | FAILED | FAILED |
+
+### Run 3 failure diagnosis
+
+**API 29 — PM schedule wait missed a lazy list child.** After the test returned from history and opened `DEMO-EL-003`, the screen showed the asset-details page. The test immediately waited for `find.textContaining('PM cycle:')` (`integration_test/nonfunctional_smoke_test.dart`, schedule-summary wait) without scrolling the asset-details list. The 360×640 dp screenshot `dashboard-pm-schedule-failure.png` and its window hierarchy show the viewport at the asset card; the widget diagnostics identify the asset details' outer `ListView`, while the PM section below that card was not yet built. The API log records HTTP 200 for `GET /api/v1/schedules?assetId=30000000-0000-4000-8000-000000000003` and the forms read. The exact failure was `Timed out waiting for preventive-maintenance schedule summary.` This is a test-side lazy-list/scroll omission; the schedule UI was not verified and no application/API failure was established.
+
+**API 34 — history return reached the details route, but its History control was offscreen.** The history endpoint returned HTTP 200 and the expected acknowledged record was visible. After `tester.pageBack()`, the failure screenshot `asset-history-failure.png`, widget diagnostics, and Android window hierarchy show `Asset lookup`, `DEMO-EL-001`, and its completed June 2026 schedule with the expected “no existing Draft inspection row to resume” state. The test then timed out waiting for the `view-asset-history` key without first scrolling the current lazy details list. The page route had returned successfully; the History action below the visible PM content had not been built. This is a test-side visibility assertion failure, not an application navigation failure.
+
+Both profiles' recorded API requests returned HTTP 200; no failed API status or UniPM process crash/ANR was found. The failure wrapper captured Flutter widget diagnostics, screenshots, and window hierarchy before teardown. The API 29 artifact contains `integration-29.log`, `api-request-status.log`, `dashboard-pm-schedule-failure.png`, and `dashboard-pm-schedule-failure-window.xml`; API 34 contains `integration-34.log`, `api-request-status.log`, `asset-history-failure.png`, and `asset-history-failure-window.xml`. Extracted raw files remain under the ignored `artifacts/nonfunctional-android/run-43548924029/` directory; no raw logs or screenshots were committed.
+
 ## TEST-200 outcomes carried forward
 
 | Check | API 29 | API 34 |
@@ -101,10 +133,10 @@ Offline work uses the separate synthetic DEMO-FE-003 asset and its eligible Nove
 
 After the runner force-stops the app, the restart phase remains signed out and offline. It reads the encrypted secure snapshot using the synthetic inspector ID from phase one, verifies the Draft, inspection fields, and exactly two pending writes, then emits the online-network marker. The runner restores connectivity only after observing the persistence marker. After reconnection and same-account sign-in, the test checks the synchronized server Draft, inspection, schedule status, cleared sync banner, and reopened form.
 
-The failure wrapper logs visible text, Flutter widget and render-tree diagnostics, then captures an in-app screenshot and Android hierarchy before teardown. Run 2 captured these diagnostics for both failures, and they were inspected. A controlled synchronization-conflict scenario is not implemented and remains NOT EXECUTED. Source review describes the intended checks; only the run-specific outcomes above count as execution evidence.
+The failure wrapper logs visible text, Flutter widget and render-tree diagnostics, then captures an in-app screenshot and Android hierarchy before teardown. Runs 2 and 3 captured these diagnostics for their failures, and the Run 3 artifacts were inspected. A controlled synchronization-conflict scenario is not implemented and remains NOT EXECUTED. Source review describes the intended checks; only the run-specific outcomes above count as execution evidence.
 
 ## Evidence preservation and limits
 
-TEST-198, TEST-199, TEST-200 and their records remain unchanged. The TEST-201 first execution is preserved above, followed by the single authorized follow-up. Only test code changed; no production application logic was modified. No further rerun was dispatched.
+TEST-198, TEST-199, TEST-200 and their records remain unchanged. The TEST-201 compile failure and both later interaction runs are preserved above. No production application logic was modified. Run 3 was the single authorized dispatch for commit `9bbbe0b69ed23689d12c9a2603588d9e244787e5`; no additional workflow was dispatched.
 
-TEST-201 remains incomplete: history was verified on both profiles, but the maintenance-history return marker failed on API 29 and the Start Inspection tap missed on API 34. Online form save/reopen/edit, offline persistence, reconnection synchronization and synchronized server-state checks were NOT EXECUTED on both profiles. Android compatibility must not be reported as passed.
+TEST-201 remains incomplete. The history record and display passed on both profiles. API 29 failed a test-side lazy PM-summary wait; API 34 failed a test-side wait for the offscreen History control even though the details route was visible. Inspection form entry/save/reopen/edit, offline persistence after restart, and reconnection synchronization were NOT EXECUTED on either profile. The next test correction should scroll the relevant asset-details list before waiting for each lazy control. No production defect was confirmed; Android compatibility must not be reported as passed.
