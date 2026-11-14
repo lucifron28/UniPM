@@ -11,6 +11,7 @@ import 'package:mobile/features/maintenance_history/asset_maintenance_history_mo
 import 'package:mobile/features/preventive_maintenance/offline_inspection_repository.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
+import 'package:mobile/features/preventive_maintenance/pm_cycle_presentation.dart';
 import 'package:mobile/main.dart' as app;
 
 const _syntheticInspectorEmail = 'inspector@unipm.local';
@@ -34,545 +35,572 @@ const _smokePhase = String.fromEnvironment(
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  if (_smokePhase == 'restart') {
+    testWidgets(
+      'offline Draft persists and synchronizes after process restart',
+      _captureSmokeFailures(
+        'offline-restart-sync',
+        (tester, setStage) => _runAfterProcessRestart(tester, setStage),
+      ),
+    );
+    return;
+  }
+  if (_smokePhase != 'prepare') {
+    test(
+      'valid smoke phase',
+      () => fail('Unknown smoke phase "$_smokePhase".'),
+    );
+    return;
+  }
 
   testWidgets(
-    'synthetic authenticated field-work compatibility smoke',
-    _captureSmokeFailures((tester, setStage) async {
-    setStage('startup-login');
-    if (_smokePassword.isEmpty) {
-      fail('The generated synthetic development password was not provided.');
-    }
-    if (_apiBaseUrl.isEmpty) {
-      fail('The synthetic API URL was not provided to the integration test.');
-    }
-    if (_smokePhase != 'prepare' && _smokePhase != 'restart') {
-      fail('Unknown synthetic smoke phase "$_smokePhase".');
-    }
-
-    debugPrint('SMOKE_CONTEXT android_api=$_apiLevel');
-    debugPrint(
-      'SMOKE_CONTEXT fixture_scope=isolated_ephemeral_database api=$_apiLevel',
-    );
-    if (_smokePhase == 'restart') {
-      await _runAfterProcessRestart(tester, setStage);
-      return;
-    }
-    app.main();
-    await tester.pump();
-    await _waitFor(
-      tester,
-      find.text('Use your UniPM field-work account.'),
-      'login screen',
-    );
-    expect(find.text('Sign in'), findsNWidgets(2));
-    expect(find.byType(TextFormField), findsNWidgets(2));
-    _checkForFlutterRenderingErrors(tester, 'login');
-    debugPrint('SMOKE_RESULT login_screen=PASS');
-
-    await tester.enterText(
-      find.byType(TextFormField).at(0),
-      _syntheticInspectorEmail,
-    );
-    await tester.enterText(find.byType(TextFormField).at(1), _smokePassword);
-    final signInButton = find.widgetWithText(FilledButton, 'Sign in');
-    await tester.ensureVisible(signInButton);
-    await tester.tap(signInButton);
-    await _waitFor(
-      tester,
-      find.text('Welcome, Maintenance Inspector'),
-      'authenticated dashboard',
-      timeout: const Duration(seconds: 60),
-    );
-    _checkForFlutterRenderingErrors(tester, 'authenticated dashboard');
-    debugPrint('SMOKE_RESULT authenticated_navigation=PASS');
-    debugPrint('SMOKE_RESULT dashboard_responsive_layout=PASS');
-
-    setStage('dashboard-search');
-    final searchAction = find.byKey(const Key('search-assets'));
-    final dashboardScrollable = find.descendant(
-      of: find.byType(RefreshIndicator),
-      matching: find.byType(Scrollable),
-    );
-    final dashboardText = _visibleTextSnapshot(tester).join(' | ');
-    debugPrint(
-      'SMOKE_DIAGNOSTIC dashboard_search_key_count=${searchAction.evaluate().length} '
-      'dashboard_scrollable_count=${dashboardScrollable.evaluate().length} '
-      'dashboard_text=$dashboardText',
-    );
-    try {
-      await tester.scrollUntilVisible(
-        searchAction,
-        240,
-        scrollable: dashboardScrollable.first,
-        maxScrolls: 12,
-      );
-      debugPrint('SMOKE_RESULT dashboard_search_action_visible=PASS');
-    } catch (error) {
-      debugPrint('SMOKE_FAILURE stage=dashboard-search');
-      debugPrint(
-        'SMOKE_DIAGNOSTIC dashboard_visible_text=' +
-            _visibleTextSnapshot(tester).join(' | '),
-      );
-      debugPrint(
-        'SMOKE_DIAGNOSTIC dashboard_search_key_count=' +
-            searchAction.evaluate().length.toString() +
-            ' scrollables=' +
-            dashboardScrollable.evaluate().length.toString() +
-            ' error=' +
-            error.toString().replaceAll('\n', ' '),
-      );
-      debugPrint('SMOKE_CAPTURE_SCREEN=dashboard-search');
-      rethrow;
-    }
-    setStage('asset-search-result');
-    await tester.tap(searchAction);
-    await _waitFor(
-      tester,
-      find.byKey(const Key('asset-search-input')),
-      'asset search',
-    );
-    await tester.enterText(
-      find.byKey(const Key('asset-search-input')),
-      _syntheticAssetCode,
-    );
-    final assetSearchResult = find.byKey(
-      ValueKey('asset-search-result-' + _syntheticAssetCode),
-    );
-    try {
-      await _waitFor(
-        tester,
-        assetSearchResult,
-        'synthetic asset search result card',
-        timeout: const Duration(seconds: 45),
-      );
-      await _scrollUntilVisible(tester, assetSearchResult);
-    } catch (error) {
-      debugPrint('SMOKE_FAILURE stage=asset-search-result');
-      debugPrint(
-        'SMOKE_DIAGNOSTIC asset_search_visible_text=' +
-            _visibleTextSnapshot(tester).join(' | '),
-      );
-      debugPrint(
-        'SMOKE_DIAGNOSTIC result_card_key_count=' +
-            assetSearchResult.evaluate().length.toString() +
-            ' search_page_count=' +
-            find.text('Search Assets').evaluate().length.toString() +
-            ' search_input_count=' +
-            find.byKey(const Key('asset-search-input')).evaluate().length.toString() +
-            ' wait_error=' +
-            error.toString().replaceAll('\n', ' '),
-      );
-      debugPrint('SMOKE_CAPTURE_SCREEN=asset-search-result');
-      rethrow;
-    }
-    setStage('asset-details');
-    try {
-      await tester.tap(assetSearchResult);
-      await _waitFor(
-        tester,
-        find.text('Asset lookup'),
-        'asset lookup page after selecting a search result',
-        timeout: const Duration(seconds: 15),
-      );
-      await _waitFor(
-        tester,
-        find.byKey(const Key('asset-code')),
-        'asset details',
-      );
-      debugPrint(
-        'SMOKE_SCREEN asset_details=' +
-            _visibleTextSnapshot(tester).join(' | '),
-      );
-    } catch (error) {
-      _logAssetDetailsFailure(tester, error);
-      rethrow;
-    }
-    expect(find.text(_syntheticAssetCode), findsOneWidget);
-    _checkForFlutterRenderingErrors(tester, 'asset details');
-    debugPrint('SMOKE_RESULT asset_lookup_and_details=PASS');
-
-    setStage('asset-history');
-    final serverVerifier = _SmokeServerVerifier();
-    await serverVerifier.signIn();
-    debugPrint('SMOKE_TEST_USER_ID=' + serverVerifier.userId);
-    final apiHistory = await serverVerifier.getHistory(_syntheticAssetId);
-    final expectedApiHistory = apiHistory.where(
-      (record) => record.id == _expectedHistoryInspectionId,
-    );
-    expect(expectedApiHistory, hasLength(1));
-    expect(
-      expectedApiHistory.single.remarks,
-      'Emergency light passed the simulated power interruption test.',
-    );
-    debugPrint(
-      'SMOKE_RESULT maintenance_history_api=PASS '
-      'status=200 record=$_expectedHistoryInspectionId',
-    );
-    final historyAction = find.byKey(const Key('view-asset-history'));
-    await _scrollUntilVisible(tester, historyAction);
-    await tester.tap(historyAction);
-    await _waitFor(
-      tester,
-      find.text('Maintenance history'),
-      'maintenance history',
-      timeout: const Duration(seconds: 45),
-    );
-    final historyCards = find.byWidgetPredicate((widget) {
-      final key = widget.key;
-      return key is ValueKey<String> &&
-          key.value.startsWith('asset-history-record-');
-    });
-    await _waitForAny(
-      tester,
-      [historyCards],
-      'acknowledged maintenance-history record',
-      timeout: const Duration(seconds: 45),
-    );
-    expect(historyCards, findsAtLeastNWidgets(1));
-    const expectedHistoryRemark =
-        'Emergency light passed the simulated power interruption test.';
-    await _waitFor(
-      tester,
-      find.text(expectedHistoryRemark),
-      'expected acknowledged history record for $_syntheticAssetCode',
-    );
-    expect(
-      find.byKey(
-        const ValueKey('asset-history-record-$_expectedHistoryInspectionId'),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text(expectedHistoryRemark), findsOneWidget);
-    _checkForFlutterRenderingErrors(tester, 'maintenance history');
-    debugPrint('SMOKE_RESULT maintenance_history_display=PASS');
-
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      historyAction,
-      'return from maintenance history to asset details',
-    );
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      find.byKey(const Key('asset-search-input')),
-      'return from asset details to asset search',
-    );
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      find.text('Welcome, Maintenance Inspector'),
-      'return from asset search to dashboard',
-    );
-    setStage('dashboard-pm-schedule');
-    await _openAssetFromDashboard(tester, _inspectionAssetCode);
-    final scheduleSummary = find.textContaining('PM cycle:');
-    await _waitFor(
-      tester,
-      scheduleSummary,
-      'preventive-maintenance schedule summary',
-      timeout: const Duration(seconds: 45),
-    );
-    _checkForFlutterRenderingErrors(tester, 'PM schedule');
-    debugPrint('SMOKE_RESULT preventive_maintenance_schedule=PASS');
-
-    setStage('pm-fixture-check');
-    final inspectionSchedules = await serverVerifier.listSchedules(
-      _inspectionAssetId,
-    );
-    final inspectionSchedule = inspectionSchedules.singleWhere(
-      (schedule) => schedule.id == _inspectionScheduleId,
-    );
-    expect(inspectionSchedule.asset?.assetCode, _inspectionAssetCode);
-    expect(inspectionSchedule.status, 'Due');
-    expect(inspectionSchedule.isEligibleForFieldWork, isTrue);
-    expect(
-      inspectionSchedule.assignedToUserId,
-      serverVerifier.userId,
-      reason: 'The synthetic PM schedule must be assigned to the smoke user.',
-    );
-    expect(
-      await serverVerifier.listDraftsForInspectionFixture(
-        assetCategory: 'emergency-light',
-        department: 'Campus Facilities',
-        pmCycle: '2026-06',
-      ),
-      isEmpty,
-    );
-    debugPrint(
-      'SMOKE_FIXTURE inspection_asset=$_inspectionAssetCode '
-      'schedule=$_inspectionScheduleId status=${inspectionSchedule.status} '
-      'assigned_to_smoke_user=PASS',
-    );
-
-    setStage('pm-form-open');
-    final startInspection = find.byKey(const Key('start-pm'));
-    await _waitFor(
-      tester,
-      startInspection,
-      'Start Inspection action for $_inspectionAssetCode',
-      timeout: const Duration(seconds: 45),
-    );
-    expect(find.byKey(const Key('resume-pm')), findsNothing);
-    await _bringButtonIntoViewAndVerifyHitTest(
-      tester,
-      startInspection,
-      'Start Inspection',
-    );
-    expect(
-      tester.widget<FilledButton>(startInspection).onPressed,
-      isNotNull,
-      reason: 'The fixture schedule must have an enabled Start action.',
-    );
-    await tester.tap(startInspection);
-    await _waitFor(
-      tester,
-      find.byKey(const Key('new-inspection-date')),
-      'inspection-entry form',
-      timeout: const Duration(seconds: 60),
-    );
-    final today = DateTime.now().toUtc().toIso8601String().substring(0, 10);
-    await tester.enterText(find.byKey(const Key('new-inspection-date')), today);
-    final onlineRemarks = 'Android compatibility smoke online save API $_apiLevel';
-    await tester.enterText(
-      find.byKey(const Key('new-inspection-remarks')),
-      onlineRemarks,
-    );
-    final addInspection = find.byKey(const Key('add-inspection-button'));
-    await _scrollUntilVisible(tester, addInspection);
-    _checkForFlutterRenderingErrors(tester, 'inspection-entry form');
-    setStage('pm-form-save');
-    await tester.tap(addInspection);
-    await _waitFor(
-      tester,
-      find.text('Inspection Recorded'),
-      'saved synthetic inspection-entry confirmation',
-      timeout: const Duration(seconds: 60),
-    );
-    _checkForFlutterRenderingErrors(tester, 'saved inspection entry');
-    await tester.tap(find.byKey(const Key('sheet-view-batch')));
-    final onlineForm = await serverVerifier.findFormWithInspectionRemarks(
-      onlineRemarks,
-    );
-    expect(onlineForm.status, 'Draft');
-    expect(onlineForm.inspections, hasLength(1));
-    final onlineInspection = onlineForm.inspections.single;
-    expect(onlineInspection.assetCode, _inspectionAssetCode);
-    expect(onlineInspection.scheduleId, _inspectionScheduleId);
-    debugPrint('SMOKE_RESULT preventive_maintenance_inspection_save=PASS');
-    debugPrint(
-      'SMOKE_SERVER_STATE form_status=${onlineForm.status} '
-      'inspection_count=${onlineForm.inspections.length} '
-      'asset=$_inspectionAssetCode online_remarks=VERIFIED',
-    );
-
-    setStage('pm-form-reopen');
-    final resumeInspection = find.byKey(const Key('resume-pm'));
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      resumeInspection,
-      'return to asset details with Resume Inspection for the saved Draft',
-      timeout: const Duration(seconds: 45),
-    );
-    await _scrollUntilVisible(tester, resumeInspection);
-    await tester.tap(resumeInspection);
-    final inspectionRemarks = find.byKey(
-      Key('inspection-remarks-${onlineInspection.id}'),
-    );
-    await _waitFor(
-      tester,
-      inspectionRemarks,
-      'saved inspection row after reopening the Draft',
-    );
-    expect(
-      tester.widget<TextField>(inspectionRemarks).controller?.text,
-      onlineRemarks,
-    );
-    expect(tester.widget<TextField>(inspectionRemarks).enabled, isTrue);
-    debugPrint('SMOKE_RESULT preventive_maintenance_inspection_reopen=PASS');
-
-    setStage('pm-form-edit');
-    final onlineEditedRemarks =
-        'Android compatibility smoke online edit API $_apiLevel';
-    await tester.enterText(inspectionRemarks, onlineEditedRemarks);
-    final saveOnlineInspection = find.byKey(
-      Key('save-inspection-${onlineInspection.id}'),
-    );
-    await _scrollUntilVisible(tester, saveOnlineInspection);
-    await tester.tap(saveOnlineInspection);
-    final editedOnlineForm = await _waitForServerInspectionRemarks(
-      tester,
-      serverVerifier,
-      onlineForm.id,
-      onlineInspection.id,
-      onlineEditedRemarks,
-    );
-    expect(editedOnlineForm.status, 'Draft');
-    expect(editedOnlineForm.inspections.single.remarks, onlineEditedRemarks);
-    debugPrint('SMOKE_RESULT preventive_maintenance_inspection_edit=PASS');
-    debugPrint(
-      'SMOKE_SERVER_STATE after_online_edit form_status=${editedOnlineForm.status} '
-      'inspection_count=${editedOnlineForm.inspections.length} remarks=VERIFIED',
-    );
-
-    setStage('pm-form-reopen-after-edit');
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      resumeInspection,
-      'return to asset details with Resume Inspection after edit',
-    );
-    await _scrollUntilVisible(tester, resumeInspection);
-    await tester.tap(resumeInspection);
-    final editedInspectionRemarks = find.byKey(
-      Key('inspection-remarks-${onlineInspection.id}'),
-    );
-    await _waitFor(
-      tester,
-      editedInspectionRemarks,
-      'edited online inspection row after reopening the Draft',
-    );
-    expect(
-      tester.widget<TextField>(editedInspectionRemarks).controller?.text,
-      onlineEditedRemarks,
-    );
-    debugPrint('SMOKE_RESULT preventive_maintenance_inspection_edit_reopen=PASS');
-
-    setStage('offline-fixture-check');
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      resumeInspection,
-      'return to asset details after online form edit',
-    );
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      find.byKey(const Key('asset-search-input')),
-      'return to asset search before opening offline fixture',
-    );
-    await tester.pageBack();
-    await _waitFor(
-      tester,
-      find.text('Welcome, Maintenance Inspector'),
-      'return to dashboard before opening offline fixture',
-    );
-    await _openAssetFromDashboard(tester, _offlineAssetCode);
-    expect(find.text(_offlineAssetCode), findsOneWidget);
-    final offlineSchedules = await serverVerifier.listSchedules(_offlineAssetId);
-    final offlineSchedule = offlineSchedules.singleWhere(
-      (schedule) => schedule.id == _offlineScheduleId,
-    );
-    expect(offlineSchedule.asset?.assetCode, _offlineAssetCode);
-    expect(offlineSchedule.status, 'Due');
-    expect(offlineSchedule.isEligibleForFieldWork, isTrue);
-    expect(offlineSchedule.assignedToUserId, serverVerifier.userId);
-    expect(
-      await serverVerifier.listDraftsForInspectionFixture(
-        assetCategory: 'fire-extinguisher',
-        department: 'CCMS',
-        pmCycle: '2026-11',
-      ),
-      isEmpty,
-    );
-    final offlineStart = find.byKey(const Key('start-pm'));
-    await _waitFor(
-      tester,
-      offlineStart,
-      'eligible offline-fixture Start action for $_offlineAssetCode',
-      timeout: const Duration(seconds: 45),
-    );
-    await _bringButtonIntoViewAndVerifyHitTest(
-      tester,
-      offlineStart,
-      'Offline fixture Start Inspection',
-    );
-    expect(tester.widget<FilledButton>(offlineStart).onPressed, isNotNull);
-    debugPrint(
-      'SMOKE_FIXTURE offline_asset=$_offlineAssetCode schedule=$_offlineScheduleId '
-      'status=${offlineSchedule.status} assigned_to_smoke_user=PASS',
-    );
-
-    setStage('offline-connectivity-check');
-    debugPrint('SMOKE_NETWORK_REQUEST=offline');
-    await _waitForBackendReachability(
-      tester,
-      reachable: false,
-      timeout: const Duration(seconds: 30),
-    );
-    debugPrint('SMOKE_RESULT backend_disconnected=PASS');
-
-    setStage('offline-draft-create');
-    await tester.tap(offlineStart);
-    await _waitFor(
-      tester,
-      find.byKey(const Key('new-inspection-date')),
-      'new offline inspection form for $_offlineAssetCode',
-      timeout: const Duration(seconds: 45),
-    );
-    final offlineDate = DateTime.now().toUtc().toIso8601String().substring(0, 10);
-    final offlineRemarks =
-        'Android compatibility smoke offline draft API $_apiLevel';
-    await tester.enterText(
-      find.byKey(const Key('new-inspection-date')),
-      offlineDate,
-    );
-    await tester.enterText(
-      find.byKey(const Key('new-inspection-remarks')),
-      offlineRemarks,
-    );
-    final addOfflineInspection = find.byKey(
-      const Key('add-inspection-button'),
-    );
-    await _scrollUntilVisible(tester, addOfflineInspection);
-    await tester.tap(addOfflineInspection);
-    await _waitFor(
-      tester,
-      find.text('Saved on this device'),
-      'offline inspection saved locally',
-      timeout: const Duration(seconds: 60),
-    );
-    await tester.tap(find.byKey(const Key('sheet-view-batch')));
-    await _waitFor(
-      tester,
-      find.text('Offline draft saved securely'),
-      'offline Draft status after creating and saving the inspection',
-    );
-    await _waitFor(
-      tester,
-      find.textContaining('2 change(s) for this draft are waiting to sync.'),
-      'offline create-form and add-inspection writes queued locally',
-    );
-    final offlineRemarksField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField && widget.controller?.text == offlineRemarks,
-    );
-    await _waitFor(
-      tester,
-      offlineRemarksField,
-      'offline inspection row restored from the local Draft',
-    );
-    expect(
-      tester.widget<TextField>(offlineRemarksField).controller?.text,
-      offlineRemarks,
-    );
-    debugPrint('SMOKE_RESULT offline_draft_creation_and_local_save=PASS');
-    debugPrint(
-      'SMOKE_LOCAL_STATE asset=$_offlineAssetCode schedule=$_offlineScheduleId '
-      'queued_writes=2 remarks=VERIFIED',
-    );
-    debugPrint('SMOKE_PHASE_COMPLETE=offline-pending-restart');
-    debugPrint('SMOKE_RESULT visible_layout_overflow=PASS');
-    debugPrint('SMOKE_RESULT live_error_or_conflict_recovery=NOT_EXECUTED');
-    }),
+    'asset details and acknowledged maintenance history',
+    _captureSmokeFailures('asset-history', _runAssetHistoryScenario),
   );
+  testWidgets(
+    'online inspection Draft save, reopen, edit, and persistence',
+    _captureSmokeFailures('online-inspection', _runOnlineInspectionScenario),
+  );
+  testWidgets(
+    'offline Draft creation and local persistence before restart',
+    _captureSmokeFailures('offline-draft-prepare', _runOfflineDraftScenario),
+  );
+}
+
+Future<_SmokeServerVerifier> _startAuthenticatedSession(
+  WidgetTester tester,
+) async {
+  _validateSmokeEnvironment();
+  debugPrint('SMOKE_CONTEXT android_api=$_apiLevel');
+  debugPrint(
+    'SMOKE_CONTEXT fixture_scope=isolated_ephemeral_database api=$_apiLevel',
+  );
+
+  app.main();
+  await tester.pump();
+  await _waitFor(
+    tester,
+    find.text('Use your UniPM field-work account.'),
+    'login screen',
+  );
+  expect(find.text('Sign in'), findsNWidgets(2));
+  expect(find.byType(TextFormField), findsNWidgets(2));
+  _checkForFlutterRenderingErrors(tester, 'login');
+  debugPrint('SMOKE_RESULT login_screen=PASS');
+
+  final emailField = find.byType(TextFormField).at(0);
+  await _scrollUntilVisible(
+    tester,
+    emailField,
+    description: 'synthetic inspector email field',
+  );
+  await tester.enterText(emailField, _syntheticInspectorEmail);
+  final passwordField = find.byType(TextFormField).at(1);
+  await _scrollUntilVisible(
+    tester,
+    passwordField,
+    description: 'synthetic inspector password field',
+  );
+  await tester.enterText(passwordField, _smokePassword);
+  await _tapAfterScrolling(
+    tester,
+    find.widgetWithText(FilledButton, 'Sign in'),
+    'Sign in',
+  );
+  await _waitFor(
+    tester,
+    find.text('Welcome, Maintenance Inspector'),
+    'authenticated dashboard',
+    timeout: const Duration(seconds: 60),
+  );
+  _checkForFlutterRenderingErrors(tester, 'authenticated dashboard');
+  debugPrint('SMOKE_RESULT authenticated_navigation=PASS');
+  debugPrint('SMOKE_RESULT dashboard_responsive_layout=PASS');
+
+  final verifier = _SmokeServerVerifier();
+  await verifier.signIn();
+  debugPrint('SMOKE_TEST_USER_ID=' + verifier.userId);
+  return verifier;
+}
+
+void _validateSmokeEnvironment() {
+  if (_smokePassword.isEmpty) {
+    fail('The generated synthetic development password was not provided.');
+  }
+  if (_apiBaseUrl.isEmpty) {
+    fail('The synthetic API URL was not provided to the integration test.');
+  }
+}
+
+Future<void> _runAssetHistoryScenario(
+  WidgetTester tester,
+  void Function(String stage) setStage,
+) async {
+  setStage('startup-login');
+  final serverVerifier = await _startAuthenticatedSession(tester);
+
+  setStage('asset-search-result');
+  await _openAssetFromDashboard(tester, _syntheticAssetCode);
+  expect(find.text(_syntheticAssetCode), findsOneWidget);
+  _checkForFlutterRenderingErrors(tester, 'asset details');
+  debugPrint('SMOKE_RESULT asset_lookup_and_details=PASS');
+
+  setStage('asset-history-api');
+  final apiHistory = await serverVerifier.getHistory(_syntheticAssetId);
+  final expectedApiHistory = apiHistory.where(
+    (record) => record.id == _expectedHistoryInspectionId,
+  );
+  expect(expectedApiHistory, hasLength(1));
+  const expectedHistoryRemark =
+      'Emergency light passed the simulated power interruption test.';
+  expect(expectedApiHistory.single.remarks, expectedHistoryRemark);
+  debugPrint(
+    'SMOKE_RESULT maintenance_history_api=PASS '
+    'status=200 record=$_expectedHistoryInspectionId',
+  );
+
+  setStage('asset-history');
+  await _tapAfterScrolling(
+    tester,
+    find.byKey(const Key('view-asset-history')),
+    'View maintenance history',
+  );
+  await _waitFor(
+    tester,
+    find.text('Maintenance history'),
+    'maintenance-history route',
+    timeout: const Duration(seconds: 45),
+  );
+  await _waitFor(
+    tester,
+    find.byKey(const Key('asset-history-list')),
+    'maintenance-history list after API response',
+    timeout: const Duration(seconds: 45),
+  );
+  final expectedHistoryRecord = find.byKey(
+    const ValueKey('asset-history-record-$_expectedHistoryInspectionId'),
+  );
+  await _scrollUntilVisible(
+    tester,
+    expectedHistoryRecord,
+    description: 'seeded acknowledged maintenance-history record',
+  );
+  expect(expectedHistoryRecord, findsOneWidget);
+  expect(find.text(expectedHistoryRemark), findsOneWidget);
+  _checkForFlutterRenderingErrors(tester, 'maintenance history');
+  debugPrint('SMOKE_RESULT maintenance_history_display=PASS');
+
+  await tester.pageBack();
+  final assetLookupTitle = find.text('Asset lookup');
+  await _waitFor(
+    tester,
+    assetLookupTitle,
+    'Asset lookup/details route after closing maintenance history',
+  );
+  _verifyVisibleOnScreen(
+    tester,
+    assetLookupTitle,
+    'Asset lookup route title after closing maintenance history',
+  );
+  debugPrint('SMOKE_RESULT history_return_to_asset_details=PASS');
+
+  await tester.pageBack();
+  await _waitFor(
+    tester,
+    find.byKey(const Key('asset-search-input')),
+    'return from asset details to asset search',
+  );
+  await tester.pageBack();
+  await _waitFor(
+    tester,
+    find.text('Welcome, Maintenance Inspector'),
+    'return from asset search to dashboard',
+  );
+}
+
+Future<void> _runOnlineInspectionScenario(
+  WidgetTester tester,
+  void Function(String stage) setStage,
+) async {
+  setStage('startup-login');
+  final serverVerifier = await _startAuthenticatedSession(tester);
+
+  setStage('pm-fixture-check');
+  final inspectionSchedules = await serverVerifier.listSchedules(
+    _inspectionAssetId,
+  );
+  final inspectionSchedule = inspectionSchedules.singleWhere(
+    (schedule) => schedule.id == _inspectionScheduleId,
+  );
+  expect(inspectionSchedule.asset?.assetCode, _inspectionAssetCode);
+  expect(inspectionSchedule.status, 'Due');
+  expect(inspectionSchedule.canonicalPmCycle, '2026-06');
+  expect(inspectionSchedule.isEligibleForFieldWork, isTrue);
+  expect(
+    inspectionSchedule.assignedToUserId,
+    serverVerifier.userId,
+    reason: 'The synthetic PM schedule must be assigned to the smoke user.',
+  );
+  expect(
+    await serverVerifier.listDraftsForInspectionFixture(
+      assetCategory: 'emergency-light',
+      department: 'Campus Facilities',
+      pmCycle: inspectionSchedule.canonicalPmCycle,
+    ),
+    isEmpty,
+  );
+  debugPrint(
+    'SMOKE_FIXTURE inspection_asset=$_inspectionAssetCode '
+    'schedule=$_inspectionScheduleId status=${inspectionSchedule.status} '
+    'cycle=${inspectionSchedule.canonicalPmCycle} assigned_to_smoke_user=PASS',
+  );
+
+  setStage('dashboard-pm-schedule');
+  await _openAssetFromDashboard(tester, _inspectionAssetCode);
+  final pmEntry = find.byKey(ValueKey('pm-entry-$_inspectionAssetId'));
+  await _scrollUntilVisible(
+    tester,
+    pmEntry,
+    description:
+        'preventive-maintenance schedule panel for $_inspectionAssetCode',
+  );
+  final expectedCycleText =
+      'PM cycle: ' + formatPmCycle(inspectionSchedule.canonicalPmCycle);
+  final scheduleSummary = find.text(expectedCycleText);
+  await _waitFor(
+    tester,
+    scheduleSummary,
+    'PM cycle summary matching API schedule $_inspectionScheduleId',
+    timeout: const Duration(seconds: 45),
+  );
+  await _scrollUntilVisible(
+    tester,
+    scheduleSummary,
+    description:
+        'PM cycle summary matching API schedule $_inspectionScheduleId',
+  );
+  expect(scheduleSummary, findsOneWidget);
+  final expectedDueDateText =
+      'Due date: ' + formatPmCycleDueDate(inspectionSchedule.canonicalPmCycle);
+  final dueDateSummary = find.text(expectedDueDateText);
+  await _scrollUntilVisible(
+    tester,
+    dueDateSummary,
+    description: 'PM due date matching API schedule $_inspectionScheduleId',
+  );
+  expect(dueDateSummary, findsOneWidget);
+  _checkForFlutterRenderingErrors(tester, 'PM schedule');
+  debugPrint(
+    'SMOKE_RESULT preventive_maintenance_schedule=PASS '
+    'schedule=$_inspectionScheduleId cycle=${inspectionSchedule.canonicalPmCycle} '
+    'cycle_text=VERIFIED due_date_text=VERIFIED',
+  );
+
+  setStage('pm-form-open');
+  final startInspection = find.byKey(const Key('start-pm'));
+  await _scrollUntilVisible(
+    tester,
+    startInspection,
+    description: 'Start Inspection for $_inspectionAssetCode',
+  );
+  expect(find.byKey(const Key('resume-pm')), findsNothing);
+  expect(
+    tester.widget<FilledButton>(startInspection).onPressed,
+    isNotNull,
+    reason: 'The fixture schedule must have an enabled Start action.',
+  );
+  await tester.tap(startInspection);
+  await _waitFor(
+    tester,
+    find.byKey(const Key('new-inspection-date')),
+    'inspection-entry form',
+    timeout: const Duration(seconds: 60),
+  );
+  final today = DateTime.now().toUtc().toIso8601String().substring(0, 10);
+  final newInspectionDate = find.byKey(const Key('new-inspection-date'));
+  await _scrollUntilVisible(
+    tester,
+    newInspectionDate,
+    description: 'new inspection date field',
+  );
+  await tester.enterText(newInspectionDate, today);
+  final onlineRemarks =
+      'Android compatibility smoke online save API ' + _apiLevel;
+  final newInspectionRemarks = find.byKey(const Key('new-inspection-remarks'));
+  await _scrollUntilVisible(
+    tester,
+    newInspectionRemarks,
+    description: 'new inspection remarks field',
+  );
+  await tester.enterText(newInspectionRemarks, onlineRemarks);
+  _checkForFlutterRenderingErrors(tester, 'inspection-entry form');
+
+  setStage('pm-form-save');
+  final addInspection = find.byKey(const Key('add-inspection-button'));
+  await _scrollUntilVisible(
+    tester,
+    addInspection,
+    description: 'Save inspection',
+  );
+  expect(tester.widget<FilledButton>(addInspection).onPressed, isNotNull);
+  await tester.tap(addInspection);
+  await _waitFor(
+    tester,
+    find.text('Inspection Recorded'),
+    'saved synthetic inspection-entry confirmation',
+    timeout: const Duration(seconds: 60),
+  );
+  _checkForFlutterRenderingErrors(tester, 'saved inspection entry');
+  await _tapVisibleOnScreen(
+    tester,
+    find.byKey(const Key('sheet-view-batch')),
+    'View inspection batch from saved confirmation',
+  );
+  final onlineForm = await serverVerifier.findFormWithInspectionRemarks(
+    onlineRemarks,
+  );
+  expect(onlineForm.status, 'Draft');
+  expect(onlineForm.inspections, hasLength(1));
+  final onlineInspection = onlineForm.inspections.single;
+  expect(onlineInspection.assetCode, _inspectionAssetCode);
+  expect(onlineInspection.scheduleId, _inspectionScheduleId);
+  debugPrint('SMOKE_RESULT preventive_maintenance_inspection_save=PASS');
+  debugPrint(
+    'SMOKE_SERVER_STATE form_status=${onlineForm.status} '
+    'inspection_count=${onlineForm.inspections.length} '
+    'asset=$_inspectionAssetCode online_remarks=VERIFIED',
+  );
+
+  setStage('pm-form-reopen');
+  await tester.pageBack();
+  await _waitFor(
+    tester,
+    find.text('Asset lookup'),
+    'Asset lookup/details route after closing the saved Draft',
+  );
+  final resumeInspection = find.byKey(const Key('resume-pm'));
+  await _scrollUntilVisible(
+    tester,
+    resumeInspection,
+    description: 'Resume Inspection for the saved Draft',
+  );
+  expect(find.byKey(const Key('start-pm')), findsNothing);
+  expect(tester.widget<FilledButton>(resumeInspection).onPressed, isNotNull);
+  await tester.tap(resumeInspection);
+  final inspectionRemarks = find.byKey(
+    Key('inspection-remarks-' + onlineInspection.id),
+  );
+  await _scrollUntilVisible(
+    tester,
+    inspectionRemarks,
+    description: 'saved inspection row after reopening the Draft',
+  );
+  expect(
+    tester.widget<TextField>(inspectionRemarks).controller?.text,
+    onlineRemarks,
+  );
+  expect(tester.widget<TextField>(inspectionRemarks).enabled, isTrue);
+  debugPrint('SMOKE_RESULT preventive_maintenance_inspection_reopen=PASS');
+
+  setStage('pm-form-edit');
+  final onlineEditedRemarks =
+      'Android compatibility smoke online edit API ' + _apiLevel;
+  await tester.enterText(inspectionRemarks, onlineEditedRemarks);
+  final saveOnlineInspection = find.byKey(
+    ValueKey('save-inspection-' + onlineInspection.id),
+  );
+  await _scrollUntilVisible(
+    tester,
+    saveOnlineInspection,
+    description: 'Save edited inspection row',
+  );
+  expect(
+    tester.widget<FilledButton>(saveOnlineInspection).onPressed,
+    isNotNull,
+  );
+  await tester.tap(saveOnlineInspection);
+  final editedOnlineForm = await _waitForServerInspectionRemarks(
+    tester,
+    serverVerifier,
+    onlineForm.id,
+    onlineInspection.id,
+    onlineEditedRemarks,
+  );
+  expect(editedOnlineForm.status, 'Draft');
+  expect(editedOnlineForm.inspections.single.remarks, onlineEditedRemarks);
+  debugPrint('SMOKE_RESULT preventive_maintenance_inspection_edit=PASS');
+  debugPrint(
+    'SMOKE_SERVER_STATE after_online_edit form_status=${editedOnlineForm.status} '
+    'inspection_count=${editedOnlineForm.inspections.length} remarks=VERIFIED',
+  );
+
+  setStage('pm-form-reopen-after-edit');
+  await tester.pageBack();
+  await _waitFor(
+    tester,
+    find.text('Asset lookup'),
+    'Asset lookup/details route after closing the edited Draft',
+  );
+  await _scrollUntilVisible(
+    tester,
+    resumeInspection,
+    description: 'Resume Inspection after editing the saved Draft',
+  );
+  expect(find.byKey(const Key('start-pm')), findsNothing);
+  expect(tester.widget<FilledButton>(resumeInspection).onPressed, isNotNull);
+  await tester.tap(resumeInspection);
+  final editedInspectionRemarks = find.byKey(
+    Key('inspection-remarks-' + onlineInspection.id),
+  );
+  await _scrollUntilVisible(
+    tester,
+    editedInspectionRemarks,
+    description: 'edited inspection row after reopening the Draft',
+  );
+  expect(
+    tester.widget<TextField>(editedInspectionRemarks).controller?.text,
+    onlineEditedRemarks,
+  );
+  debugPrint('SMOKE_RESULT preventive_maintenance_inspection_edit_reopen=PASS');
+}
+
+Future<void> _runOfflineDraftScenario(
+  WidgetTester tester,
+  void Function(String stage) setStage,
+) async {
+  setStage('startup-login');
+  final serverVerifier = await _startAuthenticatedSession(tester);
+
+  setStage('offline-fixture-check');
+  final offlineSchedules = await serverVerifier.listSchedules(_offlineAssetId);
+  final offlineSchedule = offlineSchedules.singleWhere(
+    (schedule) => schedule.id == _offlineScheduleId,
+  );
+  expect(offlineSchedule.asset?.assetCode, _offlineAssetCode);
+  expect(offlineSchedule.status, 'Due');
+  expect(offlineSchedule.canonicalPmCycle, '2026-11');
+  expect(offlineSchedule.isEligibleForFieldWork, isTrue);
+  expect(offlineSchedule.assignedToUserId, serverVerifier.userId);
+  expect(
+    await serverVerifier.listDraftsForInspectionFixture(
+      assetCategory: 'fire-extinguisher',
+      department: 'CCMS',
+      pmCycle: offlineSchedule.canonicalPmCycle,
+    ),
+    isEmpty,
+  );
+  debugPrint(
+    'SMOKE_FIXTURE offline_asset=$_offlineAssetCode schedule=$_offlineScheduleId '
+    'status=${offlineSchedule.status} cycle=${offlineSchedule.canonicalPmCycle} '
+    'assigned_to_smoke_user=PASS',
+  );
+
+  await _openAssetFromDashboard(tester, _offlineAssetCode);
+  final offlineStart = find.byKey(const Key('start-pm'));
+  await _scrollUntilVisible(
+    tester,
+    offlineStart,
+    description: 'eligible offline-fixture Start Inspection action',
+  );
+  expect(tester.widget<FilledButton>(offlineStart).onPressed, isNotNull);
+
+  setStage('offline-connectivity-check');
+  debugPrint('SMOKE_NETWORK_REQUEST=offline');
+  await _waitForBackendReachability(
+    tester,
+    reachable: false,
+    timeout: const Duration(seconds: 30),
+  );
+  debugPrint('SMOKE_RESULT backend_disconnected=PASS');
+
+  setStage('offline-draft-create');
+  await _tapAfterScrolling(tester, offlineStart, 'Offline Start Inspection');
+  await _waitFor(
+    tester,
+    find.byKey(const Key('new-inspection-date')),
+    'new offline inspection form for $_offlineAssetCode',
+    timeout: const Duration(seconds: 45),
+  );
+  final offlineDate = DateTime.now().toUtc().toIso8601String().substring(0, 10);
+  final offlineRemarks =
+      'Android compatibility smoke offline draft API ' + _apiLevel;
+  final offlineDateField = find.byKey(const Key('new-inspection-date'));
+  await _scrollUntilVisible(
+    tester,
+    offlineDateField,
+    description: 'offline inspection date field',
+  );
+  await tester.enterText(offlineDateField, offlineDate);
+  final offlineRemarksEntry = find.byKey(const Key('new-inspection-remarks'));
+  await _scrollUntilVisible(
+    tester,
+    offlineRemarksEntry,
+    description: 'offline inspection remarks field',
+  );
+  await tester.enterText(offlineRemarksEntry, offlineRemarks);
+  final addOfflineInspection = find.byKey(const Key('add-inspection-button'));
+  await _scrollUntilVisible(
+    tester,
+    addOfflineInspection,
+    description: 'Save offline inspection',
+  );
+  expect(
+    tester.widget<FilledButton>(addOfflineInspection).onPressed,
+    isNotNull,
+  );
+  await tester.tap(addOfflineInspection);
+  await _waitFor(
+    tester,
+    find.text('Saved on this device'),
+    'offline inspection saved locally',
+    timeout: const Duration(seconds: 60),
+  );
+  await _tapVisibleOnScreen(
+    tester,
+    find.byKey(const Key('sheet-view-batch')),
+    'View offline inspection batch from saved confirmation',
+  );
+
+  await _scrollUntilVisible(
+    tester,
+    find.text('Offline draft saved securely'),
+    description: 'offline Draft persistence status',
+    direction: _ScrollDirection.up,
+  );
+  await _scrollUntilVisible(
+    tester,
+    find.textContaining('2 change(s) for this draft are waiting to sync.'),
+    description: 'offline create-form and add-inspection pending writes',
+    direction: _ScrollDirection.up,
+  );
+  final offlineRemarksField = find.byWidgetPredicate(
+    (widget) =>
+        widget is TextField && widget.controller?.text == offlineRemarks,
+  );
+  await _scrollUntilVisible(
+    tester,
+    offlineRemarksField,
+    description: 'offline inspection row restored from the local Draft',
+  );
+  expect(
+    tester.widget<TextField>(offlineRemarksField).controller?.text,
+    offlineRemarks,
+  );
+  debugPrint('SMOKE_RESULT offline_draft_creation_and_local_save=PASS');
+  debugPrint(
+    'SMOKE_LOCAL_STATE asset=$_offlineAssetCode schedule=$_offlineScheduleId '
+    'queued_writes=2 remarks=VERIFIED',
+  );
+  debugPrint('SMOKE_PHASE_COMPLETE=offline-pending-restart');
+  debugPrint('SMOKE_RESULT visible_layout_overflow=PASS');
+  debugPrint('SMOKE_RESULT live_error_or_conflict_recovery=NOT_EXECUTED');
 }
 
 Future<void> _runAfterProcessRestart(
   WidgetTester tester,
   void Function(String stage) setStage,
 ) async {
+  _validateSmokeEnvironment();
   setStage('offline-app-restart');
   app.main();
   await tester.pump();
@@ -603,8 +631,7 @@ Future<void> _runAfterProcessRestart(
     reason: 'The encrypted offline snapshot must survive app process restart.',
   );
   expect(storedSnapshot, isNotEmpty);
-  final snapshot =
-      (jsonDecode(storedSnapshot!) as Map).cast<String, dynamic>();
+  final snapshot = (jsonDecode(storedSnapshot!) as Map).cast<String, dynamic>();
   expect(snapshot['version'], 1);
   final offlineRemarks =
       'Android compatibility smoke offline draft API $_apiLevel';
@@ -615,8 +642,7 @@ Future<void> _runAfterProcessRestart(
         ),
       )
       .where(
-        (form) =>
-            form.inspections.any((row) => row.remarks == offlineRemarks),
+        (form) => form.inspections.any((row) => row.remarks == offlineRemarks),
       )
       .toList(growable: false);
   expect(storedForms, hasLength(1));
@@ -667,12 +693,25 @@ Future<void> _runAfterProcessRestart(
     timeout: const Duration(seconds: 60),
   );
   debugPrint('SMOKE_RESULT backend_reconnection=PASS');
-  await tester.enterText(
-    find.byType(TextFormField).at(0),
-    _syntheticInspectorEmail,
+  final emailField = find.byType(TextFormField).at(0);
+  await _scrollUntilVisible(
+    tester,
+    emailField,
+    description: 'reconnection sign-in email field',
   );
-  await tester.enterText(find.byType(TextFormField).at(1), _smokePassword);
-  await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+  await tester.enterText(emailField, _syntheticInspectorEmail);
+  final passwordField = find.byType(TextFormField).at(1);
+  await _scrollUntilVisible(
+    tester,
+    passwordField,
+    description: 'reconnection sign-in password field',
+  );
+  await tester.enterText(passwordField, _smokePassword);
+  await _tapAfterScrolling(
+    tester,
+    find.widgetWithText(FilledButton, 'Sign in'),
+    'Sign in after backend reconnection',
+  );
   await _waitFor(
     tester,
     find.text('Welcome, Maintenance Inspector'),
@@ -696,8 +735,9 @@ Future<void> _runAfterProcessRestart(
   expect(synchronizedInspection.scheduleId, _offlineScheduleId);
   expect(synchronizedInspection.inspectorUserId, verifier.userId);
   expect(synchronizedInspection.remarks, offlineRemarks);
-  final synchronizedSchedule = (await verifier.listSchedules(_offlineAssetId))
-      .singleWhere((schedule) => schedule.id == _offlineScheduleId);
+  final synchronizedSchedule = (await verifier.listSchedules(
+    _offlineAssetId,
+  )).singleWhere((schedule) => schedule.id == _offlineScheduleId);
   expect(synchronizedSchedule.status, 'Completed');
   await _waitForNoSyncBanner(tester);
   debugPrint('SMOKE_RESULT offline_draft_persistence_after_restart=PASS');
@@ -712,22 +752,27 @@ Future<void> _runAfterProcessRestart(
   setStage('reconnect-form-reopen');
   await _openAssetFromDashboard(tester, _offlineAssetCode);
   final resumeAfterSync = find.byKey(const Key('resume-pm'));
-  await _waitFor(
+  await _scrollUntilVisible(
     tester,
     resumeAfterSync,
-    'Resume Inspection after the offline Draft synced',
-    timeout: const Duration(seconds: 45),
+    description: 'Resume Inspection after the offline Draft synced',
   );
-  await _scrollUntilVisible(tester, resumeAfterSync);
+  expect(find.byKey(const Key('start-pm')), findsNothing);
+  expect(tester.widget<FilledButton>(resumeAfterSync).onPressed, isNotNull);
   await tester.tap(resumeAfterSync);
   final reopenedRemarks = find.byWidgetPredicate(
     (widget) =>
         widget is TextField && widget.controller?.text == offlineRemarks,
   );
-  await _waitFor(
+  await _scrollUntilVisible(
     tester,
     reopenedRemarks,
-    'synchronized offline inspection row after reopening the Draft',
+    description:
+        'synchronized offline inspection row after reopening the Draft',
+  );
+  expect(
+    tester.widget<TextField>(reopenedRemarks).controller?.text,
+    offlineRemarks,
   );
   debugPrint('SMOKE_RESULT offline_form_reopened_after_sync=PASS');
   debugPrint('SMOKE_RESULT visible_layout_overflow=PASS');
@@ -789,11 +834,16 @@ Future<PreventiveMaintenanceForm> _waitForServerFormWithInspectionRemarks(
   while (DateTime.now().isBefore(deadline)) {
     final forms = await verifier.listForms();
     lastMatches = forms
-        .where((form) => form.inspections.any((row) => row.remarks == expectedRemarks))
+        .where(
+          (form) =>
+              form.inspections.any((row) => row.remarks == expectedRemarks),
+        )
         .toList(growable: false);
     if (lastMatches.length == 1) return lastMatches.single;
     if (lastMatches.length > 1) {
-      fail('More than one server form contains the isolated offline fixture remarks.');
+      fail(
+        'More than one server form contains the isolated offline fixture remarks.',
+      );
     }
     await tester.pump(const Duration(milliseconds: 500));
   }
@@ -806,17 +856,22 @@ Future<PreventiveMaintenanceForm> _waitForServerFormWithInspectionRemarks(
 List<String> _visibleTextSnapshot(WidgetTester tester) {
   return tester
       .widgetList<Text>(find.byType(Text))
-      .map((widget) => (widget.data ?? widget.textSpan?.toPlainText() ?? '').trim())
+      .map(
+        (widget) =>
+            (widget.data ?? widget.textSpan?.toPlainText() ?? '').trim(),
+      )
       .where((value) => value.isNotEmpty)
       .toList(growable: false);
 }
 
-typedef _SmokeTestBody = Future<void> Function(
-  WidgetTester tester,
-  void Function(String stage) setStage,
-);
+typedef _SmokeTestBody =
+    Future<void> Function(
+      WidgetTester tester,
+      void Function(String stage) setStage,
+    );
 
 Future<void> Function(WidgetTester tester) _captureSmokeFailures(
+  String scenario,
   _SmokeTestBody body,
 ) {
   return (tester) async {
@@ -826,15 +881,23 @@ Future<void> Function(WidgetTester tester) _captureSmokeFailures(
       debugPrint('SMOKE_STAGE=$stage');
     }
 
+    debugPrint('SMOKE_SCENARIO_START=$scenario');
     try {
       await body(tester, setStage);
+      debugPrint('SMOKE_SCENARIO_RESULT=$scenario:PASS');
     } catch (error, stackTrace) {
-      debugPrint('SMOKE_FAILURE stage=$stage error=${error.toString()}');
-      debugPrint('SMOKE_CAPTURE_SCREEN=$stage');
+      debugPrint('SMOKE_SCENARIO_RESULT=$scenario:FAIL');
+      debugPrint(
+        'SMOKE_FAILURE stage=$stage scenario=$scenario error=${error.toString()}',
+      );
+      debugPrint('SMOKE_CAPTURE_SCREEN=$scenario-$stage');
       debugPrint(
         'SMOKE_DIAGNOSTIC visible_text=' +
             _visibleTextSnapshot(tester).join(' | '),
       );
+      debugPrint('SMOKE_STACK_TRACE_BEGIN scenario=$scenario');
+      debugPrint(stackTrace.toString());
+      debugPrint('SMOKE_STACK_TRACE_END scenario=$scenario');
       debugPrint('SMOKE_WIDGET_DIAGNOSTICS_BEGIN stage=$stage');
       debugDumpApp();
       debugDumpRenderTree();
@@ -845,54 +908,193 @@ Future<void> Function(WidgetTester tester) _captureSmokeFailures(
   };
 }
 
-Future<void> _scrollUntilVisible(WidgetTester tester, Finder target) async {
-  final verticalScrollables = find
-      .byWidgetPredicate(
-        (widget) =>
-            widget is Scrollable && widget.axisDirection == AxisDirection.down,
-      )
-      .evaluate();
-  if (verticalScrollables.isEmpty) {
-    fail('No vertical scrollable was built for the current screen.');
+enum _ScrollDirection { up, down }
+
+Finder _activeVerticalScrollable(WidgetTester tester) {
+  final scaffolds = find.byType(Scaffold).evaluate().toList(growable: false);
+  if (scaffolds.isEmpty) {
+    fail('Cannot scroll because the active screen has no Scaffold.');
   }
-  await tester.scrollUntilVisible(
+  final activeScaffold = find.byWidget(scaffolds.last.widget);
+  Finder scrollableScope = activeScaffold;
+  final refreshIndicators = find
+      .descendant(of: activeScaffold, matching: find.byType(RefreshIndicator))
+      .evaluate()
+      .toList(growable: false);
+  if (refreshIndicators.length == 1) {
+    scrollableScope = find.byWidget(refreshIndicators.single.widget);
+  }
+
+  final verticalScrollables = find
+      .descendant(
+        of: scrollableScope,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      )
+      .evaluate()
+      .toList(growable: false);
+  if (verticalScrollables.length != 1) {
+    fail(
+      'Expected one downward scrollable in the active page; found ' +
+          verticalScrollables.length.toString() +
+          '. Visible text: ' +
+          _visibleTextSnapshot(tester).take(8).join(' | '),
+    );
+  }
+  return find.byWidget(verticalScrollables.single.widget);
+}
+
+Future<void> _scrollUntilVisible(
+  WidgetTester tester,
+  Finder target, {
+  required String description,
+  _ScrollDirection direction = _ScrollDirection.down,
+}) async {
+  final scrollable = _activeVerticalScrollable(tester);
+  final viewportBounds = tester.getRect(scrollable);
+  if (viewportBounds.height <= 0) {
+    fail('The active vertical scrollable has no viewport for $description.');
+  }
+
+  var effectiveDirection = direction;
+  if (target.evaluate().length == 1) {
+    final targetBounds = tester.getRect(target);
+    if (targetBounds.bottom <= viewportBounds.top) {
+      effectiveDirection = _ScrollDirection.up;
+    } else if (targetBounds.top >= viewportBounds.bottom) {
+      effectiveDirection = _ScrollDirection.down;
+    }
+  }
+  final delta = viewportBounds.height * 0.55;
+  final signedDelta = effectiveDirection == _ScrollDirection.down
+      ? delta
+      : -delta;
+  const maxScrolls = 24;
+
+  try {
+    await tester.scrollUntilVisible(
+      target,
+      signedDelta,
+      scrollable: scrollable,
+      maxScrolls: maxScrolls,
+    );
+  } catch (error) {
+    fail(
+      'Could not build and scroll $description into view after $maxScrolls ' +
+          'bounded scroll attempts. Target matches: ' +
+          target.evaluate().length.toString() +
+          '; scrollable bounds: $viewportBounds; visible text: ' +
+          _visibleTextSnapshot(tester).take(8).join(' | ') +
+          '; scroll error: ' +
+          error.toString().replaceAll('\n', ' '),
+    );
+  }
+  await tester.pump();
+  _verifyHitTestPosition(
+    tester,
     target,
-    240,
-    scrollable: find.byWidget(verticalScrollables.first.widget),
-    maxScrolls: 18,
+    description,
+    viewportBounds: viewportBounds,
   );
 }
 
-Future<void> _bringButtonIntoViewAndVerifyHitTest(
+Future<void> _tapAfterScrolling(
   WidgetTester tester,
-  Finder button,
+  Finder target,
+  String description, {
+  _ScrollDirection direction = _ScrollDirection.down,
+}) async {
+  await _scrollUntilVisible(
+    tester,
+    target,
+    description: description,
+    direction: direction,
+  );
+  await tester.tap(target);
+}
+
+Future<void> _tapVisibleOnScreen(
+  WidgetTester tester,
+  Finder target,
   String description,
 ) async {
-  await tester.ensureVisible(button);
-  await tester.pump();
-
-  final buttonBounds = tester.getRect(button);
   final renderViewBounds = Offset.zero & tester.binding.renderViews.single.size;
-  expect(
-    buttonBounds.left >= renderViewBounds.left &&
-        buttonBounds.top >= renderViewBounds.top &&
-        buttonBounds.right <= renderViewBounds.right &&
-        buttonBounds.bottom <= renderViewBounds.bottom,
-    isTrue,
-    reason:
-        '$description must be fully inside the rendered viewport before tapping. '
-        'Button bounds: $buttonBounds; viewport bounds: $renderViewBounds.',
+  _verifyHitTestPosition(
+    tester,
+    target,
+    description,
+    viewportBounds: renderViewBounds,
   );
+  await tester.tap(target);
+}
 
-  final buttonRenderObject = tester.renderObject(button);
-  final hitTest = tester.hitTestOnBinding(buttonBounds.center);
-  expect(
-    hitTest.path.any(
-      (entry) => identical(entry.target, buttonRenderObject),
-    ),
-    isTrue,
-    reason: 'The visible $description center must hit the button before tapping.',
-  );
+void _verifyVisibleOnScreen(
+  WidgetTester tester,
+  Finder target,
+  String description,
+) {
+  final matches = target.evaluate().toList(growable: false);
+  if (matches.length != 1) {
+    fail('$description must match one built widget; found ${matches.length}.');
+  }
+  final targetBounds = tester.getRect(target);
+  final renderViewBounds = Offset.zero & tester.binding.renderViews.single.size;
+  if (!renderViewBounds.contains(targetBounds.center)) {
+    fail(
+      '$description is not visible in the rendered viewport. '
+      'Target bounds: $targetBounds; viewport bounds: $renderViewBounds.',
+    );
+  }
+}
+
+void _verifyHitTestPosition(
+  WidgetTester tester,
+  Finder target,
+  String description, {
+  required Rect viewportBounds,
+}) {
+  final matches = target.evaluate().toList(growable: false);
+  if (matches.length != 1) {
+    fail(
+      '$description must be built exactly once before interaction; '
+      'found ${matches.length} widgets.',
+    );
+  }
+  final targetBounds = tester.getRect(target);
+  final renderViewBounds = Offset.zero & tester.binding.renderViews.single.size;
+  final center = targetBounds.center;
+  if (!targetBounds.overlaps(viewportBounds) ||
+      !viewportBounds.contains(center) ||
+      !renderViewBounds.contains(center)) {
+    fail(
+      '$description center is outside its visible scroll viewport. '
+      'Target bounds: $targetBounds; scroll viewport: $viewportBounds; '
+      'render viewport: $renderViewBounds.',
+    );
+  }
+
+  final hitTest = tester.hitTestOnBinding(center);
+  var hitTargetSubtree = false;
+  void inspectTargetSubtree(Element element) {
+    if (element is RenderObjectElement &&
+        hitTest.path.any(
+          (entry) => identical(entry.target, element.renderObject),
+        )) {
+      hitTargetSubtree = true;
+    }
+    element.visitChildren(inspectTargetSubtree);
+  }
+
+  inspectTargetSubtree(matches.single);
+  if (!hitTargetSubtree) {
+    fail(
+      '$description is inside the viewport but its center does not hit the '
+      'target widget. Center: $center; target bounds: $targetBounds.',
+    );
+  }
 }
 
 Future<PreventiveMaintenanceForm> _waitForServerInspectionRemarks(
@@ -937,39 +1139,52 @@ Future<void> _openAssetFromDashboard(
   WidgetTester tester,
   String assetCode,
 ) async {
-  final dashboardScrollable = find.descendant(
-    of: find.byType(RefreshIndicator),
-    matching: find.byType(Scrollable),
-  );
   final searchAction = find.byKey(const Key('search-assets'));
-  await tester.scrollUntilVisible(
-    searchAction,
-    240,
-    scrollable: dashboardScrollable.first,
-    maxScrolls: 12,
-  );
-  await tester.tap(searchAction);
+  await _tapAfterScrolling(tester, searchAction, 'Open asset search');
   final searchInput = find.byKey(const Key('asset-search-input'));
-  await _waitFor(tester, searchInput, 'asset search after reconnection');
+  await _waitFor(tester, searchInput, 'asset search input');
+  _verifyHitTestPosition(
+    tester,
+    searchInput,
+    'Asset search input',
+    viewportBounds: Offset.zero & tester.binding.renderViews.single.size,
+  );
   await tester.enterText(searchInput, assetCode);
   final result = find.byKey(ValueKey('asset-search-result-$assetCode'));
   await _waitFor(
     tester,
     result,
-    'reconnected asset search result for $assetCode',
+    'asset search result for $assetCode',
     timeout: const Duration(seconds: 45),
   );
-  await _scrollUntilVisible(tester, result);
-  await tester.tap(result);
-  await _waitFor(
-    tester,
-    find.byKey(const Key('asset-code')),
-    'asset details after reconnection',
+  await _tapAfterScrolling(tester, result, 'Asset result $assetCode');
+  try {
+    await _waitFor(
+      tester,
+      find.text('Asset lookup'),
+      'Asset lookup/details route after selecting $assetCode',
+    );
+    final assetCodeWidget = find.byKey(const Key('asset-code'));
+    await _waitFor(tester, assetCodeWidget, 'asset details for $assetCode');
+    expect(find.text(assetCode), findsOneWidget);
+    _verifyVisibleOnScreen(
+      tester,
+      find.text('Asset lookup'),
+      'Asset lookup title',
+    );
+  } catch (error) {
+    _logAssetDetailsFailure(tester, error);
+    rethrow;
+  }
+  debugPrint(
+    'SMOKE_SCREEN asset_details=' + _visibleTextSnapshot(tester).join(' | '),
   );
+  debugPrint('SMOKE_RESULT asset_lookup_and_details=PASS asset=$assetCode');
 }
 
 class _SmokeServerVerifier {
-  _SmokeServerVerifier() : _client = ApiClient(baseUrl: Uri.parse(_apiBaseUrl)) {
+  _SmokeServerVerifier()
+    : _client = ApiClient(baseUrl: Uri.parse(_apiBaseUrl)) {
     _client.configureSession(
       accessTokenProvider: () => _accessToken,
       terminalAuthFailureHandler: () async {},
@@ -995,9 +1210,7 @@ class _SmokeServerVerifier {
     _userId = result.user.id;
   }
 
-  Future<List<AssetMaintenanceHistoryRecord>> getHistory(
-    String assetId,
-  ) async {
+  Future<List<AssetMaintenanceHistoryRecord>> getHistory(String assetId) async {
     final response = await http.get(
       Uri.parse(_apiBaseUrl).resolve('api/v1/inspections/history/$assetId'),
       headers: <String, String>{
@@ -1014,20 +1227,23 @@ class _SmokeServerVerifier {
     if (decoded is! List) {
       throw const FormatException('Invalid maintenance-history API response.');
     }
-    return decoded.map((value) {
-      if (value is! Map) {
-        throw const FormatException('Invalid maintenance-history record.');
-      }
-      return AssetMaintenanceHistoryRecord.fromJson(
-        value.cast<String, dynamic>(),
-      );
-    }).toList(growable: false);
+    return decoded
+        .map((value) {
+          if (value is! Map) {
+            throw const FormatException('Invalid maintenance-history record.');
+          }
+          return AssetMaintenanceHistoryRecord.fromJson(
+            value.cast<String, dynamic>(),
+          );
+        })
+        .toList(growable: false);
   }
 
   Future<List<ScheduleOption>> listSchedules(String assetId) =>
       _pmRepository.listSchedules(assetId: assetId);
 
-  Future<List<PreventiveMaintenanceForm>> listForms() => _pmRepository.listForms();
+  Future<List<PreventiveMaintenanceForm>> listForms() =>
+      _pmRepository.listForms();
 
   Future<List<PreventiveMaintenanceForm>> listDraftsForInspectionFixture({
     required String assetCategory,
@@ -1064,12 +1280,11 @@ class _SmokeServerVerifier {
 void _logAssetDetailsFailure(WidgetTester tester, Object error) {
   debugPrint('SMOKE_FAILURE stage=asset-details');
   debugPrint(
-    'SMOKE_DIAGNOSTIC visible_text=' +
-        _visibleTextSnapshot(tester).join(' | '),
+    'SMOKE_DIAGNOSTIC visible_text=' + _visibleTextSnapshot(tester).join(' | '),
   );
   debugPrint(
     'SMOKE_DIAGNOSTIC widget_counts'
-    ' asset_lookup_title=' +
+            ' asset_lookup_title=' +
         find.text('Asset lookup').evaluate().length.toString() +
         ' loading=' +
         find.text('Finding asset...').evaluate().length.toString() +
@@ -1103,21 +1318,6 @@ Future<void> _waitFor(
     if (finder.evaluate().isNotEmpty) return;
   }
   fail('Timed out waiting for $description.');
-}
-
-Future<bool> _waitForAny(
-  WidgetTester tester,
-  List<Finder> finders,
-  String description, {
-  Duration timeout = const Duration(seconds: 30),
-}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    await tester.pump(const Duration(milliseconds: 250));
-    _checkForFlutterRenderingErrors(tester, description);
-    if (finders.any((finder) => finder.evaluate().isNotEmpty)) return true;
-  }
-  return finders.any((finder) => finder.evaluate().isNotEmpty);
 }
 
 void _checkForFlutterRenderingErrors(

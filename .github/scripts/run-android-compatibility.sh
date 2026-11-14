@@ -645,6 +645,37 @@ PY
   done
   cat "$phase_safe_log"
 
+  if [[ "$phase" == "prepare" ]]; then
+    if grep -Fq 'SMOKE_PHASE_COMPLETE=offline-pending-restart' "$phase_safe_log"; then
+      if [[ "$phase_exit" -eq 0 ]]; then
+        prepare_phase_status="passed"
+      else
+        prepare_phase_status="failed"
+      fi
+      export RUN_PREPARE_PHASE_STATUS="$prepare_phase_status"
+      smoke_user_id="$(grep -oE 'SMOKE_TEST_USER_ID=[0-9a-fA-F-]{36}' "$phase_safe_log" \
+        | tail -n 1 | cut -d= -f2 || true)"
+      if [[ ! "$smoke_user_id" =~ ^[0-9a-fA-F-]{36}$ ]]; then
+        echo "The prepare phase did not emit the synthetic smoke user ID needed to inspect the offline snapshot after restart." >&2
+        return 1
+      fi
+    else
+      prepare_phase_status="failed"
+      export RUN_PREPARE_PHASE_STATUS="$prepare_phase_status"
+      if [[ "$phase_exit" -eq 0 ]]; then
+        echo "The prepare phase exited without its offline pending-work completion marker." >&2
+        return 1
+      fi
+    fi
+  else
+    if [[ "$phase_exit" -eq 0 ]]; then
+      restart_phase_status="passed"
+    else
+      restart_phase_status="failed"
+    fi
+    export RUN_RESTART_PHASE_STATUS="$restart_phase_status"
+  fi
+
   if [[ "$phase_exit" -ne 0 ]]; then
     integration_status="failed"
     export RUN_INTEGRATION_STATUS="$integration_status"
@@ -654,27 +685,6 @@ PY
     fi
     return "$phase_exit"
   fi
-
-  if [[ "$phase" == "prepare" ]]; then
-    if ! grep -Fq 'SMOKE_PHASE_COMPLETE=offline-pending-restart' "$phase_safe_log"; then
-      echo "The prepare phase exited without its offline pending-work completion marker." >&2
-      return 1
-    fi
-    prepare_phase_status="passed"
-    export RUN_PREPARE_PHASE_STATUS="$prepare_phase_status"
-  else
-    restart_phase_status="passed"
-    export RUN_RESTART_PHASE_STATUS="$restart_phase_status"
-  fi
-
-  if [[ "$phase" == "prepare" ]]; then
-    smoke_user_id="$(grep -oE 'SMOKE_TEST_USER_ID=[0-9a-fA-F-]{36}' "$phase_safe_log" \
-      | tail -n 1 | cut -d= -f2 || true)"
-    if [[ ! "$smoke_user_id" =~ ^[0-9a-fA-F-]{36}$ ]]; then
-      echo "The prepare phase did not emit the synthetic smoke user ID needed to inspect the offline snapshot after restart." >&2
-      return 1
-    fi
-  fi
 }
 
 integration_status="running"
@@ -682,13 +692,27 @@ export RUN_INTEGRATION_STATUS="$integration_status"
 timeout 20s adb -s "$device_serial" shell dumpsys connectivity \
   > "$evidence_dir/connectivity-before-smoke.txt" 2>&1 || true
 
+prepare_phase_exit=0
 if run_integration_phase prepare; then
   :
 else
-  phase_rc=$?
+  prepare_phase_exit=$?
+fi
+
+if [[ ! -s "$evidence_dir/integration-$api_level-prepare.log" ]] || \
+    ! grep -Fq 'SMOKE_PHASE_COMPLETE=offline-pending-restart' \
+      "$evidence_dir/integration-$api_level-prepare.log"; then
   integration_status="failed"
   export RUN_INTEGRATION_STATUS="$integration_status"
-  exit "$phase_rc"
+  echo "The independent prepare scenarios did not produce a verified offline Draft; restart/sync checks cannot run." >&2
+  if [[ "$prepare_phase_exit" -ne 0 ]]; then exit "$prepare_phase_exit"; fi
+  exit 1
+fi
+if [[ -z "$smoke_user_id" ]]; then
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  echo "The prepare phase did not provide a synthetic user ID for offline persistence verification." >&2
+  exit 1
 fi
 
 if [[ "$offline_backend_unreachable_status" != "passed" ]]; then
@@ -756,6 +780,13 @@ if [[ "$online_network_status" != "passed" ]]; then
   export RUN_INTEGRATION_STATUS="$integration_status"
   echo "The emulator network reconnection did not complete successfully." >&2
   exit 1
+fi
+
+if [[ "$prepare_phase_exit" -ne 0 ]]; then
+  integration_status="failed"
+  export RUN_INTEGRATION_STATUS="$integration_status"
+  echo "One or more independent prepare scenarios failed; offline restart and synchronization were still executed." >&2
+  exit "$prepare_phase_exit"
 fi
 
 integration_status="passed"
