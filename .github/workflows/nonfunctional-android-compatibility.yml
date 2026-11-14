@@ -1,6 +1,7 @@
 name: Android compatibility evidence
 
 on:
+  # A non-skipped push to the testing branch runs the two-profile TEST-201 matrix.
   push:
     branches:
       - codex/nonfunctional-testing-2026-11
