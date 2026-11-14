@@ -3,8 +3,8 @@ id: TEST-201
 type: test-run
 title: Android compatibility verification; follow-up failed in test interactions
 status: executed
-recordedAtUtc: 2026-11-14T03:07:06Z
-testedCommit: 9bbbe0b69ed23689d12c9a2603588d9e244787e5
+recordedAtUtc: 2026-11-14T06:30:10Z
+testedCommit: 58b17b355aa02425c2610076c76800b3d0413693
 sourceBranch: codex/nonfunctional-testing-2026-11
 evidenceLevel: ci-executed
 ---
@@ -135,16 +135,67 @@ After the runner force-stops the app, the restart phase remains signed out and o
 
 The failure wrapper logs visible text, Flutter widget and render-tree diagnostics, then captures an in-app screenshot and Android hierarchy before teardown. Runs 2 and 3 captured these diagnostics for their failures, and the Run 3 artifacts were inspected. A controlled synchronization-conflict scenario is not implemented and remains NOT EXECUTED. Source review describes the intended checks; only the run-specific outcomes above count as execution evidence.
 
-## Prepared lazy-list correction — source commit b3e82c43e78789d582656a44084db2a34b6df9c2 (not executed)
+## Prepared lazy-list correction — source commit b3e82c43e78789d582656a44084db2a34b6df9c2 (exercised by Run 4)
 
-The test-only follow-up was committed and pushed to `codex/nonfunctional-testing-2026-11` as `b3e82c43e78789d582656a44084db2a34b6df9c2`. It is a source candidate, not a tested commit. No GitHub Actions workflow or emulator test was dispatched for it; the latest executed run remains 43548924029 on `9bbbe0b69ed23689d12c9a2603588d9e244787e5`.
+The test-only follow-up was committed and pushed to codex/nonfunctional-testing-2026-11 as b3e82c43e78789d582656a44084db2a34b6df9c2. At that stage it was a source candidate, not a tested commit. The later runtime execution is recorded in Run 4 below.
 
 The follow-up adds a shared bounded scrolling helper that scopes to the visible Scaffold's vertical scrollable (and the dashboard RefreshIndicator when present), uses `scrollUntilVisible` with a viewport-relative delta and at most 24 attempts, and verifies the target's rendered bounds and hit-test path before tapping. The history-return assertion now checks the visible `Asset lookup` app-bar title. PM schedule verification scrolls to the keyed schedule panel and compares the visible cycle and due date against the eligible `DEMO-EL-003` schedule returned by the API. Form actions, fields, save/reopen/edit, offline entry, and synchronization controls use the same visibility/hit-test checks. The prepare phase now has independent history, online-form, and offline-draft test cases; the runner can continue to restart/sync evidence after an earlier case failure only when offline reachability and the persisted-draft completion marker are present, while retaining the overall failure.
 
-Static validation on the prepared source completed as follows: `git diff --check` passed; Dart format verification reported one file unchanged; `dart analyze integration_test/nonfunctional_smoke_test.dart` exited 0 with no errors and 32 informational lints. Shell syntax validation for the runner was NOT EXECUTED: Git Bash failed to initialize its MSYS named object with `NtCreateDirectoryObject(...): 0xC0000022`, and WSL is not installed. No integration/device test, build, API exercise, screenshot capture, or workflow execution was performed for this source commit. Therefore these changes have not yet established that the lazy-list fixes work on either Android profile or that later form/offline scenarios pass.
+Static validation on the prepared source completed as follows: `git diff --check` passed; Dart format verification reported one file unchanged; `dart analyze integration_test/nonfunctional_smoke_test.dart` exited 0 with no errors and 32 informational lints. At that preparation stage, runner shell syntax validation was not completed: Git Bash failed to initialize its MSYS named object with `NtCreateDirectoryObject(...): 0xC0000022`, and WSL was unavailable. The later preflight attempt is recorded below. No integration/device test, build, API exercise, screenshot capture, or workflow execution was performed for this source commit. Therefore these changes have not yet established that the lazy-list fixes work on either Android profile or that later form/offline scenarios pass.
+
+## Authorized rerun preflight — commit e8f0e9053aefa01b6c1e892a5ca1b8916ba24ea2 (blocked before dispatch)
+
+At that point the requested single workflow dispatch had not been made. The branch was at commit e8f0e9053aefa01b6c1e892a5ca1b8916ba24ea2; bash -n passed under Git for Windows Bash/MSYS, but WSL/Linux and Docker were unavailable, and gh auth status reported an invalid token. That preflight was later superseded by the one authorized push-triggered run 43565671645, documented in Run 4 below.
+
+| Required scenario | Android 10 / API 29 | Android 14 / API 34 |
+|---|---|---|
+| Installation, startup and authentication | NOT EXECUTED — dispatch blocked | NOT EXECUTED — dispatch blocked |
+| Asset search and details | NOT EXECUTED — dispatch blocked | NOT EXECUTED — dispatch blocked |
+| Maintenance history and return navigation | NOT EXECUTED — dispatch blocked | NOT EXECUTED — dispatch blocked |
+| PM schedule display | NOT EXECUTED — dispatch blocked | NOT EXECUTED — dispatch blocked |
+| Inspection form open/save/reopen/edit | NOT EXECUTED — dispatch blocked | NOT EXECUTED — dispatch blocked |
+| Offline Draft persistence after process restart | NOT EXECUTED — dispatch blocked | NOT EXECUTED — dispatch blocked |
+| Reconnection, synchronization and server-state verification | NOT EXECUTED — dispatch blocked | NOT EXECUTED — dispatch blocked |
+
+This was an execution-environment/authentication block at that point, not an Android test result. Run 43548924029 remained the latest execution until the later Run 4 below; its earlier artifacts and results remain unchanged.
 
 ## Evidence preservation and limits
 
 TEST-198, TEST-199, TEST-200 and their records remain unchanged. The TEST-201 compile failure and both later interaction runs are preserved above. No production application logic was modified. Run 3 was the single authorized dispatch for commit `9bbbe0b69ed23689d12c9a2603588d9e244787e5`; no additional workflow was dispatched.
 
 TEST-201 remains incomplete. The history record and display passed on both profiles. API 29 failed a test-side lazy PM-summary wait; API 34 failed a test-side wait for the offscreen History control even though the details route was visible. Inspection form entry/save/reopen/edit, offline persistence after restart, and reconnection synchronization were NOT EXECUTED on either profile. The source-only correction at `b3e82c43e78789d582656a44084db2a34b6df9c2` is prepared but unexecuted; no production defect was confirmed. Android compatibility must not be reported as passed.
+
+
+## Run 4 — push-triggered TEST-201 matrix
+
+Run [43565671645](https://github.com/lucifron28/UniPM/actions/runs/43565671645) was the single authorized execution. It was triggered by a push to codex/nonfunctional-testing-2026-11 and tested commit 58b17b355aa02425c2610076c76800b3d0413693. It started at 2026-11-14T06:18:12Z and completed at 2026-11-14T06:30:10Z. The trigger commit changed only a comment in the watched workflow file; no production or integration-test source was changed for this execution. The Linux Bash syntax preflight passed before emulator execution in both jobs.
+
+Both isolated API profiles passed ephemeral database/API setup and synthetic seeding, APK build, emulator profile checks, installation, visible sign-in startup, and the four Flutter configuration tests. Both jobs failed at Run emulator compatibility and functional smoke checks and uploaded evidence.
+
+| Check | Android 10 / API 29 — Nexus 5, 360×640 dp | Android 14 / API 34 — Pixel 7 Pro, 411×891 dp |
+|---|---|---|
+| Installation, startup, sign-in, configuration tests | PASSED; configuration 4/4 | PASSED; configuration 4/4 |
+| Synthetic login, authenticated navigation, dashboard | PASSED | PASSED |
+| Asset search and details | FAILED / PARTIAL — the asset-history case failed before tap; later API logs show DEMO-EL-003 search/QR responses at HTTP 200, but no separate passing UI assertion was retained | PASSED for DEMO-EL-001, including the asset-details screen |
+| Maintenance history and return navigation | NOT EXECUTED; asset selection failed first | PASSED; history GET returned HTTP 200, seeded inspection 34000000-0000-4000-8000-000000000001 and expected remarks matched, record was visible, and return to Asset lookup passed |
+| DEMO-EL-003 PM schedule fixture and visible schedule | BLOCKED; schedule reads returned HTTP 200, but no visible-cycle or due-date pass was recorded | BLOCKED; fixture check confirmed the assigned Due schedule, but the dashboard search interaction failed before the schedule UI was opened |
+| Inspection form open, save, reopen, edit, server verification | FAILED / INCOMPLETE; Flutter listed the online-form test as failed. API logs include form POST 201 and start-inspection POST 200, but no verified saved-row, reopen, edit, or final server-state result was captured | NOT EXECUTED; the online-form test failed before asset details or form entry, and no form-create/start request was recorded |
+| Offline draft entry and local persistence before restart | BLOCKED; the Flutter runner listed the test as failed, no offline-network request was observed, and local persistence was not verified | BLOCKED; the Flutter runner listed the test as failed, no offline-network request was observed, and local persistence was not verified |
+| Process restart, reconnection, synchronization and server-state verification | NOT EXECUTED; restart phase was not executed | NOT EXECUTED; restart phase was not executed |
+| Controlled synchronization conflict | NOT EXECUTED; no conflict case is implemented | NOT EXECUTED; no conflict case is implemented |
+| Workflow job | FAILED | FAILED |
+
+### Run 4 failure diagnosis
+
+The first recorded API 29 failure was in asset-history at stage asset-search-result. The assertion was “Open asset search center is outside its visible scroll viewport.” The target bounds were x=20–340, y=374–448; the selected scroll viewport ended at y=343, while the Flutter render viewport ended at y=592. The stack points to _verifyHitTestPosition, _scrollUntilVisible, _tapAfterScrolling, and _openAssetFromDashboard in integration_test/nonfunctional_smoke_test.dart. The failure occurred before tester.tap, asset selection, or the history request. The Flutter report listed all three prepare tests as failed; it did not retain a separate SMOKE_FAILURE diagnostic for the online and offline cases. API logs show some later online-form requests, but those requests alone do not prove the UI lifecycle assertions.
+
+API 34 passed the asset-history test, including the seeded acknowledged record and return navigation. Its next online-inspection test confirmed the synthetic DEMO-EL-003 schedule was Due and assigned to the smoke user, then failed at dashboard-pm-schedule with the same assertion before opening asset search. The target bounds were x=20–391.4, y=572.4–644.4; the selected scroll viewport ended at y=555.4, while the render viewport ended at y=867.4. The Flutter report listed the offline test as failed too, but no separate failure marker was retained for that case.
+
+Flutter debugDumpApp and debugDumpRenderTree show the Search Assets ListTile beneath the dashboard HomePage RefreshIndicator, ListView and page-level Viewport (512 dp high on API 29 and 770.3 dp on API 34). The helper instead checked smaller viewport rectangles ending at y=343 and y=555.4. The screenshots show the action inside the render viewport. This is a test-side scrollable-selection/bounds defect: failure occurs before tap, so it does not establish a navigation, API, or production defect. Both API request logs contain 32 requests and no HTTP 4xx/5xx responses. API 34 recorded the history route twice with HTTP 200. API 29 recorded successful form-create/start requests but no history request.
+
+The runner summary marks emulator network toggling as not requested, offline persistence before reconnect as not executed, and the restart phase as not executed on both profiles. The controlled offline draft and synchronization workflow therefore remains unverified. The screenshots and Flutter widget/render diagnostics were captured before application teardown.
+
+- API 29 job [132358863068](https://github.com/lucifron28/UniPM/actions/runs/43565671645/job/132358863068); artifact [android-api-29-evidence, 1,435,042 bytes](https://github.com/lucifron28/UniPM/actions/runs/43565671645/artifacts/14102497268). Reviewed files: asset-history-asset-search-result-failure.png, asset-history-asset-search-result-failure-window.xml, integration-29-prepare.log, api-request-status.log, api-server.log, logcat.txt, and summary.json.
+- API 34 job [132358863365](https://github.com/lucifron28/UniPM/actions/runs/43565671645/job/132358863365); artifact [android-api-34-evidence, 3,544,108 bytes](https://github.com/lucifron28/UniPM/actions/runs/43565671645/artifacts/14102302153). Reviewed files: online-inspection-dashboard-pm-schedule-failure.png, online-inspection-dashboard-pm-schedule-failure-window.xml, integration-34-prepare.log, api-request-status.log, api-server.log, logcat.txt, and summary.json.
+
+The smallest justified follow-up is test-only: select the actual vertical Scrollable ancestor of search-assets, or use the already-visible-on-screen tap helper after checking hit-test bounds against the render viewport. Keep the existing history and form assertions. No correction or rerun is included here; the single-run authorization has been consumed. TEST-198, TEST-199, TEST-200, and all earlier TEST-201 run records remain preserved. Android compatibility is incomplete.
