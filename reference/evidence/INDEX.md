@@ -11,6 +11,8 @@ evidenceLevel: source-inspected
 This index lists committed engineering evidence. Claims are bounded by the
 record's evidence level and tested/source commit.
 
+- [TEST-203: Android inspection synchronization-conflict evidence](../testing/nonfunctional-2026-11/manual-android/conflict-evidence/TEST-203-mobile-inspection-sync-conflict-evidence.md): direct emulator captures show a synthetic offline edit meeting a concurrent server update, the existing review actions, and discard recovery; no application behavior was changed.
+
 - [TEST-192: Compact dashboard attention navigation](test-runs/TEST-192-compact-attention-navigation.md): eight focused backend cases passed; desktop synthetic checks cover both role-specific links, preserved form filters, back navigation and zero counts. Replaces the dashboard layout from TEST-191.
 
 - [TEST-191: Finding attention and Supervisor referrals](test-runs/TEST-191-finding-attention-and-supervisor-referrals.md): eight focused backend cases passed; synthetic desktop checks cover form photos and PM-number entry for GSD and Supervisor. No deployed or physical-device verification claimed.
